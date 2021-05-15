@@ -1,0 +1,6 @@
+classes= 9
+train  = /home/kevin/Documents/RM2020/cv_train/RM-DATASET/train.txt
+valid  = /home/kevin/Documents/RM2020/cv_train/RM-DATASET/2007_test.txt
+names = rm/rm.names
+backup = rm/backup/
+
