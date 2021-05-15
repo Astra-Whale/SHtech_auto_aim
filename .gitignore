@@ -1,0 +1,8 @@
+.vscode/
+MvSdkLog/
+build/
+data/
+log/
+others/tools/
+others/yolo/lib/*.so
+src/*.jpg
