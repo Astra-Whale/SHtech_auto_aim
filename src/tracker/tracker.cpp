@@ -2,7 +2,15 @@
 #include "log.hpp"
 #include "comm.h"
 
-tracker::tracker(bool enemy, int robot_id, int light_threshold, int dark_threshold, int _destory_limit) : destory_limit(_destory_limit)
+tracker::tracker(bool enemy,
+                 int robot_id,
+                 int light_threshold,
+                 int dark_threshold,
+                 int _destory_limit) : destory_limit(_destory_limit),
+                                       A2world("A", "world"),
+                                       cam2A("cam", "A"),
+                                       A2pit("A", "Pit"),
+                                       A2yaw("A", "Yaw")
 {
     this->enemy = enemy;
     this->light_threshold = light_threshold;
@@ -39,8 +47,12 @@ tracker::tracker(bool enemy, int robot_id, int light_threshold, int dark_thresho
         float a[3][3] = {{1303.581622411977, 0, 646.761077256198},
                          {0, 1306.214349841679, 509.046663300606},
                          {0, 0, 1.000000000000}};
+
         memcpy(b, a, sizeof(a));
         shoot_delay = 0;
+        cam2A.update_shift(Eigen::Vector3f(-2, -3, 10));
+        cam2A.update_trans(Eigen::Vector3f(-M_PI_2, 0, -M_PI_2));
+        A2pit.update_shift(Eigen::Vector3f(0, 0, 7));
     }
     else if (robot_id == 2)
     {
@@ -87,21 +99,18 @@ tracker::tracker(bool enemy, int robot_id, int light_threshold, int dark_thresho
     //std::cout<<"statePost: "<<KF.statePost<<std::endl;
 }
 
-cv::Point3f tracker::CalYPT(const cv::Point3f &pose_world, float v_shoot)
+std::pair<float, float> tracker::CalZoffset(const Eigen::Vector3f &pose_world, float v_shoot)
 {
-    float g = 9.8;
-    float delta = pow((g * pose_world.z - v_shoot * v_shoot), 2) - g * g * (pose_world.x * pose_world.x + pose_world.y * pose_world.y + pose_world.z * pose_world.z);
+    const float g = 9.8;
+    float d_2 = (pose_world(0) * pose_world(0) + pose_world(1) * pose_world(1) + pose_world(2) * pose_world(2));
+    float delta = pow((g * pose_world(2) - v_shoot * v_shoot), 2) - g * g * d_2;
     if (delta < 0)
     {
-        return cv::Point3f(0, 0, 0);
+        return std::pair<float, float>(0, std::sqrt(d_2) / 15);
     }
-    float t_2 = v_shoot * v_shoot - g * pose_world.z - sqrt(delta);
-    t_2 = 2 * t_2 / g / g;
-    float t = sqrt(t_2);
-
-    float yaw = atan2(pose_world.x, pose_world.y);
-    float pit = -1.0f * asin(pose_world.z + 0.5 * g * t_2 / v_shoot / t);
-    return cv::Point3f(yaw, pit, t);
+    float t_2 = v_shoot * v_shoot - g * pose_world(2) - sqrt(delta);
+    t_2 = t_2 * 2 / g / g;
+    return std::pair<float, float>(t_2 * 0.5 * g, std::sqrt(t_2));
 }
 
 int tracker::predict(const cv::Mat &frame, const std::vector<bbox_t> &in, DetectResult &out)
@@ -155,6 +164,8 @@ int tracker::predict(const cv::Mat &frame, const std::vector<bbox_t> &in, Detect
     }
 
     //LOGM_S("[DETECT] (x,y,z): %.1f, %.1f, %.1f dist: %.1f ", now.t.x, now.t.y, now.t.z, now.dist);
+    gim_state.shoot_speed = 0;
+    A2world.update_trans(Eigen::Vector3f(gim_state.curr_yaw / 180 * M_PI, gim_state.curr_pitch / 180 * M_PI, 0));
 
     float dist_ny = sqrt(now.t.x * now.t.x + now.t.z * now.t.z);
     out.ypr.y = atan2(now.t.y, dist_ny);
@@ -163,44 +174,45 @@ int tracker::predict(const cv::Mat &frame, const std::vector<bbox_t> &in, Detect
     out.ypr = out.ypr / 3.1415 * 180;
     //LOGM_S("[REF] (x,y,z): %.1f, %.1f, %.1f dist: %.1f ", out.ypr.x, out.ypr.y, out.ypr.z, now.dist);
 
-    cv::Mat xyz_cam = (cv::Mat_<float>(3, 1) << gim_state.curr_pitch, gim_state.curr_yaw, 0);
-    cv::Mat cam2Zworld;
-    cv::Rodrigues(xyz_cam, cam2Zworld);
-    cv::Mat armor_t_cam = (cv::Mat_<float>(3, 1) << now.t.x, now.t.y, now.t.z);
-    cv::Mat armor_t_Zworld = cam2Zworld * armor_t_cam; // z front
+    Eigen::Vector3f armor_cam = Eigen::Vector3f(now.t.x, now.t.y, now.t.z);
+    Eigen::Vector3f armor_A = cam2A.transform(armor_cam);
+    Eigen::Vector3f armor_world = A2world.transform(armor_A);
 
-    cv::Point3f armor_t_world = cv::Point3f(armor_t_Zworld.at<float>(0, 0), armor_t_Zworld.at<float>(2, 0), -armor_t_Zworld.at<float>(1, 0));
-
-    cv::Point3f speed;
-    if (no_last)
+    Eigen::Vector3f speed;
+    if (!no_last && last != Eigen::Vector3f::Zero())
     {
-        speed = cv::Point3f(0, 0, 0);
+        speed = speed * 0.8 + (armor_world - last) / (systime.getTime() - timeStamp) * (1 - 0.8);
+        last = armor_world;
+        timeStamp = systime.getTime();
     }
-    else
-    {
-        float now = systime.getTime();
-        speed = (armor_t_world - last) / (now - timeStamp) * 0.3;
-        last = armor_t_world;
-        timeStamp = now;
-    }
+    std::pair<float, float> z_offset_and_t = CalZoffset(armor_world / 100, gim_state.shoot_speed);
+    float z_offset = z_offset_and_t.first;
+    float t = z_offset_and_t.second;
 
-    cv::Point3f predict_ypt = CalYPT(armor_t_world / 100, gim_state.shoot_speed);
+    speed = Eigen::Vector3f(0, 0, 0); //cv::Point3f(0, 0, 0);
+    armor_world = (t + shoot_delay) * speed + armor_world;
 
-    speed = cv::Point3f(0, 0, 0);
-    armor_t_world = (predict_ypt.z + shoot_delay) * speed + armor_t_world;
+    z_offset_and_t = CalZoffset(armor_world / 100, gim_state.shoot_speed);
 
-    predict_ypt = CalYPT(armor_t_world / 100, gim_state.shoot_speed);
+    z_offset = z_offset_and_t.first;
+    t = z_offset_and_t.second;
 
-    if (gim_state.shoot_speed < 3)
-    {
-    }
-    else
-    {
-        out.ypr.x = predict_ypt.x / 3.1415 * 180;
-        out.ypr.y = predict_ypt.y / 3.1415 * 180;
-    }
+    armor_world(2) = armor_world(2) + z_offset;
+    Eigen::Vector3f armor_with_offset_A = A2world.transform_inv(armor_world);
+
+    out.ypr.x = atan2(armor_with_offset_A(1), armor_with_offset_A(0));
+    out.ypr.y = atan2(armor_with_offset_A(2), std::sqrt(std::pow(armor_with_offset_A(0), 2) + std::pow(armor_with_offset_A(1), 2)));
+    out.ypr.z = t;
+    out.ypr.x *= -0.8;
+    out.ypr.y *= -0.8;
+    out.ypr.x += gim_state.curr_yaw;
+    out.ypr.y += gim_state.curr_pitch;
+    out.ypr.x = out.ypr.x / 3.1415 * 180;
+    out.ypr.y = out.ypr.y / 3.1415 * 180;
+    LOGM_S("IMU_Yaw: %.2f IMU_Pit: %.2f Yaw: %.2f Pitch: %.2f", gim_state.curr_yaw / 3.1415 * 180, gim_state.curr_pitch / 3.1415 * 180, out.ypr.x, out.ypr.y);
 
     offline_counter = 0;
+
     return PREDICT;
 }
 
@@ -211,7 +223,8 @@ bool tracker::IOUFilter(const std::vector<bbox_t> &in)
         no_last = true;
         return false;
     }
-    std::sort(armors_bbox.begin(), armors_bbox.end(), [](const bbox_t &a, const bbox_t &b) { return a.prob > b.prob; });
+    std::sort(armors_bbox.begin(), armors_bbox.end(), [](const bbox_t &a, const bbox_t &b)
+              { return a.prob > b.prob; });
     for (bbox_t i : in)
     {
         bool flag_big_IOU = false;
@@ -238,14 +251,16 @@ bool tracker::NearstArmor(void)
         cv::Point2f center = cv::Point2f(img_cols / 2, img_rows / 2);
         std::sort(armors_bbox.begin(),
                   armors_bbox.end(),
-                  [&center](const bbox_t &a, const bbox_t &b) { return GetDistSq(a, center) > GetDistSq(b, center); });
+                  [&center](const bbox_t &a, const bbox_t &b)
+                  { return GetDistSq(a, center) > GetDistSq(b, center); });
         last_bbox = armors_bbox[0];
     }
     else
     {
         std::sort(armors_bbox.begin(),
                   armors_bbox.end(),
-                  [&](const bbox_t &a, const bbox_t &b) { return GetIOU(a, last_bbox) < GetIOU(b, last_bbox); });
+                  [&](const bbox_t &a, const bbox_t &b)
+                  { return GetIOU(a, last_bbox) < GetIOU(b, last_bbox); });
         if (GetIOU(armors_bbox[0], last_bbox) < MIN_IOU)
         {
             last_bbox = armors_bbox[0];

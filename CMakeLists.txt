@@ -17,6 +17,7 @@ FILE(GLOB SRC_LIST_CPP ${PROJECT_SOURCE_DIR}/src/*.cpp
                        ${PROJECT_SOURCE_DIR}/others/Log/*.cpp
                        ${PROJECT_SOURCE_DIR}/others/timer/*.cpp
                        ${PROJECT_SOURCE_DIR}/others/cmd_parser/*.cpp
+                       ${PROJECT_SOURCE_DIR}/others/Trans/*.cpp
                        )
 
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/inc)
@@ -29,8 +30,10 @@ INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/others/comm)
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/others/Log)
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/others/timer)
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/others/cmd_parser)
+INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/others/Trans)
 
 find_package(OpenCV REQUIRED)
+find_package(Eigen3 REQUIRED)
 find_package (Threads REQUIRED)
 
 if(NOT DEFINED ENV{MVS_PATH})

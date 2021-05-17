@@ -7,6 +7,7 @@
 //ArmorPos
 #include "armor_pos.hpp"
 #include "detector.hpp"
+#include "Trans.hpp"
 
 #define DESTROY -1
 #define LOST 0
@@ -73,8 +74,10 @@ private:
     cv::Mat inner;
     cv::Mat dist;
 
-    cv::Point3f last;
+    Eigen::Vector3f last;
     float timeStamp;
+
+    Trans A2world, cam2A, A2pit, A2yaw;
 
     bool IOUFilter(const std::vector<bbox_t> &in);
     bool NearstArmor(void);
@@ -88,7 +91,7 @@ private:
     static int GetIOU(const bbox_t &a, const bbox_t &b);
     static int GetDistSq(const bbox_t &box, const cv::Point2f &center);
     static int GetDist(const bbox_t &box, const cv::Point2f &center);
-    static cv::Point3f CalYPT(const cv::Point3f &pose_world, float shoot_speed);
+    static std::pair<float, float> CalZoffset(const Eigen::Vector3f &pose_world, float v_shoot);
 };
 
 #endif
