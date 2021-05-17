@@ -28,5 +28,6 @@
 #include "cmd_parser.hpp"
 #include "timer.hpp"
 #include "log.hpp"
+#include "image.hpp"
 
 #define GPU

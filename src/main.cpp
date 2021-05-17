@@ -141,13 +141,13 @@ int main(void)
 
     struct detection_obj_t
     {
-        cv::Mat frame;
+        Image image;
         std::vector<bbox_t> outs;
         std::shared_ptr<image_t> detImg;
 
         detection_obj_t()
         {
-            frame = cv::Mat(video->getSize().height, video->getSize().width, CV_32FC3);
+            image.frame = cv::Mat(video->getSize().height, video->getSize().width, CV_32FC3);
             outs.reserve(20);
         }
     };
@@ -183,7 +183,7 @@ int main(void)
             cap2pre.wait_for_put();
             detection_obj_t *obj = track2cap.get();
             bool state;
-            CNT_TIM_AVG(t, { state = video->read(obj->frame); }, {})
+            CNT_TIM_AVG(t, { state = video->read(obj->image.frame); obj->image.index=totalFrameCounter++; }, {})
             if (!state)
             {
                 LOGE(screen, "read image fail!");
@@ -195,7 +195,7 @@ int main(void)
                 track2cap.put(obj);
                 //break;
             }
-            if (obj->frame.empty())
+            if (obj->image.frame.empty())
             {
                 LOGW(screen, "empty image");
                 track2cap.put(obj);
@@ -218,7 +218,7 @@ int main(void)
         {
             pre2detect.wait_for_put();
             detection_obj_t *obj = cap2pre.get();
-            obj->detImg = detector.detector->mat_to_image_resize(obj->frame);
+            obj->detImg = detector.detector->mat_to_image_resize(obj->image.frame);
             pre2detect.put(obj);
             CNT_FPS(prepro_c, {});
         } while (run);
@@ -229,7 +229,7 @@ int main(void)
         {
             detect2track.wait_for_put();
             detection_obj_t *obj = pre2detect.get();
-            CNT_TIM_AVG(detect_a, { detector.detect(obj->detImg, obj->frame, obj->outs); }, {});
+            CNT_TIM_AVG(detect_a, { detector.detect(obj->detImg, obj->image.frame, obj->outs); }, {});
             CNT_FPS(detect_c, {});
             totalFrameCounter++;
             detect2track.put(obj);
@@ -246,7 +246,7 @@ int main(void)
             detection_obj_t *obj = detect2track.get();
             c.receive();
             //gim_state.shoot_speed = 10; //for debug
-            int det_res = track->predict(obj->frame, obj->outs, out);
+            int det_res = track->predict(obj->image.frame, obj->outs, out);
             CNT_FPS(receive_c, { LOGM(screen, "[IMU] Yaw Pitch Shoot: (%.1f,%.1f,%.1f)", gim_state.curr_yaw / 3.1415 * 180, gim_state.curr_pitch / 3.1415 * 180, gim_state.shoot_speed); });
             if (det_res == DESTROY)
             {
