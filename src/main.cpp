@@ -231,7 +231,6 @@ int main(void)
             detection_obj_t *obj = pre2detect.get();
             CNT_TIM_AVG(detect_a, { detector.detect(obj->detImg, obj->image.frame, obj->outs); }, {});
             CNT_FPS(detect_c, {});
-            totalFrameCounter++;
             detect2track.put(obj);
         } while (run);
     });
