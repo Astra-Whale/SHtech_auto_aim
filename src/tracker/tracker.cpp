@@ -42,7 +42,7 @@ tracker::tracker(bool enemy,
     shoot_delay = 0; //s^-1
 
     float b[3][3] = {0};
-    if (robot_id == 1)
+    if (robot_id == 1) //hero
     {
         float a[3][3] = {{1303.581622411977, 0, 646.761077256198},
                          {0, 1306.214349841679, 509.046663300606},
@@ -113,54 +113,62 @@ std::pair<float, float> tracker::CalZoffset(const Eigen::Vector3f &pose_world, f
     return std::pair<float, float>(t_2 * 0.5 * g, std::sqrt(t_2));
 }
 
-int tracker::predict(const cv::Mat &frame, const std::vector<bbox_t> &in, DetectResult &out)
+int tracker::predict(const Image &frame, const std::vector<bbox_t> &in, DetectResult &out)
 {
-
-    if (IOUFilter(in) == false)
-    {
-        offline_counter++;
-        if (offline_counter > destory_limit)
-        {
-            return DESTROY;
-        }
-        return LOST;
-    }
-    if (NearstArmor() == false)
-    {
-        offline_counter++;
-        if (offline_counter > destory_limit)
-        {
-            return DESTROY;
-        }
-        return LOST;
-    }
-
-    cv::Mat armor = cv::Mat(frame, getLegalRect(frame, last_bbox));
-
-    std::pair<Vector2f, Vector2f> lb_v;
-
-    if (findLightBlobs(armor, lb_v, enemy, light_threshold, dark_threshold) == false)
-    {
-        offline_counter++;
-        if (offline_counter > destory_limit)
-        {
-            return DESTROY;
-        }
-        return LOST;
-    }
-
+    int state = PREDICT;
     DetectResult now;
 
-    GetArmorPos(lb_v, now);
-
-    if (now.dist > 500 || now.dist < 10)
+    do
     {
-        offline_counter++;
-        if (offline_counter > destory_limit)
+        if (!IOUFilter(in))
         {
-            return DESTROY;
+            offline_counter++;
+            if (offline_counter > destory_limit)
+            {
+                state = DESTROY;
+                break;
+            }
+            state = LOST;
         }
-        return LOST;
+        if (!NearstArmor())
+        {
+            offline_counter++;
+            if (offline_counter > destory_limit)
+            {
+                state = DESTROY;
+            }
+            state = LOST;
+        }
+
+        cv::Mat armor = cv::Mat(frame.frame, getLegalRect(frame.frame, last_bbox));
+
+        std::pair<Vector2f, Vector2f> lb_v;
+
+        if (!findLightBlobs(armor, lb_v, enemy, light_threshold, dark_threshold))
+        {
+            offline_counter++;
+            if (offline_counter > destory_limit)
+            {
+                state = DESTROY;
+            }
+            state = LOST;
+        }
+
+        GetArmorPos(lb_v, now);
+
+        if (now.dist > 1000 || now.dist < 10)
+        {
+            offline_counter++;
+            if (offline_counter > destory_limit)
+            {
+                state = DESTROY;
+            }
+            state = LOST;
+        }
+    } while (0);
+    if (state == LOST || state == DESTROY)
+    {
+        return state;
     }
 
     //LOGM_S("[DETECT] (x,y,z): %.1f, %.1f, %.1f dist: %.1f ", now.t.x, now.t.y, now.t.z, now.dist);

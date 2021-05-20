@@ -1,4 +1,5 @@
 #include "detector.hpp"
+#include "image.hpp"
 
 ArmorDetector::ArmorDetector(const std::string &classesFile, const std::string &modelConfig, const std::string &modelWeights, bool enemy)
 {
@@ -31,10 +32,10 @@ ArmorDetector::~ArmorDetector()
     free(detector);
 }
 
-bool ArmorDetector::detect(std::shared_ptr<image_t> detImg, const cv::Mat &frame, std::vector<bbox_t> &outs)
+bool ArmorDetector::detect(std::shared_ptr<image_t> detImg, const Image &frame, std::vector<bbox_t> &outs)
 {
 
-    std::vector<bbox_t> tmp = detector->detect_resized(*detImg, frame.cols, frame.rows, 0.5);
+    std::vector<bbox_t> tmp = detector->detect_resized(*detImg, frame.frame.cols, frame.frame.rows, 0.5);
     outs.clear();
     for (unsigned int i = 0; i < tmp.size(); i++)
     {

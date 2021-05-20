@@ -229,7 +229,7 @@ int main(void)
         {
             detect2track.wait_for_put();
             detection_obj_t *obj = pre2detect.get();
-            CNT_TIM_AVG(detect_a, { detector.detect(obj->detImg, obj->image.frame, obj->outs); }, {});
+            CNT_TIM_AVG(detect_a, { detector.detect(obj->detImg, obj->image, obj->outs); }, {});
             CNT_FPS(detect_c, {});
             detect2track.put(obj);
         } while (run);
@@ -245,7 +245,7 @@ int main(void)
             detection_obj_t *obj = detect2track.get();
             c.receive();
             //gim_state.shoot_speed = 10; //for debug
-            int det_res = track->predict(obj->image.frame, obj->outs, out);
+            int det_res = track->predict(obj->image, obj->outs, out);
             CNT_FPS(receive_c, { LOGM(screen, "[IMU] Yaw Pitch Shoot: (%.1f,%.1f,%.1f)", gim_state.curr_yaw / 3.1415 * 180, gim_state.curr_pitch / 3.1415 * 180, gim_state.shoot_speed); });
             if (det_res == DESTROY)
             {

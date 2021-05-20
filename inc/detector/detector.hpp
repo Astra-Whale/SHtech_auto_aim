@@ -22,12 +22,13 @@
 #include "yolo_v2_class.hpp"
 //Config
 #include "config.h"
+#include "image.hpp"
 
 class ArmorDetector
 {
 public:
     ArmorDetector(const std::string &classesFile, const std::string &modelConfig, const std::string &modelWeights, bool enemy);
-    bool detect(std::shared_ptr<image_t> detImg, const cv::Mat &frame, std::vector<bbox_t> &outs);
+    bool detect(std::shared_ptr<image_t> detImg, const Image &frame, std::vector<bbox_t> &outs);
     ~ArmorDetector();
 
     Detector *detector;

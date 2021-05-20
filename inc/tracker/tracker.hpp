@@ -8,6 +8,7 @@
 #include "armor_pos.hpp"
 #include "detector.hpp"
 #include "Trans.hpp"
+#include "image.hpp"
 
 #define DESTROY -1
 #define LOST 0
@@ -48,7 +49,7 @@ struct DetectResult
 class tracker
 {
 public:
-    int predict(const cv::Mat &frame, const std::vector<bbox_t> &in, DetectResult &out);
+    int predict(const Image &frame, const std::vector<bbox_t> &in, DetectResult &out);
 
     tracker(bool enemy, int robot_id, int light_threshold, int dark_threshold, int _destory_limit = 5);
 

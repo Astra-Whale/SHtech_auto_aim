@@ -7,6 +7,8 @@
 #include <sstream>
 #include <iomanip>
 #include <ctime>
+#include <sys/stat.h> 　
+#include <sys/types.h> 　　
 
 class Log
 {
@@ -17,6 +19,7 @@ public:
         time_t now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
         std::stringstream ss;
         ss << std::put_time(std::localtime(&now), "%Y-%m-%d-%H:%M:%S");
+        mkdir(folder.c_str(), S_IRUSR | S_IWUSR | S_IXUSR | S_IRWXG | S_IRWXO);
         if (folder[folder.length() - 1] != '/')
         {
             folder = folder + "/";
@@ -25,7 +28,8 @@ public:
         out = fopen(file.c_str(), "w");
         if (!out)
         {
-            throw "Open Log File Fail";
+            std::cout << "Open Log File Fail" << std::endl;
+            //throw "Open Log File Fail";
         }
     }
     Log(void)
