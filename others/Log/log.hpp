@@ -7,8 +7,8 @@
 #include <sstream>
 #include <iomanip>
 #include <ctime>
-#include <sys/stat.h> 　
-#include <sys/types.h> 　　
+#include <sys/stat.h>
+#include <sys/types.h>
 
 class Log
 {
@@ -28,7 +28,7 @@ public:
         out = fopen(file.c_str(), "w");
         if (!out)
         {
-            std::cout << "Open Log File Fail" << std::endl;
+            printf("Open Log File Fail\n");
             //throw "Open Log File Fail";
         }
     }
