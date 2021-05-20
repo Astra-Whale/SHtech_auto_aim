@@ -1,6 +1,6 @@
 #include "main.hpp"
 
-//#define SHOW
+// #define SHOW
 template <typename T> // pipline for memory pool design, no thread security ensurance, make sure memory pool large enough
 class pipline_queue_t
 {
@@ -62,13 +62,13 @@ void clear(void)
 void stop(int signal)
 {
     run = false;
-    LOGM_S("Receive Ctrl-C");
+    LOGM_S("Quit");
 }
 
 bool init(void)
 {
     //signal(SIGINT, stop);
-    signal(SIGSEGV, stop);
+    //signal(SIGSEGV, stop);
     screen = new Log();
     try
     {
@@ -204,7 +204,7 @@ int main(void)
             CNT_FPS(img_get_c, {});
 #ifdef SHOW
             cv::Mat show;
-            obj->frame.copyTo(show);
+            obj->image.frame.copyTo(show);
             cv::resize(show, show, cv::Size(256, 256));
             cv::imshow("raw", show);
             cv::waitKey(1);
@@ -257,7 +257,8 @@ int main(void)
                 c.transmit(out.ypr.x, out.ypr.y, out.dist);
                 //LOGM(screen, "[SEND] Yaw Pitch T Dist:(%.1f,%.1f,%.1f,%.1f)",
                 //     out.ypr.x, out.ypr.y, out.ypr.z, out.dist);
-
+                LOGM_F("[SEND] Yaw:(%.1f,%d)", out.ypr.x, obj->image.index);
+                LOGM_F("[SEND] Pitch:(%.1f,%d)", out.ypr.y, obj->image.index);
                 CNT_FPS(send_c, { LOGM(screen, "[SEND] Yaw Pitch T Dist:(%.1f,%.1f,%.1f,%.1f)",
                                        out.ypr.x, out.ypr.y, out.ypr.z, out.dist); });
             }

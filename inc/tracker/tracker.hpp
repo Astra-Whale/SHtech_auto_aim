@@ -21,6 +21,7 @@ struct DetectResult
     cv::Point3f ypr;
     cv::Point3f t;
     float dist;
+    float last_dist;
     DetectResult()
     {
         ypr = cv::Point3f(0, 0, 0);
@@ -54,7 +55,7 @@ public:
 
     bbox_t last_bbox;
 
-    cv::Point3f speed;
+    Eigen::Vector3f speed;
 
     std::vector<bbox_t> armors_bbox;
 

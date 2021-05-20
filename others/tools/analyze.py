@@ -1,8 +1,7 @@
-import os
 import re
-import sys
 import matplotlib.pyplot as plt
 import csv
+
 
 def main():
     axis_Y = []
@@ -22,13 +21,11 @@ def main():
             break
         else:
             pattern = name + r":\((.*),(.*)\)"
-            # pattern = name + r':\([^\s]\)\s'
             recongnize = re.compile(pattern)
             f = open(path, 'r')
             while True:
                 line = f.readline()
                 if line:
-                    
                     search = recongnize.search(line)
                     if search != None:
                         axis_Y.append(search.group(1))
@@ -36,6 +33,9 @@ def main():
                         axis_X.append(num)
                         num += 1
                 else:
+                    if num == 0:
+                        print("Wrong name type! Please try again!")
+                        break
                     path_name = "../tools/" + name + '.csv'
                     with open(path_name, 'w') as fi:
                         csv_write = csv.writer(fi)
@@ -43,7 +43,7 @@ def main():
                         csv_write.writerow(csv_head)
                         for i in range(num):
                             csv_write.writerow([axis_Y[i], frame[i]])
-                    fi.close()        
+                    fi.close()
                     flag = ' '
                     flag = input('Do you want to find the noise(y/n)\n')
                     if flag == 'n':
@@ -51,7 +51,8 @@ def main():
                         plt.scatter(axis_X, axis_Y, s=3)
                         plt.show()
                     elif flag == 'y':
-                        A = float(input('Please type in the max amplitude you can tolerate\n'))
+                        A = float(
+                            input('Please type in the max amplitude you can tolerate\n'))
                         temp = axis_Y[0]
                         for i in range(num - 1):
                             if ((float(axis_Y[i + 1]) - float(temp) > A) or (float(temp) - float(axis_Y[i + 1]) > A)):
@@ -67,14 +68,15 @@ def main():
                             csv_head = [name, 'frame']
                             csv_write.writerow(csv_head)
                             for i in range(noise_num):
-                                csv_write.writerow([noise_Y[i], noise_frame[i]])
+                                csv_write.writerow(
+                                    [noise_Y[i], noise_frame[i]])
                         fn.close()
                         axis_Y = [float(i) for i in axis_Y]
                         noise_Y = [float(i) for i in noise_Y]
                         plt.scatter(axis_X, axis_Y, s=3)
                         plt.scatter(noise_X, noise_Y, s=3)
                         plt.show()
-                    
+
                     axis_Y = []
                     axis_X = []
                     frame = []
@@ -84,6 +86,7 @@ def main():
                     num = 0
                     noise_num = 0
                     break
+
 
 if __name__ == "__main__":
     main()
