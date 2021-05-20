@@ -50,7 +50,7 @@ tracker::tracker(bool enemy,
 
         memcpy(b, a, sizeof(a));
         shoot_delay = 0;
-        cam2A.update_shift(Eigen::Vector3f(-3, -3, 8)); 
+        cam2A.update_shift(Eigen::Vector3f(-3, -3, 8));
         cam2A.update_trans(Eigen::Vector3f(-M_PI_2, 0, -M_PI_2)); // Done
         A2pit.update_shift(Eigen::Vector3f(0, 0, 7));
     }
@@ -76,7 +76,7 @@ tracker::tracker(bool enemy,
         cam2A.update_trans(Eigen::Vector3f(-M_PI_2, 0, -M_PI_2)); // Done
         A2pit.update_shift(Eigen::Vector3f(0, 0, 0));
     }
-    
+
     else if (robot_id == 4) //aerial
     {
         float a[3][3] = {{873.7503, 0, 638.3636},
@@ -120,7 +120,7 @@ std::pair<float, float> tracker::CalZoffset(const Eigen::Vector3f &pose_world, f
     return std::pair<float, float>(t_2 * 0.5 * g, std::sqrt(t_2));
 }
 
-int tracker::predict(const Image &frame, const std::vector<bbox_t> &in, DetectResult &out)
+int tracker::predict(const Image &frame, std::vector<bbox_t> &in, DetectResult &out)
 {
     int state = PREDICT;
     DetectResult now;
@@ -195,8 +195,8 @@ int tracker::predict(const Image &frame, const std::vector<bbox_t> &in, DetectRe
 
     if (!no_last && last != Eigen::Vector3f::Zero())
     {
-        speed = speed * 0.7 + (armor_world - last)*(systime.getTime()-timeStamp) * (1 - 0.7);
-        LOGM_S("Speed:(%.2f,%.2f,%.2f)",speed(0),speed(1),speed(2));
+        speed = speed * 0.7 + (armor_world - last) * (systime.getTime() - timeStamp) * (1 - 0.7);
+        LOGM_S("Speed:(%.2f,%.2f,%.2f)", speed(0), speed(1), speed(2));
         last = armor_world;
         timeStamp = systime.getTime();
     }
@@ -213,14 +213,6 @@ int tracker::predict(const Image &frame, const std::vector<bbox_t> &in, DetectRe
     t = z_offset_and_t.second;
 
     //Here is the log of z_offset;
-    if(z_offset == 0)
-    {
-        printf("damn!!!!! There may have something wrong!!!");
-    }
-    if(z_offset > 100)
-    {
-        printf("Oops!!!!!! What's wrong???????????????????");
-    }
     LOGM_F("[SEND] z_offset:(%f,%d)", z_offset, 1);
 
     armor_world(2) = armor_world(2) + z_offset;
@@ -239,24 +231,26 @@ int tracker::predict(const Image &frame, const std::vector<bbox_t> &in, DetectRe
 
     offline_counter = 0;
 
+    armors_bbox.clear();
+
     return PREDICT;
 }
 
-bool tracker::IOUFilter(const std::vector<bbox_t> &in)
+bool tracker::IOUFilter(std::vector<bbox_t> &in)
 {
     if (in.empty())
     {
         no_last = true;
         return false;
     }
-    std::sort(armors_bbox.begin(), armors_bbox.end(), [](const bbox_t &a, const bbox_t &b)
+    std::sort(in.begin(), in.end(), [](const bbox_t &a, const bbox_t &b)
               { return a.prob > b.prob; });
-    for (bbox_t i : in)
+    for (unsigned int i = 0; i < in.size(); i++)
     {
         bool flag_big_IOU = false;
-        for (bbox_t &j : armors_bbox)
+        for (unsigned int j = i + 1; j < in.size(); j++)
         {
-            if (GetIOU(i, j) > 0.6)
+            if (GetIOU(in[i], in[j]) > 0.6)
             {
                 flag_big_IOU = true;
                 break;
@@ -264,7 +258,7 @@ bool tracker::IOUFilter(const std::vector<bbox_t> &in)
         }
         if (!flag_big_IOU)
         {
-            armors_bbox.push_back(i);
+            armors_bbox.push_back(in[i]);
         }
     }
     return true;

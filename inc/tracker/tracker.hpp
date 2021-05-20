@@ -50,7 +50,7 @@ struct DetectResult
 class tracker
 {
 public:
-    int predict(const Image &frame, const std::vector<bbox_t> &in, DetectResult &out);
+    int predict(const Image &frame, std::vector<bbox_t> &in, DetectResult &out);
 
     tracker(bool enemy, int robot_id, int light_threshold, int dark_threshold, int _destory_limit = 5);
 
@@ -81,7 +81,7 @@ private:
 
     Trans A2world, cam2A, A2pit, A2yaw;
 
-    bool IOUFilter(const std::vector<bbox_t> &in);
+    bool IOUFilter(std::vector<bbox_t> &in);
     bool NearstArmor(void);
     void GetArmorPos(const std::pair<Vector2f, Vector2f> &lb_v, DetectResult &res);
     void GetConernPoints(const std::pair<Vector2f, Vector2f> &b, std::vector<cv::Point2f> &img_tar);

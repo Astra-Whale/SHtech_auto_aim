@@ -8,6 +8,8 @@ static double lw_rate(const cv::RotatedRect &rect);
 static double areaRatio(const std::vector<cv::Point> &contour, const cv::RotatedRect &rect);
 static bool isSameBlob(LightBlob blob1, LightBlob blob2);
 
+//#define SHOW_BIN
+
 bool findLightBlobs(const cv::Mat &src, std::pair<Vector2f, Vector2f> &lb_v, const bool blob_color, const int light_threshold, const int dark_threshold)
 {
     int enemy_color = blob_color;
@@ -36,11 +38,11 @@ bool findLightBlobs(const cv::Mat &src, std::pair<Vector2f, Vector2f> &lb_v, con
         return false;
     imagePreProcess(src_bin_dim); // 开闭运算
 
-    /*if (show_light_blobs)
-    {
+#ifdef SHOW_BIN
         cv::imshow("bin_light", src_bin_light);
         cv::imshow("bin_dim", src_bin_dim);
-    }*/
+        cv::waitKey(10);
+#endif
     // 使用两个不同的二值化阈值同时进行灯条提取，减少环境光照对二值化这个操作的影响。
     // 同时剔除重复的灯条，剔除冗余计算，即对两次找出来的灯条取交集。
     std::vector<std::vector<cv::Point>> light_contours_light, light_contours_dim;
