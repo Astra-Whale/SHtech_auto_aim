@@ -50,35 +50,42 @@ tracker::tracker(bool enemy,
 
         memcpy(b, a, sizeof(a));
         shoot_delay = 0;
-        cam2A.update_shift(Eigen::Vector3f(-2, -3, 10));
-        cam2A.update_trans(Eigen::Vector3f(-M_PI_2, 0, -M_PI_2));
+        cam2A.update_shift(Eigen::Vector3f(-3, -3, 8)); 
+        cam2A.update_trans(Eigen::Vector3f(-M_PI_2, 0, -M_PI_2)); // Done
         A2pit.update_shift(Eigen::Vector3f(0, 0, 7));
     }
-    else if (robot_id == 2)
+    else if (robot_id == 2) //doubleshoot
     {
-        float a[3][3] = {{1303.581622411977, 0, 646.761077256198},
-                         {0, 1306.214349841679, 509.046663300606},
+        float a[3][3] = {{1325.6, 0, 630.6053},
+                         {0, 1324.5, 527.6321},
+                         {0, 0, 1.000000000000}};
+        memcpy(b, a, sizeof(a));
+        shoot_delay = 0;
+        cam2A.update_shift(Eigen::Vector3f(-1, 5, 6));
+        cam2A.update_trans(Eigen::Vector3f(-M_PI_2, 0, -M_PI_2)); // Done
+        A2pit.update_shift(Eigen::Vector3f(0, 0, 0));
+    }
+    else if (robot_id == 3) //infantry
+    {
+        float a[3][3] = {{1325.412919614640, 0, 641.155914323051},
+                         {0, 1324.218656207114, 492.927180047021},
+                         {0, 0, 1.000000000000}};
+        memcpy(b, a, sizeof(a));
+        shoot_delay = 0;
+        cam2A.update_shift(Eigen::Vector3f(-1, 6, 5));
+        cam2A.update_trans(Eigen::Vector3f(-M_PI_2, 0, -M_PI_2)); // Done
+        A2pit.update_shift(Eigen::Vector3f(0, 0, 0));
+    }
+    
+    else if (robot_id == 4) //aerial
+    {
+        float a[3][3] = {{873.7503, 0, 638.3636},
+                         {0, 872.7696, 514.9894},
                          {0, 0, 1.000000000000}};
         memcpy(b, a, sizeof(a));
         shoot_delay = 0;
     }
-    else if (robot_id == 3)
-    {
-        float a[3][3] = {{1303.581622411977, 0, 646.761077256198},
-                         {0, 1306.214349841679, 509.046663300606},
-                         {0, 0, 1.000000000000}};
-        memcpy(b, a, sizeof(a));
-        shoot_delay = 0;
-    }
-    else if (robot_id == 4)
-    {
-        float a[3][3] = {{1303.581622411977, 0, 646.761077256198},
-                         {0, 1306.214349841679, 509.046663300606},
-                         {0, 0, 1.000000000000}};
-        memcpy(b, a, sizeof(a));
-        shoot_delay = 0;
-    }
-    else if (robot_id == 5)
+    else if (robot_id == 5) //sentry
     {
         float a[3][3] = {{1303.581622411977, 0, 646.761077256198},
                          {0, 1306.214349841679, 509.046663300606},
@@ -90,7 +97,7 @@ tracker::tracker(bool enemy,
     cv::Mat(3, 3, CV_32F, b).copyTo(inner);
     dist = cv::Mat::zeros(5, 1, CV_32F);
 
-    speed = cv::Point3f(0, 0, 0);
+    speed = Eigen::Vector3f(0, 0, 0);
 
     //std::cout << "Transition Matrix: " << std::endl
     //          << KF.transitionMatrix << std::endl;
@@ -172,7 +179,7 @@ int tracker::predict(const Image &frame, const std::vector<bbox_t> &in, DetectRe
     }
 
     //LOGM_S("[DETECT] (x,y,z): %.1f, %.1f, %.1f dist: %.1f ", now.t.x, now.t.y, now.t.z, now.dist);
-    gim_state.shoot_speed = 0;
+    gim_state.shoot_speed = 15;
     A2world.update_trans(Eigen::Vector3f(gim_state.curr_yaw / 180 * M_PI, gim_state.curr_pitch / 180 * M_PI, 0));
 
     float dist_ny = sqrt(now.t.x * now.t.x + now.t.z * now.t.z);
@@ -186,10 +193,10 @@ int tracker::predict(const Image &frame, const std::vector<bbox_t> &in, DetectRe
     Eigen::Vector3f armor_A = cam2A.transform(armor_cam);
     Eigen::Vector3f armor_world = A2world.transform(armor_A);
 
-    Eigen::Vector3f speed;
     if (!no_last && last != Eigen::Vector3f::Zero())
     {
-        speed = speed * 0.8 + (armor_world - last) / (systime.getTime() - timeStamp) * (1 - 0.8);
+        speed = speed * 0.7 + (armor_world - last)*(systime.getTime()-timeStamp) * (1 - 0.7);
+        LOGM_S("Speed:(%.2f,%.2f,%.2f)",speed(0),speed(1),speed(2));
         last = armor_world;
         timeStamp = systime.getTime();
     }
@@ -197,13 +204,24 @@ int tracker::predict(const Image &frame, const std::vector<bbox_t> &in, DetectRe
     float z_offset = z_offset_and_t.first;
     float t = z_offset_and_t.second;
 
-    speed = Eigen::Vector3f(0, 0, 0); //cv::Point3f(0, 0, 0);
+    //speed = Eigen::Vector3f(0, 0, 0); //cv::Point3f(0, 0, 0);
     armor_world = (t + shoot_delay) * speed + armor_world;
 
     z_offset_and_t = CalZoffset(armor_world / 100, gim_state.shoot_speed);
 
-    z_offset = z_offset_and_t.first;
+    z_offset = z_offset_and_t.first * 100;
     t = z_offset_and_t.second;
+
+    //Here is the log of z_offset;
+    if(z_offset == 0)
+    {
+        printf("damn!!!!! There may have something wrong!!!");
+    }
+    if(z_offset > 100)
+    {
+        printf("Oops!!!!!! What's wrong???????????????????");
+    }
+    LOGM_F("[SEND] z_offset:(%f,%d)", z_offset, 1);
 
     armor_world(2) = armor_world(2) + z_offset;
     Eigen::Vector3f armor_with_offset_A = A2world.transform_inv(armor_world);
@@ -211,13 +229,13 @@ int tracker::predict(const Image &frame, const std::vector<bbox_t> &in, DetectRe
     out.ypr.x = atan2(armor_with_offset_A(1), armor_with_offset_A(0));
     out.ypr.y = atan2(armor_with_offset_A(2), std::sqrt(std::pow(armor_with_offset_A(0), 2) + std::pow(armor_with_offset_A(1), 2)));
     out.ypr.z = t;
-    out.ypr.x *= -0.8;
-    out.ypr.y *= -0.8;
+    out.ypr.x *= -1.5;
+    out.ypr.y *= -1.5;
     out.ypr.x += gim_state.curr_yaw;
     out.ypr.y += gim_state.curr_pitch;
     out.ypr.x = out.ypr.x / 3.1415 * 180;
     out.ypr.y = out.ypr.y / 3.1415 * 180;
-    LOGM_S("IMU_Yaw: %.2f IMU_Pit: %.2f Yaw: %.2f Pitch: %.2f", gim_state.curr_yaw / 3.1415 * 180, gim_state.curr_pitch / 3.1415 * 180, out.ypr.x, out.ypr.y);
+    //LOGM_S("IMU_Yaw: %.2f IMU_Pit: %.2f Yaw: %.2f Pitch: %.2f", gim_state.curr_yaw / 3.1415 * 180, gim_state.curr_pitch / 3.1415 * 180, out.ypr.x, out.ypr.y);
 
     offline_counter = 0;
 
