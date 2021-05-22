@@ -41,7 +41,7 @@ bool findLightBlobs(const cv::Mat &src, std::pair<Vector2f, Vector2f> &lb_v, con
 #ifdef SHOW_BIN
         cv::imshow("bin_light", src_bin_light);
         cv::imshow("bin_dim", src_bin_dim);
-        cv::waitKey(10);
+        cv::waitKey(0);
 #endif
     // 使用两个不同的二值化阈值同时进行灯条提取，减少环境光照对二值化这个操作的影响。
     // 同时剔除重复的灯条，剔除冗余计算，即对两次找出来的灯条取交集。

@@ -1,6 +1,7 @@
 import re
 import matplotlib.pyplot as plt
 import csv
+import os
 
 
 def main():
@@ -12,8 +13,14 @@ def main():
     frame = []
     num = 0
     noise_num = 0
-    log = input("Please type in log name.\n")
-    path = "../../log/" + log
+    log = input("Please type in log name. 'Enter' for lastest log\n")
+    if(log == "\n" or log == " " or log == None or len(log) == 0):
+        log = os.listdir("../../log/")
+        log.sort()
+        path = "../../log/"+log[-1]
+    else:
+        path = "../../log/" + log
+    print("Open File", path)
     while True:
         name = input(
             "Please type in the name you want to analyse or just exit with 'q'.\n")

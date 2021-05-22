@@ -137,4 +137,7 @@ extern Log_t logfile;
 #define LOGM_F(fmt, ...) LOGM(logfile, fmt, ##__VA_ARGS__)
 #define LOGW_F(fmt, ...) LOGW(logfile, fmt, ##__VA_ARGS__)
 #define LOGE_F(fmt, ...) LOGE(logfile, fmt, ##__VA_ARGS__)
+#define LOGAvar(var_name, fmt, var, index) LOGM_F(var_name ":(" fmt ",%d)", var, index)
+#define LOGAstate(var_name, index) LOGM_F(var_name ":(1,%d)", index)
+
 #endif

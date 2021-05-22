@@ -5,7 +5,7 @@
 tracker::tracker(bool enemy,
                  int robot_id,
                  int light_threshold,
-                 int dark_threshold,
+                 int dark_threshold, KF_detetc_param_t kf_param,
                  int _destory_limit) : destory_limit(_destory_limit),
                                        A2world("A", "world"),
                                        cam2A("cam", "A"),
@@ -15,21 +15,37 @@ tracker::tracker(bool enemy,
     this->enemy = enemy;
     this->light_threshold = light_threshold;
     this->dark_threshold = dark_threshold;
-    float trans[6][6] = {0};
-    trans[0][3] = trans[1][4] = trans[2][5] = 1;
-    for (int i = 0; i < 6; i++)
-    {
-        trans[i][i] = 1;
-    }
 
     no_last = true;
+    last = Eigen::Vector3f::Zero();
 
-    KF.init(6, 3, 0);
-    cv::Mat(6, 6, CV_32F, trans).copyTo(KF.transitionMatrix);
-    cv::setIdentity(KF.measurementMatrix);
-    cv::setIdentity(KF.processNoiseCov, cv::Scalar::all(80));    //系统噪声方差矩阵Q
-    cv::setIdentity(KF.measurementNoiseCov, cv::Scalar::all(1)); //测量噪声方差矩阵R
-    cv::setIdentity(KF.errorCovPost, cv::Scalar::all(300));      //后验错误估计协方差矩阵P
+    Eigen::Matrix2f F;
+    F << 1, 1, 0, 1;
+    const Eigen::RowVector2f H(1, 0);
+    float observe_noise = std::get<0>(kf_param);
+    float pos_noise = std::get<1>(kf_param);
+    float spd_noise = std::get<2>(kf_param);
+
+    x.state_trans_matrix = F;
+    x.observe_matrix = H;
+    x.cov_matrix_pre = x.cov_matrix_last = Eigen::Matrix2f::Zero();
+    x.kalman_gain = Eigen::Vector2f::Zero();
+    x.observe_noise << observe_noise;
+    x.process_noise << pos_noise, 0, 0, spd_noise;
+
+    y.state_trans_matrix = F;
+    y.observe_matrix = H;
+    y.cov_matrix_pre = x.cov_matrix_last = Eigen::Matrix2f::Zero();
+    y.kalman_gain = Eigen::Vector2f::Zero();
+    y.observe_noise << observe_noise;
+    y.process_noise << pos_noise, 0, 0, spd_noise;
+
+    z.state_trans_matrix = F;
+    z.observe_matrix = H;
+    z.cov_matrix_pre = x.cov_matrix_last = Eigen::Matrix2f::Zero();
+    z.kalman_gain = Eigen::Vector2f::Zero();
+    z.observe_noise << observe_noise;
+    z.process_noise << pos_noise, 0, 0, spd_noise;
 
     //KF.statePost = (cv::setIdentity<float>(6, 1) << target.t.x, target.t.y, target.t.z, 0, 0, 0);
     offline_counter = 0;
@@ -98,7 +114,7 @@ tracker::tracker(bool enemy,
     dist = cv::Mat::zeros(5, 1, CV_32F);
 
     speed = Eigen::Vector3f(0, 0, 0);
-
+    track_frame = 0;
     //std::cout << "Transition Matrix: " << std::endl
     //          << KF.transitionMatrix << std::endl;
     //std::cout << "Measurement Matrix: " << std::endl
@@ -122,29 +138,23 @@ std::pair<float, float> tracker::CalZoffset(const Eigen::Vector3f &pose_world, f
 
 int tracker::predict(const Image &frame, std::vector<bbox_t> &in, DetectResult &out)
 {
-    int state = PREDICT;
+    int state = LOST;
     DetectResult now;
+
+    if (track_frame++ > MAX_FRAME)
+    {
+        return DESTROY;
+    }
 
     do
     {
         if (!IOUFilter(in))
         {
-            offline_counter++;
-            if (offline_counter > destory_limit)
-            {
-                state = DESTROY;
-                break;
-            }
-            state = LOST;
+            break;
         }
         if (!NearstArmor())
         {
-            offline_counter++;
-            if (offline_counter > destory_limit)
-            {
-                state = DESTROY;
-            }
-            state = LOST;
+            break;
         }
 
         cv::Mat armor = cv::Mat(frame.frame, getLegalRect(frame.frame, last_bbox));
@@ -153,87 +163,133 @@ int tracker::predict(const Image &frame, std::vector<bbox_t> &in, DetectResult &
 
         if (!findLightBlobs(armor, lb_v, enemy, light_threshold, dark_threshold))
         {
-            offline_counter++;
-            if (offline_counter > destory_limit)
-            {
-                state = DESTROY;
-            }
-            state = LOST;
+            break;
         }
 
         GetArmorPos(lb_v, now);
 
         if (now.dist > 1000 || now.dist < 10)
         {
-            offline_counter++;
-            if (offline_counter > destory_limit)
-            {
-                state = DESTROY;
-            }
-            state = LOST;
+            break;
         }
-    } while (0);
-    if (state == LOST || state == DESTROY)
-    {
-        return state;
-    }
 
-    //LOGM_S("[DETECT] (x,y,z): %.1f, %.1f, %.1f dist: %.1f ", now.t.x, now.t.y, now.t.z, now.dist);
-    gim_state.shoot_speed = 15;
-    A2world.update_trans(Eigen::Vector3f(gim_state.curr_yaw / 180 * M_PI, gim_state.curr_pitch / 180 * M_PI, 0));
+        //LOGM_S("[DETECT] (x,y,z): %.1f, %.1f, %.1f dist: %.1f ", now.t.x, now.t.y, now.t.z, now.dist);
+        if (gim_state.shoot_speed == 0)
+        {
+            gim_state.shoot_speed = 10;
+        }
+        A2world.update_trans(Eigen::Vector3f(gim_state.curr_yaw / 180 * M_PI, gim_state.curr_pitch / 180 * M_PI, 0));
 
-    float dist_ny = sqrt(now.t.x * now.t.x + now.t.z * now.t.z);
-    out.ypr.y = atan2(now.t.y, dist_ny);
-    out.ypr.x = atan2(now.t.x, now.t.z);
-    out.ypr.z = 0;
-    out.ypr = out.ypr / 3.1415 * 180;
-    //LOGM_S("[REF] (x,y,z): %.1f, %.1f, %.1f dist: %.1f ", out.ypr.x, out.ypr.y, out.ypr.z, now.dist);
+        float dist_ny = sqrt(now.t.x * now.t.x + now.t.z * now.t.z);
+        out.ypr.y = atan2(now.t.y, dist_ny);
+        out.ypr.x = atan2(now.t.x, now.t.z);
+        out.ypr.z = 0;
+        out.ypr = out.ypr / 3.1415 * 180;
+        //LOGM_S("[REF] (x,y,z): %.1f, %.1f, %.1f dist: %.1f ", out.ypr.x, out.ypr.y, out.ypr.z, now.dist);
 
-    Eigen::Vector3f armor_cam = Eigen::Vector3f(now.t.x, now.t.y, now.t.z);
-    Eigen::Vector3f armor_A = cam2A.transform(armor_cam);
-    Eigen::Vector3f armor_world = A2world.transform(armor_A);
+        Eigen::Vector3f armor_cam = Eigen::Vector3f(now.t.x, now.t.y, now.t.z);
+        Eigen::Vector3f armor_A = cam2A.transform(armor_cam);
+        Eigen::Vector3f armor_world = A2world.transform(armor_A);
 
-    if (!no_last && last != Eigen::Vector3f::Zero())
-    {
-        speed = speed * 0.7 + (armor_world - last) * (systime.getTime() - timeStamp) * (1 - 0.7);
-        LOGM_S("Speed:(%.2f,%.2f,%.2f)", speed(0), speed(1), speed(2));
+        LOGM_F("now_x:(%f,%d)", now.t.x, 1);
+        LOGM_F("now_y:(%f,%d)", now.t.y, 1);
+        LOGM_F("now_z:(%f,%d)", now.t.z, 1);
+        LOGM_F("world_x:(%f,%d)", armor_world(0), frame.index);
+        LOGM_F("world_y:(%f,%d)", armor_world(1), frame.index);
+        LOGM_F("world_z:(%f,%d)", armor_world(2), frame.index);
+
+        if (last != Eigen::Vector3f::Zero())
+        {
+            Eigen::Vector3f dist = armor_world - last;
+            printf("now:(%.2f,%.2f,%.2f)\n", armor_world(0), armor_world(1), armor_world(2));
+            printf("last:(%.2f,%.2f,%.2f)\n", last(0), last(1), last(2));
+            printf("dist:(%.2f,%.2f,%.2f), offline:%d\n", dist(0), dist(1), dist(2), offline_counter);
+            LOGM_F("dist_x:(%f,%d)", dist(0), frame.index);
+            LOGM_F("dist_y:(%f,%d)", dist(1), frame.index);
+            LOGM_F("dist_z:(%f,%d)", dist(2), frame.index);
+
+            if (dist.norm() > MAX_DIFF)
+            {
+                LOGM_F("far_data:(1,%d)", frame.index);
+                break;
+            }
+        }
+        else
+        {
+            x.x_last = Eigen::Vector2f(armor_world(0), 0);
+            y.x_last = Eigen::Vector2f(armor_world(1), 0);
+            z.x_last = Eigen::Vector2f(armor_world(2), 0);
+            LOGM_F("no_last:(1,%d)", frame.index);
+        }
+
+        Eigen::Vector2f x_kf = x.update(Eigen::Matrix<float, 1, 1>(armor_world(0)), Eigen::Matrix<float, 0, 1>(0));
+        Eigen::Vector2f y_kf = y.update(Eigen::Matrix<float, 1, 1>(armor_world(1)), Eigen::Matrix<float, 0, 1>(0));
+        Eigen::Vector2f z_kf = z.update(Eigen::Matrix<float, 1, 1>(armor_world(2)), Eigen::Matrix<float, 0, 1>(0));
+        LOGM_F("x_kf:(%f,%d)", x_kf(0), frame.index);
+        LOGM_F("y_kf:(%f,%d)", y_kf(0), frame.index);
+        LOGM_F("z_kf:(%f,%d)", z_kf(0), frame.index);
+        LOGM_S("pos_kf:(%.2f,%.2f,%.2f,%d)", x_kf(0), y_kf(0), y_kf(0), frame.index);
+
+        last = Eigen::Vector3f(x_kf(0), y_kf(0), z_kf(0));
+        speed = Eigen::Vector3f(x_kf(1), y_kf(1), z_kf(1));
+
+        if (speed.norm() > 8)
+        {
+            LOGM_F("huge_speed:(1,%d)", frame.index);
+            break;
+        }
+
+        LOGM_F("speed_x:(%f,%d)", speed(0), frame.index);
+        LOGM_F("speed_y:(%f,%d)", speed(1), frame.index);
+        LOGM_F("speed_z:(%f,%d)", speed(2), frame.index);
+        std::pair<float, float> z_offset_and_t = CalZoffset(armor_world / 100, gim_state.shoot_speed);
+        float z_offset = z_offset_and_t.first;
+        float t = z_offset_and_t.second;
+
+        //speed = Eigen::Vector3f(0, 0, 0); //cv::Point3f(0, 0, 0);
+        armor_world = (t + shoot_delay) * speed + armor_world;
         last = armor_world;
+
+        z_offset_and_t = CalZoffset(armor_world / 100, gim_state.shoot_speed);
+
+        z_offset = z_offset_and_t.first * 100;
+        t = z_offset_and_t.second;
         timeStamp = systime.getTime();
+
+        //Here is the log of z_offset;
+        LOGM_F("[SEND] z_offset:(%f,%d)", z_offset, 1);
+
+        armor_world(2) = armor_world(2) + z_offset;
+        Eigen::Vector3f armor_with_offset_A = A2world.transform_inv(armor_world);
+
+        out.ypr.x = atan2(armor_with_offset_A(1), armor_with_offset_A(0));
+        out.ypr.y = atan2(armor_with_offset_A(2), std::sqrt(std::pow(armor_with_offset_A(0), 2) + std::pow(armor_with_offset_A(1), 2)));
+        out.ypr.z = t;
+        out.ypr.x *= -1.5;
+        out.ypr.y *= -1.5;
+        out.ypr.x += gim_state.curr_yaw;
+        out.ypr.y += gim_state.curr_pitch;
+        out.ypr.x = out.ypr.x / 3.1415 * 180;
+        out.ypr.y = out.ypr.y / 3.1415 * 180;
+        //LOGM_S("IMU_Yaw: %.2f IMU_Pit: %.2f Yaw: %.2f Pitch: %.2f", gim_state.curr_yaw / 3.1415 * 180, gim_state.curr_pitch / 3.1415 * 180, out.ypr.x, out.ypr.y);
+
+        offline_counter = 0;
+
+        state = PREDICT;
+    } while (0);
+    if (state != PREDICT)
+    {
+        no_last = true;
+        offline_counter++;
+        state = LOST;
+        if (offline_counter > destory_limit)
+        {
+            state = DESTROY;
+        }
     }
-    std::pair<float, float> z_offset_and_t = CalZoffset(armor_world / 100, gim_state.shoot_speed);
-    float z_offset = z_offset_and_t.first;
-    float t = z_offset_and_t.second;
-
-    //speed = Eigen::Vector3f(0, 0, 0); //cv::Point3f(0, 0, 0);
-    armor_world = (t + shoot_delay) * speed + armor_world;
-
-    z_offset_and_t = CalZoffset(armor_world / 100, gim_state.shoot_speed);
-
-    z_offset = z_offset_and_t.first * 100;
-    t = z_offset_and_t.second;
-
-    //Here is the log of z_offset;
-    LOGM_F("[SEND] z_offset:(%f,%d)", z_offset, 1);
-
-    armor_world(2) = armor_world(2) + z_offset;
-    Eigen::Vector3f armor_with_offset_A = A2world.transform_inv(armor_world);
-
-    out.ypr.x = atan2(armor_with_offset_A(1), armor_with_offset_A(0));
-    out.ypr.y = atan2(armor_with_offset_A(2), std::sqrt(std::pow(armor_with_offset_A(0), 2) + std::pow(armor_with_offset_A(1), 2)));
-    out.ypr.z = t;
-    out.ypr.x *= -1.5;
-    out.ypr.y *= -1.5;
-    out.ypr.x += gim_state.curr_yaw;
-    out.ypr.y += gim_state.curr_pitch;
-    out.ypr.x = out.ypr.x / 3.1415 * 180;
-    out.ypr.y = out.ypr.y / 3.1415 * 180;
-    //LOGM_S("IMU_Yaw: %.2f IMU_Pit: %.2f Yaw: %.2f Pitch: %.2f", gim_state.curr_yaw / 3.1415 * 180, gim_state.curr_pitch / 3.1415 * 180, out.ypr.x, out.ypr.y);
-
-    offline_counter = 0;
-
     armors_bbox.clear();
 
-    return PREDICT;
+    return state;
 }
 
 bool tracker::IOUFilter(std::vector<bbox_t> &in)
@@ -250,7 +306,7 @@ bool tracker::IOUFilter(std::vector<bbox_t> &in)
         bool flag_big_IOU = false;
         for (unsigned int j = i + 1; j < in.size(); j++)
         {
-            if (GetIOU(in[i], in[j]) > 0.6)
+            if (GetIOU(in[i], in[j]) > 0.7)
             {
                 flag_big_IOU = true;
                 break;

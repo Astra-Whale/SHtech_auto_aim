@@ -18,6 +18,7 @@ FILE(GLOB SRC_LIST_CPP ${PROJECT_SOURCE_DIR}/src/*.cpp
                        ${PROJECT_SOURCE_DIR}/others/timer/*.cpp
                        ${PROJECT_SOURCE_DIR}/others/cmd_parser/*.cpp
                        ${PROJECT_SOURCE_DIR}/others/Trans/*.cpp
+                       ${PROJECT_SOURCE_DIR}/others/KalmanFilter/*.hpp
                        )
 
 INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/inc)

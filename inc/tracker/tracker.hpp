@@ -9,14 +9,20 @@
 #include "detector.hpp"
 #include "Trans.hpp"
 #include "image.hpp"
+#include "../others/KalmanFilter/KF.hpp"
 
 #define DESTROY -1
 #define LOST 0
 #define PREDICT 1
 
 #define MIN_IOU 0.3
+#define MAX_DIFF 30
+#define MAX_FRAME 150
 
-#define DESTORY_FPS 10
+#define DESTORY_FPS 5
+
+typedef KF<2, 0, 1> KF_detect_t;
+typedef std::tuple<float, float, float> KF_detetc_param_t; //observe_noise,pos_process_noise,spd_process_noise
 struct DetectResult
 {
     cv::Point3f ypr;
@@ -52,7 +58,7 @@ class tracker
 public:
     int predict(const Image &frame, std::vector<bbox_t> &in, DetectResult &out);
 
-    tracker(bool enemy, int robot_id, int light_threshold, int dark_threshold, int _destory_limit = 5);
+    tracker(bool enemy, int robot_id, int light_threshold, int dark_threshold, KF_detetc_param_t kf_param, int _destory_limit = DESTORY_FPS);
 
     bbox_t last_bbox;
 
@@ -64,13 +70,15 @@ private:
     bool no_last;
     bool enemy;
     int img_cols, img_rows;
-    cv::KalmanFilter KF;
     int offline_counter;
     int light_threshold;
     int dark_threshold;
+    int track_frame;
     const int destory_limit;
 
     float shoot_delay;
+
+    KF_detect_t x, y, z;
 
     std::vector<cv::Point3f> armor_corner;
     cv::Mat inner;
