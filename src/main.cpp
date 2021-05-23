@@ -1,6 +1,6 @@
 #include "main.hpp"
 
-// #define SHOW
+#define SHOW
 template <typename T> // pipline for memory pool design, no thread security ensurance, make sure memory pool large enough
 class pipline_queue_t
 {
@@ -141,13 +141,14 @@ int main(void)
 
     struct detection_obj_t
     {
-        Image image;
+        Image image_light;
+        Image image_dark;
         std::vector<bbox_t> outs;
         std::shared_ptr<image_t> detImg;
 
         detection_obj_t()
         {
-            image.frame = cv::Mat(video->getSize().height, video->getSize().width, CV_32FC3);
+            image_light.frame = cv::Mat(video->getSize().height, video->getSize().width, CV_32FC3);
             outs.reserve(20);
         }
     };
@@ -174,110 +175,115 @@ int main(void)
     sigaddset(&mask, SIGTERM);
     pthread_sigmask(SIG_BLOCK, &mask, &oldmask);
 
-    t_cap = std::thread([&]()
-                        {
+    t_cap = std::thread([&]() {
 #ifdef SHOW
-                            cv::namedWindow("raw");
+        cv::namedWindow("raw");
+        cv::namedWindow("light");
+
 #endif // SHOW
-                            do
-                            {
-                                cap2pre.wait_for_put();
-                                detection_obj_t *obj = track2cap.get();
-                                bool state;
-                                CNT_TIM_AVG(t,
-                                            {
-                                                state = video->read(obj->image.frame);
-                                                obj->image.index = totalFrameCounter++;
-                                            },
-                                            {})
-                                if (!state)
-                                {
-                                    LOGE(screen, "read image fail!");
-                                    //run = false;
-                                    LOGM(screen, "Total frames handled: %d", totalFrameCounter);
-                                    LOGM_S("ReOpen Camera");
-                                    video->close();
-                                    video->init();
-                                    track2cap.put(obj);
-                                    //break;
-                                }
-                                if (obj->image.frame.empty())
-                                {
-                                    LOGW(screen, "empty image");
-                                    track2cap.put(obj);
-                                    continue;
-                                }
-                                CNT_FPS(img_get_c, {});
+        do
+        {
+            cap2pre.wait_for_put();
+            detection_obj_t *obj = track2cap.get();
+            bool state;
+            CNT_TIM_AVG(t,
+                        {
+                            state = video->read(obj->image_dark.frame);
+                            cv::Mat kernel = (cv::Mat_<float>(3, 3) << 0, -1, 0, 1, 5, 1, 0, -1, 0);
+                            cv::filter2D(obj->image_dark.frame, obj->image_light.frame, CV_8UC3, kernel);
+                            obj->image_dark.index = totalFrameCounter++;
+                            obj->image_light.index = obj->image_dark.index;
+                        },
+                        {})
+            if (!state)
+            {
+                LOGE(screen, "read image fail!");
+                //run = false;
+                LOGM(screen, "Total frames handled: %d", totalFrameCounter);
+                LOGM_S("ReOpen Camera");
+                video->close();
+                video->init();
+                track2cap.put(obj);
+                //break;
+            }
+            if (obj->image_dark.frame.empty())
+            {
+                LOGW(screen, "empty image");
+                track2cap.put(obj);
+                continue;
+            }
+            CNT_FPS(img_get_c, {});
 #ifdef SHOW
-                                cv::Mat show;
-                                obj->image.frame.copyTo(show);
-                                cv::resize(show, show, cv::Size(256, 256));
-                                cv::imshow("raw", show);
-                                cv::waitKey(1);
+            cv::Mat show,show_light;
+            obj->image_dark.frame.copyTo(show);
+            cv::resize(show, show, cv::Size(256, 256));
+            obj->image_light.frame.copyTo(show_light);
+            cv::resize(show_light, show_light, cv::Size(256, 256));
+            cv::imshow("light", show_light);
+
+            cv::imshow("raw", show);
+            cv::waitKey(1);
 #endif
-                                cap2pre.put(obj);
-                            } while (run);
-                        });
+            cap2pre.put(obj);
+        } while (run);
+    });
 
-    t_prepare = std::thread([&]()
-                            {
-                                do
-                                {
-                                    pre2detect.wait_for_put();
-                                    detection_obj_t *obj = cap2pre.get();
-                                    obj->detImg = detector.detector->mat_to_image_resize(obj->image.frame);
-                                    pre2detect.put(obj);
-                                    CNT_FPS(prepro_c, {});
-                                } while (run);
-                            });
+    t_prepare = std::thread([&]() {
+        do
+        {
+            pre2detect.wait_for_put();
+            detection_obj_t *obj = cap2pre.get();
+            obj->detImg = detector.detector->mat_to_image_resize(obj->image_light.frame);
+            pre2detect.put(obj);
+            CNT_FPS(prepro_c, {});
+        } while (run);
+    });
 
-    t_detect = std::thread([&]()
-                           {
-                               do
-                               {
-                                   detect2track.wait_for_put();
-                                   detection_obj_t *obj = pre2detect.get();
-                                   CNT_TIM_AVG(detect_a, { detector.detect(obj->detImg, obj->image, obj->outs); }, {});
-                                   CNT_FPS(detect_c, {});
-                                   detect2track.put(obj);
-                               } while (run);
-                           });
+    t_detect = std::thread([&]() {
+        do
+        {
+            detect2track.wait_for_put();
+            detection_obj_t *obj = pre2detect.get();
+            CNT_TIM_AVG(detect_a, { detector.detect(obj->detImg, obj->image_light, obj->outs); }, {});
+            CNT_FPS(detect_c, {});
+            detect2track.put(obj);
+        } while (run);
+    });
 
-    t_armorPos_and_send = std::thread([&]()
-                                      {
-                                          DetectResult out, out_in_world;
-                                          KF_detetc_param_t kf_param(std::atof(info["detect_observe_noise"].c_str()), std::atof(info["detect_pos_process_noise"].c_str()), std::atof(info["detect_spd_process_noise"].c_str()));
-                                          std::shared_ptr<tracker> track = std::make_shared<tracker>(enemy, std::atof(info["robot_id"].c_str()), 150, 100, kf_param);
+    t_armorPos_and_send = std::thread([&]() {
+        DetectResult out, out_in_world;
+        KF_detetc_param_t kf_param(std::atof(info["detect_observe_noise"].c_str()), std::atof(info["detect_pos_process_noise"].c_str()), std::atof(info["detect_spd_process_noise"].c_str()));
+        std::shared_ptr<tracker> track = std::make_shared<tracker>(enemy, std::atof(info["robot_id"].c_str()), 150, 100, kf_param);
 
-                                          do
-                                          {
-                                              track2cap.wait_for_put();
-                                              detection_obj_t *obj = detect2track.get();
-                                              c.receive();
-                                              //gim_state.shoot_speed = 10; //for debug
-                                              int det_res = track->predict(obj->image, obj->outs, out);
-                                              CNT_FPS(receive_c, { LOGM(screen, "[IMU] Yaw Pitch Shoot: (%.1f,%.1f,%.1f)", gim_state.curr_yaw / 3.1415 * 180, gim_state.curr_pitch / 3.1415 * 180, gim_state.shoot_speed); });
-                                              if (det_res == DESTROY)
-                                              {
-                                                  LOGM_F("New_Tracker:(1,%d)", obj->image.index);
-                                                  printf("New Tracker\n");
-                                                  track = std::make_shared<tracker>(enemy, std::atof(info["robot_id"].c_str()), 150, 100, kf_param);
-                                              }
-                                              else if (det_res == PREDICT)
-                                              {
-                                                  c.transmit(out.ypr.x, out.ypr.y, out.dist);
-                                                  //LOGM(screen, "[SEND] Yaw Pitch T Dist:(%.1f,%.1f,%.1f,%.1f)",
-                                                  //     out.ypr.x, out.ypr.y, out.ypr.z, out.dist);
-                                                  LOGM_F("[SEND] Yaw:(%.1f,%d)", out.ypr.x, obj->image.index);
-                                                  LOGM_F("[SEND] Pitch:(%.1f,%d)", out.ypr.y, obj->image.index);
-                                                  CNT_FPS(send_c, { LOGM(screen, "[SEND] Yaw Pitch T Dist:(%.1f,%.1f,%.1f,%.1f)",
-                                                                         out.ypr.x, out.ypr.y, out.ypr.z, out.dist); });
-                                              }
+        do
+        {
+            track2cap.wait_for_put();
+            detection_obj_t *obj = detect2track.get();
+            c.receive();
+            //gim_state.shoot_speed = 10; //for debug
+            int det_res = track->predict(obj->image_dark, obj->outs, out);
+            CNT_FPS(receive_c, { LOGM(screen, "[IMU] Yaw Pitch Shoot: (%.1f,%.1f,%.1f)", gim_state.curr_yaw / 3.1415 * 180, gim_state.curr_pitch / 3.1415 * 180, gim_state.shoot_speed); });
+            if (det_res == DESTROY)
+            {
+                LOGM_F("New_Tracker:(1,%d)", obj->image_light.index);
+                printf("New Tracker\n");
+                track = std::make_shared<tracker>(enemy, std::atof(info["robot_id"].c_str()), 150, 100, kf_param);
+            }
+            else if (det_res == PREDICT)
+            {
+                c.transmit(out.ypr.x, out.ypr.y, out.dist);
+                //LOGM(screen, "[SEND] Yaw Pitch T Dist:(%.1f,%.1f,%.1f,%.1f)",
+                //     out.ypr.x, out.ypr.y, out.ypr.z, out.dist);
+                LOGM_F("[SEND] Yaw:(%.1f,%d)", out.ypr.x, obj->image_light.index);
+                LOGM_F("[SEND] Pitch:(%.1f,%d)", out.ypr.y, obj->image_light.index);
+                CNT_FPS(send_c, { LOGM(screen, "[SEND] Yaw Pitch T Dist:(%.1f,%.1f,%.1f,%.1f)",
+                                       out.ypr.x, out.ypr.y, out.ypr.z, out.dist); });
+            }
 
-                                              CNT_FPS(track_c, {});
-                                              track2cap.put(obj);
-                                          } while (run);
-                                      });
+            CNT_FPS(track_c, {});
+            track2cap.put(obj);
+        } while (run);
+    });
 
     pthread_sigmask(SIG_SETMASK, &oldmask, NULL);
 
