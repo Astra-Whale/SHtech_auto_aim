@@ -247,7 +247,7 @@ int tracker::predict(const Image &frame, std::vector<bbox_t> &in, DetectResult &
         float t = z_offset_and_t.second;
 
         //speed = Eigen::Vector3f(0, 0, 0); //cv::Point3f(0, 0, 0);
-        armor_world = (t + shoot_delay) * speed  + armor_world;
+        armor_world = (t + shoot_delay) * speed + armor_world;
         last = armor_world;
 
         z_offset_and_t = CalZoffset(armor_world / 100, gim_state.shoot_speed);
@@ -299,7 +299,8 @@ bool tracker::IOUFilter(std::vector<bbox_t> &in)
         no_last = true;
         return false;
     }
-    std::sort(in.begin(), in.end(), [](const bbox_t &a, const bbox_t &b) { return a.prob > b.prob; });
+    std::sort(in.begin(), in.end(), [](const bbox_t &a, const bbox_t &b)
+              { return a.prob > b.prob; });
     for (unsigned int i = 0; i < in.size(); i++)
     {
         bool flag_big_IOU = false;
@@ -326,14 +327,16 @@ bool tracker::NearstArmor(void)
         cv::Point2f center = cv::Point2f(img_cols / 2, img_rows / 2);
         std::sort(armors_bbox.begin(),
                   armors_bbox.end(),
-                  [&center](const bbox_t &a, const bbox_t &b) { return GetDistSq(a, center) > GetDistSq(b, center); });
+                  [&center](const bbox_t &a, const bbox_t &b)
+                  { return GetDistSq(a, center) > GetDistSq(b, center); });
         last_bbox = armors_bbox[0];
     }
     else
     {
         std::sort(armors_bbox.begin(),
                   armors_bbox.end(),
-                  [&](const bbox_t &a, const bbox_t &b) { return GetIOU(a, last_bbox) < GetIOU(b, last_bbox); });
+                  [&](const bbox_t &a, const bbox_t &b)
+                  { return GetIOU(a, last_bbox) < GetIOU(b, last_bbox); });
         if (GetIOU(armors_bbox[0], last_bbox) < MIN_IOU)
         {
             last_bbox = armors_bbox[0];

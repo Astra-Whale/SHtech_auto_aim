@@ -8,7 +8,7 @@ static double lw_rate(const cv::RotatedRect &rect);
 static double areaRatio(const std::vector<cv::Point> &contour, const cv::RotatedRect &rect);
 static bool isSameBlob(LightBlob blob1, LightBlob blob2);
 
-// #define SHOW_BIN
+//#define SHOW_BIN
 
 bool findLightBlobs(const cv::Mat &src, std::pair<Vector2f, Vector2f> &lb_v, const bool blob_color, const int light_threshold, const int dark_threshold)
 {
