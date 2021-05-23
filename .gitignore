@@ -6,4 +6,3 @@ log/
 others/tools/
 others/yolo/lib/*.so
 src/*.jpg
-picture/

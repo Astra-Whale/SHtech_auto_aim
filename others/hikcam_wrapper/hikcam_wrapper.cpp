@@ -182,10 +182,7 @@ bool HikCamWrapper::read(cv::Mat &src)
 
     _src = cv::Mat(stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth, 0, stOutFrame.pBufAddr); // Mat date type CV_8UC = 0
 
-    cv::cvtColor(_src, src, cv::COLOR_BayerGB2RGB); // bayer RG -> BGR
-
-    //infantry cv::COLOR_BayerGB2RGB
-    //doubleshoot cv::COLOR_BayerRG2RGB
+    cv::cvtColor(_src, src, cv::COLOR_BayerRG2RGB); // bayer RG -> BGR
 
     if (NULL != stOutFrame.pBufAddr)
     {
