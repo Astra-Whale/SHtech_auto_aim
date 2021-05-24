@@ -55,7 +55,8 @@ def main():
                     flag = input('Do you want to find the noise(y/n)\n')
                     if flag == 'n':
                         axis_Y = [float(i) for i in axis_Y]
-                        plt.scatter(axis_X, axis_Y, s=3)
+                        frame = [float(i) for i in frame]
+                        plt.scatter(frame, axis_Y, s=3,)
                         plt.show()
                     elif flag == 'y':
                         A = float(

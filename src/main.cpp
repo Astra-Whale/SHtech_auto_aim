@@ -1,6 +1,6 @@
 #include "main.hpp"
 
-// #define SHOW
+//#define SHOW
 template <typename T> // pipline for memory pool design, no thread security ensurance, make sure memory pool large enough
 class pipline_queue_t
 {
@@ -134,6 +134,8 @@ int main(void)
     ArmorDetector detector(classesFile, modelConfig, modelWeights, enemy);
     stdout = screen->out;
 
+    //bool close_all = display["close_all"], bbox = display["bbox"], lighbin = display["lighbin"];
+
     avg_timer t(" "), detect_a("detect"), matcp("MatCP");
 
     fps_counter f("Total"), send_c("Send"), receive_c("Receive"), img_get_c("imgRead"), detect_c("Detect"),
@@ -176,9 +178,6 @@ int main(void)
 
     t_cap = std::thread([&]()
                         {
-#ifdef SHOW
-                            cv::namedWindow("raw");
-#endif // SHOW
                             do
                             {
                                 cap2pre.wait_for_put();
@@ -208,13 +207,6 @@ int main(void)
                                     continue;
                                 }
                                 CNT_FPS(img_get_c, {});
-#ifdef SHOW
-                                cv::Mat show;
-                                obj->image.frame.copyTo(show);
-                                cv::resize(show, show, cv::Size(256, 256));
-                                cv::imshow("raw", show);
-                                cv::waitKey(1);
-#endif
                                 cap2pre.put(obj);
                             } while (run);
                         });
@@ -233,12 +225,25 @@ int main(void)
 
     t_detect = std::thread([&]()
                            {
+#ifdef SHOW
+                               cv::namedWindow("bbox");
+#endif
+
                                do
                                {
                                    detect2track.wait_for_put();
                                    detection_obj_t *obj = pre2detect.get();
                                    CNT_TIM_AVG(detect_a, { detector.detect(obj->detImg, obj->image, obj->outs); }, {});
                                    CNT_FPS(detect_c, {});
+#ifdef SHOW
+                                   cv::Mat show;
+                                   obj->image.frame.copyTo(show);
+                                   detector.Drawer(show, obj->outs, detector.classes);
+                                   cv::resize(show, show, cv::Size(256, 256));
+                                   cv::imshow("bbox", show);
+                                   cv::waitKey(10);
+#endif
+
                                    detect2track.put(obj);
                                } while (run);
                            });

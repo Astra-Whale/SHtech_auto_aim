@@ -17,9 +17,9 @@
 
 #define MIN_IOU 0.3
 #define MAX_DIFF 30
-#define MAX_FRAME 150
+#define MAX_FRAME 500
 
-#define DESTORY_FPS 5
+#define DESTORY_FPS 20
 
 typedef KF<2, 0, 1> KF_detect_t;
 typedef std::tuple<float, float, float> KF_detetc_param_t; //observe_noise,pos_process_noise,spd_process_noise

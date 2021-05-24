@@ -21,6 +21,7 @@ tracker::tracker(bool enemy,
 
     Eigen::Matrix2f F;
     F << 1, 1, 0, 1;
+
     const Eigen::RowVector2f H(1, 0);
     float observe_noise = std::get<0>(kf_param);
     float pos_noise = std::get<1>(kf_param);
@@ -65,7 +66,7 @@ tracker::tracker(bool enemy,
                          {0, 0, 1.000000000000}};
 
         memcpy(b, a, sizeof(a));
-        shoot_delay = 0;
+        shoot_delay = 0.2;
         cam2A.update_shift(Eigen::Vector3f(-3, -3, 8));
         cam2A.update_trans(Eigen::Vector3f(-M_PI_2, 0, -M_PI_2)); // Done
         A2pit.update_shift(Eigen::Vector3f(0, 0, 7));
@@ -150,10 +151,12 @@ int tracker::predict(const Image &frame, std::vector<bbox_t> &in, DetectResult &
     {
         if (!IOUFilter(in))
         {
+            LOGM_F("empty:(1,%d)", frame.index);
             break;
         }
         if (!NearstArmor())
         {
+            LOGM_F("iou:(1,%d)", frame.index);
             break;
         }
 
@@ -163,6 +166,7 @@ int tracker::predict(const Image &frame, std::vector<bbox_t> &in, DetectResult &
 
         if (!findLightBlobs(armor, lb_v, enemy, light_threshold, dark_threshold))
         {
+            LOGM_F("light_bin:(1,%d)", frame.index);
             break;
         }
 
@@ -170,6 +174,7 @@ int tracker::predict(const Image &frame, std::vector<bbox_t> &in, DetectResult &
 
         if (now.dist > 1000 || now.dist < 10)
         {
+            LOGM_F("wrong_dist:(1,%d)", frame.index);
             break;
         }
 
@@ -211,7 +216,8 @@ int tracker::predict(const Image &frame, std::vector<bbox_t> &in, DetectResult &
             if (dist.norm() > MAX_DIFF)
             {
                 LOGM_F("far_data:(1,%d)", frame.index);
-                break;
+                //armor_world = last;
+                //break;
             }
         }
         else
@@ -222,6 +228,11 @@ int tracker::predict(const Image &frame, std::vector<bbox_t> &in, DetectResult &
             LOGM_F("no_last:(1,%d)", frame.index);
         }
 
+        float time_interval = (systime.getTime() - timeStamp) / 1000;
+        x.state_trans_matrix(2) = time_interval;
+        y.state_trans_matrix(2) = time_interval;
+        z.state_trans_matrix(2) = time_interval;
+
         Eigen::Vector2f x_kf = x.update(Eigen::Matrix<float, 1, 1>(armor_world(0)), Eigen::Matrix<float, 0, 1>(0));
         Eigen::Vector2f y_kf = y.update(Eigen::Matrix<float, 1, 1>(armor_world(1)), Eigen::Matrix<float, 0, 1>(0));
         Eigen::Vector2f z_kf = z.update(Eigen::Matrix<float, 1, 1>(armor_world(2)), Eigen::Matrix<float, 0, 1>(0));
@@ -231,12 +242,16 @@ int tracker::predict(const Image &frame, std::vector<bbox_t> &in, DetectResult &
         LOGM_S("pos_kf:(%.2f,%.2f,%.2f,%d)", x_kf(0), y_kf(0), y_kf(0), frame.index);
 
         last = Eigen::Vector3f(x_kf(0), y_kf(0), z_kf(0));
-        speed = Eigen::Vector3f(x_kf(1), y_kf(1), z_kf(1));
+        auto speed_tmp = Eigen::Vector3f(x_kf(1), y_kf(1), z_kf(1));
 
-        if (speed.norm() > 8)
+        if (speed_tmp.norm() > 800)
         {
             LOGM_F("huge_speed:(1,%d)", frame.index);
-            break;
+            //break;
+        }
+        else
+        {
+            speed = speed_tmp;
         }
 
         LOGM_F("speed_x:(%f,%d)", speed(0), frame.index);
@@ -289,6 +304,8 @@ int tracker::predict(const Image &frame, std::vector<bbox_t> &in, DetectResult &
     }
     armors_bbox.clear();
 
+    LOGM_F("offline:(%d,%d)", offline_counter, frame.index);
+
     return state;
 }
 
@@ -328,7 +345,7 @@ bool tracker::NearstArmor(void)
         std::sort(armors_bbox.begin(),
                   armors_bbox.end(),
                   [&center](const bbox_t &a, const bbox_t &b)
-                  { return GetDistSq(a, center) > GetDistSq(b, center); });
+                  { return GetDistSq(a, center) < GetDistSq(b, center); });
         last_bbox = armors_bbox[0];
     }
     else
@@ -422,8 +439,8 @@ int tracker::GetDistSq(const bbox_t &box, const cv::Point2f &center)
 
 cv::Rect tracker::getLegalRect(const cv::Mat &frame, const bbox_t &out)
 {
-    auto bbox = cv::Rect(out.x - out.w * 0.10, out.y - out.h * 0.10,
-                         out.w * 1.2, out.h * 1.2);
+    auto bbox = cv::Rect(out.x - out.w * 0.05, out.y - out.h * 0.05,
+                         out.w * 1.1, out.h * 1.1);
     if (bbox.x < 0)
     {
         bbox.x = 0;

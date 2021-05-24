@@ -32,6 +32,7 @@ public:
     ~ArmorDetector();
 
     Detector *detector;
+    std::vector<std::string> classes;
 
     //Draw bbox
     void Drawer(cv::Mat &frame, const std::vector<bbox_t> &outs, const std::vector<std::string> &classes);
@@ -43,7 +44,6 @@ private:
     std::string classesFile;
     std::string modelConfig;
     std::string modelWeights;
-    std::vector<std::string> classes;
 
     void DrawBoxes(cv::Mat &frame, std::vector<std::string> classes, int classId, float conf, int left, int top, int right, int bottom);
 };
