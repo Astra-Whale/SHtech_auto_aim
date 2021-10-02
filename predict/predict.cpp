@@ -8,7 +8,7 @@
 
 namespace predict
 {
-    void Predict::operator()(autoaim_pipline &pipafter, autoaim_pipline &pipbefore) const
+    void Predict::operator()(autoaim_pipline &pipbefore, autoaim_pipline &pipafter) const
     {
         /**
          * @brief 检查类是否正确初始化

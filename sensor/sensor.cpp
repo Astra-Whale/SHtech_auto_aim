@@ -23,8 +23,8 @@ namespace sensor
 
         do
         {
-            auto obj = pipbefore.get(); /*!< 从上一线程的缓存队列获取报文指针 */
-            bool state = video->read(obj->frame);   /*!< 读取是否成功 */
+            auto obj = pipbefore.get();           /*!< 从上一线程的缓存队列获取报文指针 */
+            bool state = video->read(obj->frame); /*!< 读取是否成功 */
             obj->index = totalFrameCounter++;
 
             if (!state)
@@ -59,7 +59,7 @@ namespace sensor
              */
             if (_debug)
             {
-                //LOGM_S("[sensor]Info: detected %d objects", obj->bboxes.size());
+                LOGM_S("[sensor]Info: Idx = %d", obj->index);
             }
             pipafter.put(obj); /*!< 向下一线程的缓存队列提交报文指针*/
         } while (_run);

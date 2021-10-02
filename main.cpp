@@ -70,17 +70,17 @@ int main(void)
     sigaddset(&mask, SIGTERM);
     pthread_sigmask(SIG_BLOCK, &mask, &oldmask);
 
-    t_sensor = std::thread([&](){sensor_reader(pre2cap,cap2det);});
+    t_sensor = std::thread([&]()
+                           { sensor_reader(pre2cap, cap2det); });
 
-    t_detect = std::thread([&](){detector(cap2det,det2pre);});
+    t_detect = std::thread([&]()
+                           { detector(cap2det, det2pre); });
 
-    t_predict = std::thread([&](){predictor(det2pre,pre2cap);});
+    t_predict = std::thread([&]()
+                            { predictor(det2pre, pre2cap); });
 
     pthread_sigmask(SIG_SETMASK, &oldmask, NULL);
 
-    sensor_reader.stop();
-    detector.stop();
-    predictor.stop();
     t_sensor.join();
     LOGM_S("Read Thread Quit Success!");
     t_detect.join();

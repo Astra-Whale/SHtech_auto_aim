@@ -20,8 +20,8 @@ namespace detect
         LOGM_S("[detect] running");
         do
         {
-            auto obj = pipbefore.get(); /*!< 从上一线程的缓存队列获取报文指针*/
-            (*model)(obj->frame, obj->bboxes);      /*!< 对报文中的图片 (frame) 进行推理并将结果存入报文 (bboxes)*/
+            auto obj = pipbefore.get();        /*!< 从上一线程的缓存队列获取报文指针*/
+            (*model)(obj->frame, obj->bboxes); /*!< 对报文中的图片 (frame) 进行推理并将结果存入报文 (bboxes)*/
 
             /**
              * @brief 当需要展示结果时，绘制 bounding box

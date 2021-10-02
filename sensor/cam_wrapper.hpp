@@ -28,5 +28,3 @@ public:
 #include <video/video_wrapper.hpp>
 #include <hikcam/hikcam_wrapper.hpp>
 #endif //CAM_CAM_WRAPPER_H
-
-

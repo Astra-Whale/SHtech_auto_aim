@@ -65,7 +65,7 @@ namespace pipline
             while (count == 0)
                 cv.wait(lock);
             count--;
-	    auto p = ptr_queue.front();
+            auto p = ptr_queue.front();
             ptr_queue.pop();
             cv.notify_all();
             return p;
@@ -76,7 +76,16 @@ namespace pipline
          * @details 等待缓存队列空闲后将提交的报文对象入队
          * @param[in] p 指向提交的报文对象的指针
          */
-        inline void put(std::shared_ptr<T> p)
+        inline void put(std::shared_ptr<T> &p)
+        {
+            std::unique_lock<std::mutex> lock(mtx);
+            while (count > max)
+                cv.wait_for(lock, std::chrono::seconds(1));
+            count++;
+            ptr_queue.push(p);
+            cv.notify_all();
+        }
+        inline void put(std::shared_ptr<T> &&p)
         {
             std::unique_lock<std::mutex> lock(mtx);
             while (count > max)
@@ -115,10 +124,10 @@ namespace pipline
         RobotStatus robotstatus;
     };
 }
-    /**
+/**
      * @brief   线程间通信类
      */
-    typedef pipline::pipline_queue_t<pipline::detection_obj_t> autoaim_pipline;
+typedef pipline::pipline_queue_t<pipline::detection_obj_t> autoaim_pipline;
 namespace pipline
 {
     /**
@@ -153,8 +162,8 @@ namespace pipline
          * @see     detect/detect.cpp\hpp detect::Detect::operator()
          */
         void operator()(autoaim_pipline &pipbefore, autoaim_pipline &pipafter) const
-	{
-	}
+        {
+        }
 
         /**
          * @brief   任务类初始化

@@ -13,8 +13,8 @@
 #define GIMCtrl_CMD_ID 0x0501
 typedef struct __attribute__((packed))
 {
-    float yaw; //
-    float pit; //
+    float yaw;  //
+    float pit;  //
     float dist; //
     uint8_t shoot;
 } detection_t;
@@ -25,7 +25,7 @@ typedef struct __attribute__((packed))
 {
     float curr_yaw;   //绝对量 yaw顺时针为正
     float curr_pitch; //pit水平为0 向上为负
-    float shoot_speed; 
+    float shoot_speed;
 } pc_mcu_data_t;
 
 class Comm

@@ -33,7 +33,7 @@ namespace predict
     class Predict : public BasicTask
     {
     public:
-        void operator()(autoaim_pipline &beforedet, autoaim_pipline &afterdet) const;
+        void operator()(autoaim_pipline &pipbefore, autoaim_pipline &pipafter) const;
 
     private:
     };
