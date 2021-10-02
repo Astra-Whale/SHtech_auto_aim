@@ -1,4 +1,4 @@
-#include "hikcam_wrapper.h"
+#include "cam_wrapper.hpp"
 #include <iostream>
 
 HikCamWrapper::HikCamWrapper(int dev_num)

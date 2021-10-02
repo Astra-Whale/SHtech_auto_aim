@@ -8,7 +8,7 @@ static void imu_handler(uint8_t *data, uint16_t length)
     gim_state = *(pc_mcu_data_t *)data;
     gim_state.curr_yaw = gim_state.curr_yaw / 180 * 3.14159f;
     gim_state.curr_pitch = gim_state.curr_pitch / 180 * 3.14159f;
-    
+
     //update_pose(mcu_data->curr_yaw, mcu_data->curr_pitch, 0);
 }
 

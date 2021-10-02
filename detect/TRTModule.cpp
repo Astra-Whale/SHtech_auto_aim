@@ -1,12 +1,12 @@
 //
-// Created by xinyang on 2021/4/8.
+// Inherit from SJTU-CV-2021/autoaim/detector/TRTModule.hpp commit 7093b430 Harry-hhj on 21-05-24.
+// Modified by Haoran Jiang on 21-10-02: Refact framework.
+// Manage TRT Inference
 //
 
 #include "TRTModule.hpp"
-#include "log.hpp"
 #include <fstream>
 #include <filesystem>
-#include <logger.h>
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 #include <NvInfer.h>
@@ -24,7 +24,8 @@
     } while (0)
 
 using namespace nvinfer1;
-using namespace sample;
+
+Logger glogger;
 
 static inline size_t get_dims_size(const Dims &dims)
 {
@@ -138,12 +139,12 @@ TRTModule::~TRTModule()
 void TRTModule::build_engine_from_onnx(const std::string &onnx_file)
 {
     std::cout << "[INFO]: build engine from onnx" << std::endl;
-    auto builder = createInferBuilder(gLogger);
+    auto builder = createInferBuilder(glogger);
     TRT_ASSERT(builder != nullptr);
     const auto explicitBatch = 1U << static_cast<uint32_t>(NetworkDefinitionCreationFlag::kEXPLICIT_BATCH);
     auto network = builder->createNetworkV2(explicitBatch);
     TRT_ASSERT(network != nullptr);
-    auto parser = nvonnxparser::createParser(*network, gLogger);
+    auto parser = nvonnxparser::createParser(*network, glogger);
     TRT_ASSERT(parser != nullptr);
     parser->parseFromFile(onnx_file.c_str(), static_cast<int>(ILogger::Severity::kINFO));
     auto yolov5_output = network->getOutput(0);
@@ -172,10 +173,10 @@ void TRTModule::build_engine_from_onnx(const std::string &onnx_file)
         std::cout << "[INFO]: platform do not support fp16, enable fp32" << std::endl;
     }
     size_t free, total;
-//    cuMemGetInfo(&free, &total);
-//    std::cout << "[INFO]: total gpu mem: " << (total >> 20) << "MB, free gpu mem: " << (free >> 20) << "MB" << std::endl;
-//    std::cout << "[INFO]: max workspace size will use all of free gpu mem" << std::endl;
-    config->setMaxWorkspaceSize(1<<30);
+    //    cuMemGetInfo(&free, &total);
+    //    std::cout << "[INFO]: total gpu mem: " << (total >> 20) << "MB, free gpu mem: " << (free >> 20) << "MB" << std::endl;
+    //    std::cout << "[INFO]: max workspace size will use all of free gpu mem" << std::endl;
+    config->setMaxWorkspaceSize(1 << 30);
     TRT_ASSERT((engine = builder->buildEngineWithConfig(*network, *config)) != nullptr);
     config->destroy();
     parser->destroy();
@@ -192,7 +193,7 @@ void TRTModule::build_engine_from_cache(const std::string &cache_file)
     ifs.seekg(0, std::ios::beg);
     auto buffer = std::make_unique<char[]>(sz);
     ifs.read(buffer.get(), sz);
-    auto runtime = createInferRuntime(gLogger);
+    auto runtime = createInferRuntime(glogger);
     TRT_ASSERT(runtime != nullptr);
     TRT_ASSERT((engine = runtime->deserializeCudaEngine(buffer.get(), sz)) != nullptr);
     runtime->destroy();
@@ -258,4 +259,55 @@ std::vector<bbox_t> TRTModule::operator()(const cv::Mat &src) const
     }
 
     return rst;
+}
+
+void TRTModule::operator()(const cv::Mat &src, std::vector<bbox_t> &det) const
+{
+    // pre-process [bgr2rgb & resize]
+    det.clear();
+    cv::Mat x;
+    float fx = (float)src.cols / 640.f, fy = (float)src.rows / 384.f;
+    cv::cvtColor(src, x, cv::COLOR_BGR2RGB);
+    if (src.cols != 640 || src.rows != 384)
+    {
+        cv::resize(x, x, {640, 384});
+    }
+    x.convertTo(x, CV_32F);
+
+    // run model
+    cudaMemcpyAsync(device_buffer[input_idx], x.data, input_sz * sizeof(float), cudaMemcpyHostToDevice, stream);
+    context->enqueue(1, device_buffer, stream, nullptr);
+    cudaMemcpyAsync(output_buffer, device_buffer[output_idx], output_sz * sizeof(float), cudaMemcpyDeviceToHost,
+                    stream);
+    cudaStreamSynchronize(stream);
+
+    // post-process [nms]
+    det.reserve(TOPK_NUM);
+    std::vector<uint8_t> removed(TOPK_NUM);
+    for (int i = 0; i < TOPK_NUM; i++)
+    {
+        auto *box_buffer = output_buffer + i * 20; // 20->23
+        if (box_buffer[8] < inv_sigmoid(KEEP_THRES))
+            break;
+        if (removed[i])
+            continue;
+        det.emplace_back();
+        auto &box = det.back();
+        memcpy(&box.pts, box_buffer, 8 * sizeof(float));
+        for (auto &pt : box.pts)
+            pt.x *= fx, pt.y *= fy;
+        box.confidence = sigmoid(box_buffer[8]);
+        box.color_id = argmax(box_buffer + 9, 4);
+        box.tag_id = argmax(box_buffer + 13, 7);
+        for (int j = i + 1; j < TOPK_NUM; j++)
+        {
+            auto *box2_buffer = output_buffer + j * 20;
+            if (box2_buffer[8] < inv_sigmoid(KEEP_THRES))
+                break;
+            if (removed[j])
+                continue;
+            if (is_overlap(box_buffer, box2_buffer))
+                removed[j] = true;
+        }
+    }
 }

@@ -1,7 +1,7 @@
-#include "../hikcam_wrapper/include/MvCameraControl.h"
+#include "MvCameraControl.h"
 #include "pthread.h"
 #include <opencv2/opencv.hpp>
-#include "../hikcam_wrapper/wrapper_head.h"
+#include "../cam_wrapper.hpp"
 
 class HikCamWrapper : public WrapperHead
 {

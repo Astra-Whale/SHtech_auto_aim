@@ -1,9 +1,11 @@
 //
-// Created by zhikun on 18-11-18.
+// Inherit from auto-aim/others/hikcam_warpper/warpper_head.hpp commit 58e05e7e Guanqi He on 21-05-24.
+// Modified by Haoran Jiang on 21-10-02: Refact framework.
+// Capture image from input sources
 //
 
-#ifndef STEREOVISION_FROM_VIDEO_FILE_WRAPPER_HEAD_H
-#define STEREOVISION_FROM_VIDEO_FILE_WRAPPER_HEAD_H
+#ifndef CAM_CAM_WRAPPER_H
+#define CAM_CAM_WRAPPER_H
 
 #include <opencv2/core/core.hpp>
 
@@ -23,4 +25,8 @@ public:
     virtual bool close() = 0;
 };
 
-#endif //STEREOVISION_FROM_VIDEO_FILE_WRAPPER_HEAD_H
+#include <video/video_wrapper.hpp>
+#include <hikcam/hikcam_wrapper.hpp>
+#endif //CAM_CAM_WRAPPER_H
+
+

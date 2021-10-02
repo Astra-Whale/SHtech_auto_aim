@@ -6,7 +6,7 @@
 #include <sstream>
 #include <iomanip>
 #include <memory>
-#include "log.hpp"
+#include "../log/log.hpp"
 
 typedef std::chrono::steady_clock::time_point tp;
 typedef double systime_t;     //ms

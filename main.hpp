@@ -20,11 +20,13 @@
 #include <mutex>
 #include <atomic>
 #include <condition_variable>
+
 //Task
-#include "TRTModule.hpp"
-#include "comm.h"
-#include "cmd_parser.hpp"
-#include "timer.hpp"
-#include "log.hpp"
+#include "detect.hpp"
+#include "sensor.hpp"
+#include "predict.hpp"
+
+//Common
+#include "common.hpp"
 
 #define GPU

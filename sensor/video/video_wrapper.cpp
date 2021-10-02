@@ -1,8 +1,10 @@
 //
-// Created by xixiliadorabarry on 1/24/19.
+// Inherit from auto-aim commit 58e05e7e Guanqi He on 21-05-24.
+// Modified by Haoran Jiang on 21-10-02: Refact framework.
+// Warp image from video files
 //
 
-#include "video_wrapper.h"
+#include "cam_wrapper.hpp"
 #include <iostream>
 
 VideoWrapper::VideoWrapper(const std::string &filename)

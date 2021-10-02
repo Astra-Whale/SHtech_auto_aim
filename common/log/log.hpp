@@ -64,7 +64,7 @@ typedef Log *Log_t;
 extern Log_t screen;
 extern Log_t logfile;
 
-#include "timer.hpp"
+#include "../timer/timer.hpp"
 
 /************** Define the control code *************/
 #define START_CTR "\033[0"
@@ -127,10 +127,10 @@ extern Log_t logfile;
 #define LOG_LINK_COLOR LINE_CODE WORD_BLUE
 #endif
 
-#define LOG(tar, level, fmt, ...) fprintf((tar)->out, "%s " level fmt "\n", systime.getTimeStr().c_str(), ##__VA_ARGS__)
-#define LOGM(tar, fmt, ...) LOG((tar), STR_CTR(LOG_MSG_COLOR, "<MSG>: "), STR_CTR(LOG_MSG_COLOR, fmt), ##__VA_ARGS__)
-#define LOGW(tar, fmt, ...) LOG((tar), STR_CTR(LOG_WARN_COLOR, "<WARN>: "), STR_CTR(LOG_WARN_COLOR, fmt), ##__VA_ARGS__)
-#define LOGE(tar, fmt, ...) LOG((tar), STR_CTR(LOG_ERR_COLOR, "<ERR>: "), STR_CTR(LOG_ERR_COLOR, fmt), ##__VA_ARGS__)
+#define MLOG(tar, level, fmt, ...) fprintf((tar)->out, "%s " level fmt "\n", systime.getTimeStr().c_str(), ##__VA_ARGS__)
+#define LOGM(tar, fmt, ...) MLOG((tar), STR_CTR(LOG_MSG_COLOR, "<MSG>: "), STR_CTR(LOG_MSG_COLOR, fmt), ##__VA_ARGS__)
+#define LOGW(tar, fmt, ...) MLOG((tar), STR_CTR(LOG_WARN_COLOR, "<WARN>: "), STR_CTR(LOG_WARN_COLOR, fmt), ##__VA_ARGS__)
+#define LOGE(tar, fmt, ...) MLOG((tar), STR_CTR(LOG_ERR_COLOR, "<ERR>: "), STR_CTR(LOG_ERR_COLOR, fmt), ##__VA_ARGS__)
 #define LOGM_S(fmt, ...) LOGM(screen, fmt, ##__VA_ARGS__)
 #define LOGW_S(fmt, ...) LOGW(screen, fmt, ##__VA_ARGS__)
 #define LOGE_S(fmt, ...) LOGE(screen, fmt, ##__VA_ARGS__)

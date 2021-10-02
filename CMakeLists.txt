@@ -1,59 +1,44 @@
 CMAKE_MINIMUM_REQUIRED(VERSION 3.12)
-SET(exe_name auto-aim-test)
-SET(MVS_LD_FLAGS "-Wl,-rpath,")
-SET(MVS_LD_FLAGS ${MVS_LD_FLAGS}$ENV{MVS_PATH}" -R '"$ENV{MVS_PATH}"'")
-set(CMAKE_CXX_STANDARD 17)
-project(${exe_name})
+project(auto-aim)
+SET(exe_name auto-aim)
+set(CMAKE_CXX_STANDARD 20)
 
+find_program(CCACHE_PROGRAM ccache)
+if (CCACHE_PROGRAM)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
+endif ()
 
-SET(CMAKE_BUILD_TYPE "Debug")
-SET(CMAKE_CXX_FLAGS_DEBUG "$ENV{CXXFLAGS} -O0 -Wall -g2 -ggdb -std=c++17")
-SET(CMAKE_CXX_FLAGS_RELEASE "$ENV{CXXFLAGS} -O3 -Wall")
+add_compile_definitions(PROJECT_DIR="${PROJECT_SOURCE_DIR}")
 
-FILE(GLOB SRC_LIST_CPP ${PROJECT_SOURCE_DIR}/*.cpp
-                       ${PROJECT_SOURCE_DIR}/detector/*.cpp 
-                       ${PROJECT_SOURCE_DIR}/hikcam_wrapper/*.cpp
-                       ${PROJECT_SOURCE_DIR}/comm/*.cpp
-                       ${PROJECT_SOURCE_DIR}/Log/*.cpp
-                       ${PROJECT_SOURCE_DIR}/timer/*.cpp
-                       ${PROJECT_SOURCE_DIR}/cmd_parser/*.cpp
-                       /usr/src/tensorrt/samples/common/*.cpp
-                       )
+add_compile_options(-Wall -Werror=return-type -Wno-unused-variable)
+if (CMAKE_BUILD_TYPE STREQUAL Release)
+    add_compile_options(-O3 -flto -march=native)
+elseif (CMAKE_BUILD_TYPE STREQUAL RelWithDebInfo)
+    add_compile_options(-O3 -flto -march=native -g)
+elseif (CMAKE_BUILD_TYPE STREQUAL MinSizeRel)
+    add_compile_options(-Os -flto -march=native)
+else ()
+    add_compile_options(-O0 -g)
+endif ()
 
-FILE(GLOB TENSORRT_LIBS "/usr/lib/aarch64-linux-gnu/*nv*.so")
+add_executable(${exe_name} main.cpp)
 
-INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/inc)
-INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/detector)
-INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/hikcam_wrapper)
-INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/hikcam_wrapper/include)
-INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/comm)
-INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/Log)
-INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/timer)
-INCLUDE_DIRECTORIES(${PROJECT_SOURCE_DIR}/cmd_parser)
-INCLUDE_DIRECTORIES(/usr/src/tensorrt/samples/common)
+include_directories(comm)
+add_subdirectory(comm)
+target_link_libraries(${exe_name} comm)
 
-find_package(OpenCV REQUIRED)
-find_package(Eigen3 REQUIRED)
-find_package(Threads REQUIRED)
-find_package(CUDA REQUIRED)
+include_directories(common)
+add_subdirectory(common)
+target_link_libraries(${exe_name} common)
 
-if(NOT DEFINED ENV{MVS_PATH})
-    message(FATAL_ERROR "not defined env: MVS_PATH")
-endif()
-LINK_DIRECTORIES($ENV{MVS_PATH})
+include_directories(detect)
+add_subdirectory(detect)
+target_link_libraries(${exe_name} detect)
 
-INCLUDE_DIRECTORIES(${OpenCV_INCLUDE_DIRS})
+include_directories(predict)
+add_subdirectory(predict)
+target_link_libraries(${exe_name} predict)
 
-INCLUDE_DIRECTORIES(${CUDA_INCLUDE_DIRS})
-
-ADD_EXECUTABLE(${exe_name} ${SRC_LIST_CPP})
-
-LINK_DIRECTORIES(${OpenCV_LIBRARY_DIRS})
-
-TARGET_LINK_LIBRARIES(${exe_name} ${TENSORRT_LIBS})
-TARGET_LINK_LIBRARIES(${exe_name} ${OpenCV_LIBS})
-TARGET_LINK_LIBRARIES(${exe_name} ${CUDA_LIBRARIES})
-TARGET_LINK_LIBRARIES(${exe_name} ${CMAKE_THREAD_LIBS_INIT})
-TARGET_LINK_LIBRARIES(${exe_name} serial)
-TARGET_LINK_LIBRARIES(${exe_name} libMvCameraControl.so)
-set_target_properties(${exe_name} PROPERTIES LINK_FLAGS ${MVS_LD_FLAGS})
+include_directories(sensor)
+add_subdirectory(sensor)
+target_link_libraries(${exe_name} sensor)

@@ -1,16 +1,16 @@
 //
-// Created by zhikun on 18-11-16.
-// wrapper for video read from file
+// Inherit from auto-aim commit 58e05e7e Guanqi He on 21-05-24.
+// Modified by Haoran Jiang on 21-10-02: Refact framework.
+// Warp image from video files
 //
 
-#ifndef STEREOVISION_FROM_VIDEO_FILE_VIDEO_WRAPPER_H
-#define STEREOVISION_FROM_VIDEO_FILE_VIDEO_WRAPPER_H
+#ifndef CAM_VIDEO_WARPPER_H
+#define CAM_VIDEO_WARPPER_H
 
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-
-#include "wrapper_head.h"
+#include "cam_wrapper.hpp"
 
 class VideoWrapper : public WrapperHead
 {
@@ -40,4 +40,4 @@ private:
     cv::VideoCapture video;
 };
 
-#endif //STEREOVISION_FROM_VIDEO_FILE_VIDEO_WRAPPER_H
+#endif //CAM_VIDEO_WARPPER_H
