@@ -1,0 +1,6 @@
+.vscode/
+MvSdkLog/
+build/
+data/
+log/
+*.cache
