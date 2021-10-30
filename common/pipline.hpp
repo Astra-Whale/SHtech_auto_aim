@@ -6,13 +6,17 @@
 
 #ifndef COMMON_PIPLINE_H
 #define COMMON_PIPLINE_H
+
+//submodules
+#include "common.hpp"
+
+//packages
 #include <opencv2/opencv.hpp>
 #include <thread>
 #include <vector>
 #include <mutex>
 #include <atomic>
 #include <condition_variable>
-#include <robot_status.hpp>
 /**
  * @brief   用于安全释放指针的函数类
  */
@@ -112,22 +116,11 @@ namespace pipline
         std::condition_variable cv;
         std::queue<std::shared_ptr<T> > ptr_queue;
     };
-
-    /**
-     * @brief   标准报文类
-     */
-    struct detection_obj_t
-    {
-        int index;                  /*!< 报文序号 */
-        cv::Mat frame;              /*!< 读取到的原始图像 */
-        std::vector<bbox_t> bboxes; /*!< 检测到的bounding box */
-        RobotStatus robotstatus;
-    };
 }
 /**
      * @brief   线程间通信类
      */
-typedef pipline::pipline_queue_t<pipline::detection_obj_t> autoaim_pipline;
+typedef pipline::pipline_queue_t<ThreadDataPack> autoaim_pipline;
 namespace pipline
 {
     /**
@@ -161,7 +154,7 @@ namespace pipline
          *          必须先进行初始化
          * @see     detect/detect.cpp\hpp detect::Detect::operator()
          */
-        void operator()(autoaim_pipline &pipbefore, autoaim_pipline &pipafter) const
+        void operator()(autoaim_pipline &pipbefore, autoaim_pipline &pipafter)
         {
         }
 

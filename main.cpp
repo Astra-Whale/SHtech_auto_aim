@@ -38,9 +38,15 @@ bool init(void)
     LOGM_F("open log file success!");
     LOGM_S("open log file success!");
 
-    sensor_reader.init(info["source"]);
+    sensor_reader.init(info["source"], info["imu"], info["port"]);
     detector.init(info["model"]);
     predictor.init();
+    sensor_reader.setdebug(display["sensor_debug"]);
+    detector.setdebug(display["detect_debug"]);
+    predictor.setdebug(display["predic_debug"]);
+    sensor_reader.setshow(display["sensor_show"]);
+    detector.setshow(display["detect_show"]);
+    predictor.setshow(display["predic_show"]);
 
     return true;
 }
@@ -58,7 +64,7 @@ int main(void)
     autoaim_pipline cap2det(2), det2pre(2), pre2cap(max_mem + 1);
     for (int i = 0; i < max_mem; i++)
     {
-        pre2cap.put(std::make_shared<pipline::detection_obj_t>());
+        pre2cap.put(std::make_shared<ThreadDataPack>());
     }
 
     std::thread t_sensor, t_detect, t_predict;

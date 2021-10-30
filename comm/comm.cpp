@@ -1,4 +1,4 @@
-#include "comm.h"
+#include "comm.hpp"
 #include <algorithm>
 
 pc_mcu_data_t gim_state = {0};
@@ -6,8 +6,8 @@ pc_mcu_data_t gim_state = {0};
 static void imu_handler(uint8_t *data, uint16_t length)
 {
     gim_state = *(pc_mcu_data_t *)data;
-    gim_state.curr_yaw = gim_state.curr_yaw / 180 * 3.14159f;
-    gim_state.curr_pitch = gim_state.curr_pitch / 180 * 3.14159f;
+    gim_state.curr_yaw = gim_state.curr_yaw;
+    gim_state.curr_pitch = gim_state.curr_pitch;
 
     //update_pose(mcu_data->curr_yaw, mcu_data->curr_pitch, 0);
 }
@@ -17,7 +17,7 @@ Comm::Comm() : state(false)
     rec.register_handler(CMD_MCU_DATA, imu_handler);
 }
 
-void Comm::open(const std::string &port)
+bool Comm::open(const std::string &port)
 {
     try
     {
@@ -30,12 +30,14 @@ void Comm::open(const std::string &port)
         ser.setTimeout(timeout);
         ser.open();
         std::cout << "Open Serial Success!" << std::endl;
+        state = true;
     }
     catch (std::exception &e)
     {
         std::cout << "Open Serial Fail!" << std::endl;
+        state = false;
     }
-    state = true;
+    return state;
 }
 
 bool Comm::isOpen() const
