@@ -7,6 +7,7 @@
 #ifndef CAM_CAM_WRAPPER_H
 #define CAM_CAM_WRAPPER_H
 
+//packages
 #include <opencv2/core/core.hpp>
 
 /**
@@ -25,6 +26,7 @@ public:
     virtual bool close() = 0;
 };
 
+//submodules
 #include <video/video_wrapper.hpp>
 #include <hikcam/hikcam_wrapper.hpp>
 #endif //CAM_CAM_WRAPPER_H
