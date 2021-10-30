@@ -12,13 +12,13 @@
 constexpr double shoot_delay = 0.110; // 上下云台的射击延迟是不一样的
 
 /// 选择高度限制
-constexpr double height_thres = 0.;
+constexpr double height_thres = -20.;
 /// 识别双阈值
 constexpr float high_thres = 0.6f;
 constexpr float low_thres = 0.2f;
 
 /// dead_buffer_max_size
-int dead_buffer_max_size = 20;
+int dead_buffer_max_size = 15;
 
 /// 最重要装甲板
 constexpr int important_id = 1;
@@ -48,27 +48,40 @@ constexpr double ac_init_min_age = 1; // +1
 constexpr double beta = 0.25; // 记忆窗口大小 T = 1/beta
 
 /// DEBUG
-bool DEBUG = true;
+bool DEBUG = false;
 ////////////////////////// 调参区 end //////////////////////////
 
 struct LastTimeHelper
 {
-    LastTimeHelper(double current_time, double &ref_time) : c_time(current_time), r_time(ref_time){};
+    LastTimeHelper(std::chrono::high_resolution_clock::time_point current_time, std::chrono::high_resolution_clock::time_point &ref_time) : c_time(current_time), r_time(ref_time){};
 
-    ~LastTimeHelper() { r_time = c_time; }
+    double deltatime()
+    {
+        auto us = std::chrono::duration_cast<std::chrono::microseconds>(c_time - r_time);
+        return us.count() / 1000000.0f;
+    }
 
-    double c_time;
-    double &r_time;
+    ~LastTimeHelper()
+    {
+        r_time = c_time;
+    }
+
+    std::chrono::high_resolution_clock::time_point c_time;
+    std::chrono::high_resolution_clock::time_point &r_time;
 };
 
-bool PredictorAdaptiveEKF::predict(Detection_pack &data, RobotCmd &send, cv::Mat &im2show, bool is_show)
+bool PredictorAdaptiveEKF::predict(std::shared_ptr<ThreadDataPack> &data, cv::Mat& im2show, bool is_show)
 {
     /*
      * 根据 /// 注释可以快速理清整个逻辑
      */
-    std::cout << "===============predict=================" << std::endl;
     /// 获取数据
-    auto &[detections, img, q_, t] = data;
+    auto &detections = data->bboxes;
+    auto &q_raw = data->quaternion;
+    auto &img = data->frame;
+    auto t = data->time;
+    auto &send = data->robotcommand;
+    auto robot_status = data->robotstatus;
     LastTimeHelper helper(t, last_time); // 自动更新上次时间
     im2show = img.clone();
     dead_buffer_max_size = DEAD_BUFFER;
@@ -78,16 +91,11 @@ bool PredictorAdaptiveEKF::predict(Detection_pack &data, RobotCmd &send, cv::Mat
     distant = false;
     exist_hero = false;
 
-    Eigen::Quaternionf q_raw(q_[0], q_[1], q_[2], q_[3]);
     Eigen::Quaternionf q(q_raw.matrix().transpose());
-    if (DEBUG)
-        std::cout << "q = " << q_[0] << '\t' << q_[1] << '\t' << q_[2] << '\t' << q_[3] << std::endl;
     Eigen::Matrix3d R_IW = q.matrix().cast<double>();
     last_R_IW = R_IW; // 生成旋转矩阵
-    auto robot_status_short = umt::ObjManager<ShortRobotStatus>::find_or_create("robot_status_short");
-    auto robot_status_long = umt::ObjManager<LongRobotStatus>::find_or_create("robot_status_long");
 
-    double delta_t = t - last_time; // 计算距离上次预测的时间
+    double delta_t = helper.deltatime(); // 计算距离上次预测的时间
 
     bool selected = false;
     bbox_t armor;
@@ -108,7 +116,7 @@ bool PredictorAdaptiveEKF::predict(Detection_pack &data, RobotCmd &send, cv::Mat
     std::vector<bbox_t> new_detections; // new_detection: vector 是经过过滤后所有可能考虑的装甲板
     for (auto &d : detections)
     {
-        if (int(robot_status_short->enemy_color) == d.color_id && d.tag_id != 0 && d.tag_id != 6 && (d.tag_id != 2 || (d.tag_id == 2 && ((last_shoot && last_sbbox.tag_id != 2) || (robot_status_long->enemy.at(2) * 10 <= killer_point && robot_status_long->enemy.at(2) * 10 > 0)))))
+        if (int(robot_status.enemy_color) == d.color_id && d.tag_id != 0 && d.tag_id != 6 && (d.tag_id != 2 || (d.tag_id == 2 && ((last_shoot && last_sbbox.tag_id != 2) || (robot_status.enemy[2] * 10 <= killer_point && robot_status.enemy[2] * 10 > 0)))))
         { // 不能随意修改，否则会数组越界0-5
             /* 放行正确颜色的装甲板 */
             if (last_shoot && d.tag_id == last_sbbox.tag_id)
@@ -116,17 +124,17 @@ bool PredictorAdaptiveEKF::predict(Detection_pack &data, RobotCmd &send, cv::Mat
 
             Eigen::Vector3d m_pc = pnp_get_pc(d.pts, d.tag_id); // point camera: 目标在相机坐标系下的坐标
             Eigen::Vector3d m_pw = pc_to_pw(m_pc, R_IW);        // point world: 目标在世界坐标系下的坐标。（世界坐标系:陀螺仪的全局世界坐标系）
-            if (m_pw[2] > height_thres)
-                continue; // 高度限制
+            if (m_pw[2] < height_thres)
+                continue;
 
             if (d.tag_id == 1)
                 exist_hero = true;
 
-            if (int(robot_status_long->game_state) == 0)
+            if (int(robot_status.game_state) == 0)
             {
                 double distance = m_pw.norm();
-                if (distance > distant_threshold)
-                    continue;
+                if (distance > distant_threshold){LOGE_S("Fuck1");
+                    continue;}
             }
 
             if (d.confidence >= high_thres)
@@ -145,13 +153,13 @@ bool PredictorAdaptiveEKF::predict(Detection_pack &data, RobotCmd &send, cv::Mat
                         new_detections.push_back(d);
                         break;
                     }
-                }
+                }{LOGE_S("Fuck");}
             }
         }
         else if (d.color_id == 2 && last_shoot && d.tag_id == last_sbbox.tag_id && dead_buffer <= dead_buffer_max_size)
         {
             /* 放行因为被击打灭的装甲板 */
-            if (robot_status_long->enemy.at(d.tag_id) == 0)
+            if (robot_status.enemy[d.tag_id] == 0)
             {
                 dead_buffer = dead_buffer_max_size + 1;
                 continue;
@@ -164,38 +172,9 @@ bool PredictorAdaptiveEKF::predict(Detection_pack &data, RobotCmd &send, cv::Mat
     /// 没有有效的装甲板
     if (new_detections.empty())
     {
+        //if (DEBUG) std::cout << "No valid armor!" << std::endl;
         clear();
         return false;
-    }
-
-    /// 以下代码按照顺序一次构成优先级筛选
-    /// 上下云台联动击打同一个目标
-    if (robot_status_short->target_id != 255 && ((last_shoot && last_sbbox.tag_id != robot_status_short->target_id) || !last_shoot))
-    {
-        for (auto &d : new_detections)
-        {
-            if (d.tag_id == robot_status_short->target_id)
-            {
-                if (DEBUG)
-                    std::cout << "The other need tag_id: " << robot_status_short->target_id << ". " << std::endl;
-
-                if (int(robot_status_long->game_state) == 0)
-                {
-                    Eigen::Vector3d m_pc = pnp_get_pc(d.pts, d.tag_id); // point camera: 目标在相机坐标系下的坐标
-                    Eigen::Vector3d m_pw = pc_to_pw(m_pc, R_IW);        // point world: 目标在世界坐标系下的坐标。（世界坐标系:陀螺仪的全局世界坐标系）
-                    double distance = m_pw.norm();
-                    if (distance > distant_threshold)
-                        continue;
-                }
-
-                armor = d;
-                selected = true;
-                same_armor = false;
-                same_id = false;
-                switch_armor = false;
-                need_init = true;
-            }
-        }
     }
 
     /// 击打上一次击打的目标
@@ -427,7 +406,7 @@ bool PredictorAdaptiveEKF::predict(Detection_pack &data, RobotCmd &send, cv::Mat
     }
 
     /// 切换最重要装甲板，不管此刻击打的是谁
-    if ((!selected && last_shoot && last_sbbox.tag_id != important_id) || (selected && armor.tag_id != important_id && robot_status_long->enemy.at(armor.tag_id) * 10 <= 100))
+    if ((!selected && last_shoot && last_sbbox.tag_id != important_id) || (selected && armor.tag_id != important_id && robot_status.enemy[armor.tag_id] * 10 <= 100))
     {
         for (auto &d : new_detections)
         {
@@ -485,7 +464,7 @@ bool PredictorAdaptiveEKF::predict(Detection_pack &data, RobotCmd &send, cv::Mat
                 armor = d;
                 max_size = size;
             }
-            if (robot_status_long->enemy.at(d.tag_id) * 10 <= killer_point)
+            if (robot_status.enemy[d.tag_id] * 10 <= killer_point)
             {
                 armor = d;
                 break;
@@ -606,11 +585,11 @@ bool PredictorAdaptiveEKF::predict(Detection_pack &data, RobotCmd &send, cv::Mat
         Eigen::Matrix<double, 5, 1> Xr;
         Xr << m_pw(0, 0), 0, m_pw(1, 0), 0, m_pw(2, 0);
         Eigen::Matrix<double, 3, 1> Yr;
-        measure(Xr.data(), Yr.data());                                                        // 转化成相机求坐标系 Yr
-        predictfunc.delta_t = delta_t;                                                        // 设置距离上次预测的时间
-        ekf.predict(predictfunc);                                                             // 更新预测器，此时预测器里的是预测值
-        Eigen::Matrix<double, 5, 1> Xe = ekf.update(measure, Yr);                             // 更新滤波器，输入真实的球面坐标 Yr
-        double predict_time = m_pw.norm() / robot_status_long->robot_speed_mps + shoot_delay; // 预测时间=发射延迟+飞行时间（单位:s）
+        measure(Xr.data(), Yr.data());                                                  // 转化成相机求坐标系 Yr
+        predictfunc.delta_t = delta_t;                                                  // 设置距离上次预测的时间
+        ekf.predict(predictfunc);                                                       // 更新预测器，此时预测器里的是预测值
+        Eigen::Matrix<double, 5, 1> Xe = ekf.update(measure, Yr);                       // 更新滤波器，输入真实的球面坐标 Yr
+        double predict_time = m_pw.norm() / robot_status.robot_speed_mps + shoot_delay; // 预测时间=发射延迟+飞行时间（单位:s）
         // TODO：在反陀螺模式下对速度做衰减因子
         predictfunc.delta_t = predict_time; // 设置本次预测时间
         Eigen::Matrix<double, 5, 1> Xp;
@@ -626,7 +605,7 @@ bool PredictorAdaptiveEKF::predict(Detection_pack &data, RobotCmd &send, cv::Mat
         if (distance > distant_threshold)
             distant = true;
         double a = 9.8 * 9.8 * 0.25;
-        double b = -robot_status_long->robot_speed_mps * robot_status_long->robot_speed_mps -
+        double b = -robot_status.robot_speed_mps * robot_status.robot_speed_mps -
                    distance * 9.8 * cos(M_PI_2 + p_pitch);
         double c = distance * distance;
         double t_2 = (-sqrt(b * b - 4 * a * c) - b) / (2 * a);
@@ -658,7 +637,7 @@ bool PredictorAdaptiveEKF::predict(Detection_pack &data, RobotCmd &send, cv::Mat
         double d_pitch = atan2(d_pw(2, 0), d_pw.topRows<2>().norm());
         double d_distance = d_pw.norm();
         double d_a = 9.8 * 9.8 * 0.25;
-        double d_b = -robot_status_long->robot_speed_mps * robot_status_long->robot_speed_mps -
+        double d_b = -robot_status.robot_speed_mps * robot_status.robot_speed_mps -
                      d_distance * 9.8 * cos(M_PI_2 + d_pitch);
         double d_c = d_distance * d_distance;
         double d_t_2 = (-sqrt(d_b * d_b - 4 * d_a * d_c) - d_b) / (2 * d_a);
@@ -674,8 +653,8 @@ bool PredictorAdaptiveEKF::predict(Detection_pack &data, RobotCmd &send, cv::Mat
         send.yaw_angle = (float)s_yaw;
         send.pitch_angle = (float)s_pitch;
         // 速度环是弧度
-        send.yaw_speed = (float)(ds_yaw - s_yaw) / 0.001 / 180. * M_PI;
-        send.pitch_speed = (float)(ds_pitch - s_pitch) / 0.001 / 180. * M_PI;
+        send.yaw_speed = (float)(ds_yaw - s_yaw) / 0.001;
+        send.pitch_speed = (float)(ds_pitch - s_pitch) / 0.001;
     }
     /// 需要重新设置预测器，此时无法发送给电控有效的预测值
     if (need_init)
@@ -700,7 +679,7 @@ bool PredictorAdaptiveEKF::predict(Detection_pack &data, RobotCmd &send, cv::Mat
         if (distance > distant_threshold)
             distant = true;
         double a = 9.8 * 9.8 * 0.25;
-        double b = -robot_status_long->robot_speed_mps * robot_status_long->robot_speed_mps -
+        double b = -robot_status.robot_speed_mps * robot_status.robot_speed_mps -
                    distance * 9.8 * cos(M_PI_2 + m_pitch);
         double c = distance * distance;
         double t_2 = (-sqrt(b * b - 4 * a * c) - b) / (2 * a);
@@ -801,7 +780,7 @@ bool PredictorAdaptiveEKF::predict(Detection_pack &data, RobotCmd &send, cv::Mat
                     Eigen::Matrix<double, 3, 1> Yr;
                     measure(Xr.data(), Yr.data());
                     Eigen::Matrix<double, 5, 1> Xe = ac.ekf.update(measure, Yr);
-                    double predict_time = m_pw.norm() / robot_status_long->robot_speed_mps + shoot_delay;
+                    double predict_time = m_pw.norm() / robot_status.robot_speed_mps + shoot_delay;
                     predictfunc.delta_t = predict_time;
                     Eigen::Matrix<double, 5, 1> Xp;
                     predictfunc(Xe.data(), Xp.data());
@@ -813,7 +792,7 @@ bool PredictorAdaptiveEKF::predict(Detection_pack &data, RobotCmd &send, cv::Mat
                     if (distance > distant_threshold)
                         ac.distant = true;
                     double a = 9.8 * 9.8 * 0.25;
-                    double b = -robot_status_long->robot_speed_mps * robot_status_long->robot_speed_mps -
+                    double b = -robot_status.robot_speed_mps * robot_status.robot_speed_mps -
                                distance * 9.8 * cos(M_PI_2 + p_pitch);
                     double c = distance * distance;
                     double t_2 = (-sqrt(b * b - 4 * a * c) - b) / (2 * a);
@@ -843,7 +822,7 @@ bool PredictorAdaptiveEKF::predict(Detection_pack &data, RobotCmd &send, cv::Mat
                     double d_pitch = atan2(d_pw(2, 0), d_pw.topRows<2>().norm());
                     double d_distance = d_pw.norm();
                     double d_a = 9.8 * 9.8 * 0.25;
-                    double d_b = -robot_status_long->robot_speed_mps * robot_status_long->robot_speed_mps -
+                    double d_b = -robot_status.robot_speed_mps * robot_status.robot_speed_mps -
                                  d_distance * 9.8 * cos(M_PI_2 + d_pitch);
                     double d_c = d_distance * d_distance;
                     // 带入求根公式，解出t^2
@@ -858,8 +837,8 @@ bool PredictorAdaptiveEKF::predict(Detection_pack &data, RobotCmd &send, cv::Mat
                     ac.distance = (int)(distance * 10);
                     ac.yaw_angle = (float)s_yaw;
                     ac.pitch_angle = (float)s_pitch;
-                    ac.yaw_speed = (float)(ds_yaw - s_yaw) / 0.001 / 180. * M_PI;
-                    ac.pitch_speed = (float)(ds_pitch - s_pitch) / 0.001 / 180. * M_PI;
+                    ac.yaw_speed = (float)(ds_yaw - s_yaw) / 0.001;
+                    ac.pitch_speed = (float)(ds_pitch - s_pitch) / 0.001;
                 }
                 break;
             }
@@ -955,7 +934,7 @@ bool PredictorAdaptiveEKF::predict(Detection_pack &data, RobotCmd &send, cv::Mat
     }
 
     /// 热调参数 && 设置替换后预测器和新增预测器参数
-    load_param(true);
+    //load_param(true);
 
     /// 突出强调本次击打的装甲板
     if (is_show)
@@ -986,8 +965,6 @@ bool PredictorAdaptiveEKF::predict(Detection_pack &data, RobotCmd &send, cv::Mat
         send.shoot_mode += static_cast<uint8_t>(ShootMode::EXIST_HERO);
 
     send.target_id = armor.tag_id;
-    send.priority = Priority::EMERGENCY;
-
     return true;
 }
 

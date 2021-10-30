@@ -5,11 +5,13 @@
 #ifndef CVRM2021_PREDICTORADAPTIVEEKF_H
 #define CVRM2021_PREDICTORADAPTIVEEKF_H
 
+#include "predict.hpp"
+
+#include "common.hpp"
+
 #include "AdaptiveEKF.hpp"
 #include <opencv2/opencv.hpp>
 #include <Eigen/Dense>
-#include "../autoaim.hpp"
-#include <robot.hpp>
 #include <vector>
 #include <cmath>
 #include <ceres/ceres.h>
@@ -62,7 +64,7 @@ class PredictorAdaptiveEKF
 private:
     AdaptiveEKF<5, 3> ekf; // 创建ekf
 
-    double last_time;
+    std::chrono::high_resolution_clock::time_point last_time;
 
     Eigen::Matrix3d R_CI;           // 陀螺仪坐标系到相机坐标系旋转矩阵EIGEN-Matrix
     Eigen::Matrix3d F;              // 相机内参矩阵EIGEN-Matrix
@@ -271,7 +273,7 @@ public:
         std::cout << "Finish create a new EKF." << std::endl;
     }
 
-    bool predict(Detection_pack &, RobotCmd &, cv::Mat &, bool);
+    bool predict(std::shared_ptr<ThreadDataPack> &data, cv::Mat& im2show, bool is_show = false);
 
     inline void clear()
     {

@@ -6,8 +6,7 @@
 #define PREDICT_PREDICT_H
 
 //submodules
-//#include "PredictorAdaptiveEKF.h"
-//#include "PredictorKalman.h"
+#include "PredictorAdaptiveEKF.h"
 
 //modules
 #include "common.hpp"
@@ -28,7 +27,6 @@
 namespace predict
 {
     using pipline::BasicTask;
-    using pipline::detection_obj_t;
 
     class Predict : public BasicTask
     {
