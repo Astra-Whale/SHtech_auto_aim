@@ -267,7 +267,8 @@ void TRTModule::operator()(const cv::Mat &src, std::vector<bbox_t> &det) const
     det.clear();
     cv::Mat x;
     float fx = (float)src.cols / 640.f, fy = (float)src.rows / 384.f;
-    cv::cvtColor(src, x, cv::COLOR_BGR2RGB);
+    //cv::cvtColor(src, x, cv::COLOR_BGR2RGB);
+    x = src;
     if (src.cols != 640 || src.rows != 384)
     {
         cv::resize(x, x, {640, 384});

@@ -13,7 +13,7 @@
 //modules
 #include "common.hpp"
 
-//package
+//packages
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -22,7 +22,6 @@
 namespace detect
 {
     using pipline::BasicTask;
-    using pipline::detection_obj_t;
 
     /**
      * @brief   装甲板检测类
@@ -54,7 +53,7 @@ namespace detect
          * @note    通过 stop() 控制启停
          *          必须先进行初始化
          */
-        void operator()(autoaim_pipline &pipbefore, autoaim_pipline &pipafter) const;
+        void operator()(autoaim_pipline &pipbefore, autoaim_pipline &pipafter);
 
     private:
         SafeUniquePtr<TRTModule> model; /*!< unique_ptr 智能指针 指向一个用于 TensorRT 推理的 TRTModule 对象 在 init 期间完成初始化 */

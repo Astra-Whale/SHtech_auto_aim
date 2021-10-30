@@ -7,7 +7,7 @@
 #include "detect.hpp"
 namespace detect
 {
-    void Detect::operator()(autoaim_pipline &pipbefore, autoaim_pipline &pipafter) const
+    void Detect::operator()(autoaim_pipline &pipbefore, autoaim_pipline &pipafter)
     {
         /**
          * @brief 检查类是否正确初始化
@@ -47,7 +47,11 @@ namespace detect
              */
             if (_debug)
             {
-                LOGM_S("[detect]Info: detected %d objects", obj->bboxes.size());
+                LOGM_S("[detect]Info: detected %ld objects", obj->bboxes.size());
+                for (const auto &b : obj->bboxes)
+                {
+                    LOGM_S("[detect]Detect_Data: colorid: %d, tag_id: %d",b.color_id, b.tag_id);
+                }
             }
             pipafter.put(obj); /*!< 向下一线程的缓存队列提交报文指针*/
         } while (_run);
