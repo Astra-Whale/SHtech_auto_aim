@@ -27,5 +27,6 @@ LINK_DIRECTORIES($ENV{MVS_PATH})
 FILE(GLOB MVS_LIBS "/opt/MVS/lib/aarch64/lib*.so")
 
 ADD_LIBRARY(sensor OBJECT sensor.cpp ${video_src} ${hikcam_src} ${bmi160_src} ${i2c_src} ${uartimu_src})
-target_link_libraries(sensor ${OpenCV_LIBS} libMvCameraControl.so ${MVS_LIBS})
+target_link_libraries(sensor ${OpenCV_LIBS})
+target_link_libraries(sensor libMvCameraControl.so)
 set_target_properties(sensor PROPERTIES LINK_FLAGS ${MVS_LD_FLAGS})
