@@ -65,7 +65,7 @@ struct RobotStatus
 
 struct RobotCommand
 {
-    int distance;
+    float distance;
     float yaw_angle;
     float yaw_speed;
     float pitch_angle;
@@ -123,6 +123,7 @@ struct ThreadDataPack
     std::vector<bbox_t> bboxes;    /*!< 检测到的bounding boxes */
     RobotStatus robotstatus;       /*!< 上行机器人状态 */
     Eigen::Quaternionf quaternion; /*!< 上行位姿数据 */
+    Attitude attitude;
     RobotCommand robotcommand;
     std::chrono::high_resolution_clock::time_point time;
 };
