@@ -12,6 +12,6 @@ void UartIMU::read_handler()
         attitude_buf.roll = 0;
         //LOGM_S("[UART IMU] :Yaw: %.2f, Pitch: %2.f", attitude_buf.yaw, attitude_buf.pitch);
         auto tok = high_resolution_clock::now();
-        std::this_thread::sleep_for(duration_cast<microseconds>(microseconds(10000) - (tok - tik)));
+        std::this_thread::sleep_for(duration_cast<microseconds>(microseconds(1000) - (tok - tik)));
     } while (mRun);
 }
