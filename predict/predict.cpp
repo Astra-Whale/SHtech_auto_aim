@@ -8,7 +8,7 @@
 
 namespace predict
 {
-    void Predict::operator()(autoaim_pipline &pipbefore, autoaim_pipline &pipafter) const
+    void Predict::operator()(autoaim_pipline &pipbefore, autoaim_pipline &pipafter)
     {
         /**
          * @brief 检查类是否正确初始化
@@ -21,23 +21,27 @@ namespace predict
 
         LOGM_S("[predict] running");
 
-        PredictorAdaptiveEKF predictor;
-        bool last_mode_is_autoaim = true;
+        StaticPredictor _predictor;
 
         do
         {
             auto obj = pipbefore.get(); /*!< 从上一线程的缓存队列获取报文指针 */
             cv::Mat img_show;
-            predictor.predict(obj, img_show, _show);
-            pipafter.put(obj); /*!< 向下一线程的缓存队列提交报文指针*/
+
+            _predictor.predict(obj);
+
             if (_debug)
             {
-                LOGM_S("[predict] yaw: %.2f@%.2f, pitch: %.2f@%.2f", obj->robotcommand.yaw_angle, obj->robotcommand.yaw_speed, obj->robotcommand.pitch_angle, obj->robotcommand.pitch_speed);
+                auto &send = obj->robotcommand;
+                LOGM_S("[predict] pitch %6.2f, yaw %6.2f, dist %4.1f",
+                       sned.pitch_angle, send.yaw_angle,
+                       (float)send.distance / 10);
             }
             if (_show)
             {
-                cv::imshow("predict",img_show);cv::waitKey(1);
             }
+
+            pipafter.put(obj); /*!< 向下一线程的缓存队列提交报文指针*/
         } while (_run);
         LOGM_S("[predict] stop");
     }
