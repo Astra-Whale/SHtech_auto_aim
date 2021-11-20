@@ -118,12 +118,11 @@ public:
  */
 struct ThreadDataPack
 {
-    int index;                     /*!< 报文序号 */
-    cv::Mat frame;                 /*!< 读取到的原始图像 */
-    std::vector<bbox_t> bboxes;    /*!< 检测到的bounding boxes */
-    RobotStatus robotstatus;       /*!< 上行机器人状态 */
-    Eigen::Quaternionf quaternion; /*!< 上行位姿数据 */
-    Attitude attitude;
+    int index;                  /*!< 报文序号 */
+    cv::Mat frame;              /*!< 读取到的原始图像 */
+    std::vector<bbox_t> bboxes; /*!< 检测到的bounding boxes */
+    RobotStatus robotstatus;    /*!< 上行机器人状态 */
+    Attitude attitude;          /*!< 上行位姿数据 */
     RobotCommand robotcommand;
     std::chrono::high_resolution_clock::time_point time;
 };

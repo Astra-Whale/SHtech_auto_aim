@@ -6,6 +6,10 @@
 #include "sensor.hpp"
 namespace sensor
 {
+    float val_limit(float input, float max)
+    {
+        return input < max ? input > -max ? input : -max : max;
+    }
     void Sensor::operator()(autoaim_pipline &pipbefore, autoaim_pipline &pipafter)
     {
         /**
@@ -40,26 +44,8 @@ namespace sensor
                 video->close();
                 video->init();
                 pipbefore.put(obj);
-		continue;
+                continue;
             }
-
-            if (comm.isOpen() && (obj->robotcommand.pitch_angle > 0.05f || obj -> robotcommand.pitch_angle < -0.05f))
-	    {
-                float pitch_delta = obj->robotcommand.pitch_angle;
-		pitch_delta = (pitch_delta > +5 ? +5 : pitch_delta);
-		pitch_delta = (pitch_delta < -5 ? -5 : pitch_delta);
-		LOGM_S("[sensor]given %6.2f, now %6.2f, set %6.2f, spd %6.2f", obj->robotcommand.pitch_angle, obj->attitude.pitch, obj->attitude.pitch + pitch_delta, obj->robotcommand.pitch_speed);
-		float yaw_delta = obj->robotcommand.yaw_angle * 0.8f;
-		yaw_delta = (yaw_delta > +5 ? +5 : yaw_delta);
-		yaw_delta = (yaw_delta < -5 ? -5 : yaw_delta);
-                //comm.transmit(obj->attitude.yaw + yaw_delta, obj->attitude.pitch + pitch_delta, 2);
-	    }
-
-            if (imu != nullptr)
-	    {
-                imu->get_quaternion(obj->quaternion);
-		imu->get_attitude(obj->attitude);
-	    }
 
             if (obj->frame.empty())
             {
@@ -68,16 +54,34 @@ namespace sensor
                 continue;
             }
 
-	    //CNT_FPS(total_fps,{});
+            if (comm.isOpen() && obj->robotcommand.distance != -1)
+            {
+                auto &send = obj->robotcommand;
+                auto &_attitude = obj->attitude;
+                comm.transmit(_attitude.yaw + val_limit(send.yaw_angle, 10),
+                              _attitude.pitch + val_limit(send.pitch_angle, 10),
+                              send.distance / 10.0);
+                if (_debug)
+                {
+                    LOGM_S("[transmit] p-p:%6.2f | p-m:%6.2f | p-s:%6.2f | y-p:%6.2f | y-m:%6.2f | y-s:%6.2f",
+                           send.pitch_angle, _attitude.pitch,
+                           _attitude.pitch + val_limit(send.pitch_angle, 10),
+                           send.yaw_angle, _attitude.yaw,
+                           _attitude.yaw + val_limit(send.yaw_angle, 10));
+                }
+            }
+
+            if (imu != nullptr)
+                imu->get_attitude(obj->attitude);
 
             /**
              * @brief 当需要展示结果时，绘制 bounding box
              */
             if (_show)
             {
-                cv::Mat im2show = obj->frame.clone();
+                /*cv::Mat im2show = obj->frame.clone();
                 cv::imshow("sensor", im2show);
-                cv::waitKey(1);
+                cv::waitKey(1);*/
             }
 
             /**
@@ -85,7 +89,7 @@ namespace sensor
              */
             if (_debug)
             {
-                LOGM_S("[sensor]Info: Idx = %d, yaw %.1f, pitch %.1f, yaw_set %6.2f", obj->index, obj->attitude.yaw, obj->attitude.pitch, obj->robotcommand.yaw_angle);
+                LOGM_S("[sensor]Info: Idx = %d, Bytes = %ld", obj->index, obj->frame.size().height * obj->frame.size().width);
             }
             pipafter.put(obj); /*!< 向下一线程的缓存队列提交报文指针*/
         } while (_run);
