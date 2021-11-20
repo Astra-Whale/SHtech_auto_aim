@@ -133,7 +133,7 @@ TRTModule::~TRTModule()
     cudaStreamDestroy(stream);
     cudaFree(device_buffer[output_idx]);
     cudaFree(device_buffer[input_idx]);
-    engine->destroy();
+    delete engine;
 }
 
 void TRTModule::build_engine_from_onnx(const std::string &onnx_file)
@@ -177,11 +177,17 @@ void TRTModule::build_engine_from_onnx(const std::string &onnx_file)
     //    std::cout << "[INFO]: total gpu mem: " << (total >> 20) << "MB, free gpu mem: " << (free >> 20) << "MB" << std::endl;
     //    std::cout << "[INFO]: max workspace size will use all of free gpu mem" << std::endl;
     config->setMaxWorkspaceSize(1 << 30);
-    TRT_ASSERT((engine = builder->buildEngineWithConfig(*network, *config)) != nullptr);
-    config->destroy();
-    parser->destroy();
-    network->destroy();
-    builder->destroy();
+    auto runtime = createInferRuntime(glogger);
+    TRT_ASSERT(runtime != nullptr);
+    auto plan = builder->buildSerializedNetwork(*network, *config);
+    TRT_ASSERT(plan != nullptr);
+    TRT_ASSERT((engine = runtime->deserializeCudaEngine(plan->data(), plan->size())) != nullptr);
+    delete plan;
+    delete runtime;
+    delete config;
+    delete parser;
+    delete network;
+    delete builder;
 }
 
 void TRTModule::build_engine_from_cache(const std::string &cache_file)
@@ -196,7 +202,7 @@ void TRTModule::build_engine_from_cache(const std::string &cache_file)
     auto runtime = createInferRuntime(glogger);
     TRT_ASSERT(runtime != nullptr);
     TRT_ASSERT((engine = runtime->deserializeCudaEngine(buffer.get(), sz)) != nullptr);
-    runtime->destroy();
+    delete runtime;
 }
 
 void TRTModule::cache_engine(const std::string &cache_file)
@@ -205,7 +211,7 @@ void TRTModule::cache_engine(const std::string &cache_file)
     TRT_ASSERT(engine_buffer != nullptr);
     std::ofstream ofs(cache_file, std::ios::binary);
     ofs.write(static_cast<const char *>(engine_buffer->data()), engine_buffer->size());
-    engine_buffer->destroy();
+    delete engine_buffer;
 }
 
 std::vector<bbox_t> TRTModule::operator()(const cv::Mat &src) const

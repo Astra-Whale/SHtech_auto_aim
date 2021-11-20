@@ -14,7 +14,6 @@
 class Logger : public nvinfer1::ILogger
 {
 public:
-    Logger() : ferr("error.txt"), finfo("info.txt"), fver("verbose.txt"), fwarn("warning.txt") {}
     void log(Severity severity, const char *msg) throw() override
     {
         //suppress info-level message
@@ -22,26 +21,22 @@ public:
         {
         case Severity::kINTERNAL_ERROR:
         case Severity::kERROR:
-            ferr << msg << std::endl;
+            LOGE_F("[detect]Error: %s", msg);
+	    LOGE_S("[detect]Error: %s", msg);
+	    break;
         case Severity::kWARNING:
-            fwarn << msg << std::endl;
+            LOGW_F("[detect]Warning: %s", msg);
+            LOGW_S("[detect]Warning: %s", msg);
+	    break;
         case Severity::kINFO:
-            finfo << msg << std::endl;
-        case Severity::kVERBOSE:
-            fver << msg << std::endl;
+	case Severity::kVERBOSE:
+            LOGM_F("[detect]Info: %s", msg);
         }
-        if (severity == Severity::kERROR || severity == Severity::kWARNING)
-            std::cout << "Log: " << msg << std::endl;
     }
     void StageLog(std::string msg)
     {
-        ferr << msg << std::endl;
-        fwarn << msg << std::endl;
-        finfo << msg << std::endl;
-        fver << msg << std::endl;
-        std::cout << msg << std::endl;
+        LOGM_F("[detect] %s", msg.c_str());
     }
-    std::ofstream ferr, finfo, fver, fwarn;
 };
 
 /*

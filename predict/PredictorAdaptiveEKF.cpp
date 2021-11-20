@@ -104,6 +104,8 @@ bool PredictorAdaptiveEKF::predict(std::shared_ptr<ThreadDataPack> &data, cv::Ma
     if (detections.empty())
     {
         clear();
+	send.yaw_angle = send.pitch_angle = 0.;
+	send.yaw_speed = send.pitch_speed = 0.;
         return false;
     }
 
@@ -126,6 +128,8 @@ bool PredictorAdaptiveEKF::predict(std::shared_ptr<ThreadDataPack> &data, cv::Ma
             Eigen::Vector3d m_pw = pc_to_pw(m_pc, R_IW);        // point world: 目标在世界坐标系下的坐标。（世界坐标系:陀螺仪的全局世界坐标系）
             if (m_pw[2] < height_thres)
                 continue;
+	    if (DEBUG)
+		LOGE_S("origin distance: %.2f", m_pc.norm());
 
             if (d.tag_id == 1)
                 exist_hero = true;
@@ -133,7 +137,7 @@ bool PredictorAdaptiveEKF::predict(std::shared_ptr<ThreadDataPack> &data, cv::Ma
             if (int(robot_status.game_state) == 0)
             {
                 double distance = m_pw.norm();
-                if (distance > distant_threshold){LOGE_S("Fuck1");
+                if (distance > distant_threshold){
                     continue;}
             }
 
@@ -321,7 +325,7 @@ bool PredictorAdaptiveEKF::predict(std::shared_ptr<ThreadDataPack> &data, cv::Ma
                     antitop_candidates.push_back(r);
 
                     ekf = antitop_candidates[i].ekf;
-                    load_param(false);
+                    //load_param(false);
                     last_m_pw = antitop_candidates[i].last_m_pw;
                     last_pitch = antitop_candidates[i].last_pitch;
                     last_yaw = antitop_candidates[i].last_yaw;
@@ -540,7 +544,7 @@ bool PredictorAdaptiveEKF::predict(std::shared_ptr<ThreadDataPack> &data, cv::Ma
             if (center.inside(get_ROI(antitop_candidates[i].bbox)) || is_same_armor_by_distance(antitop_candidates[i].last_m_pw, armor, R_IW))
             {
                 ekf = antitop_candidates[i].ekf;
-                load_param(false);
+                //load_param(false);
                 last_m_pw = antitop_candidates[i].last_m_pw;
                 last_pitch = antitop_candidates[i].last_pitch;
                 last_yaw = antitop_candidates[i].last_yaw;
@@ -934,7 +938,7 @@ bool PredictorAdaptiveEKF::predict(std::shared_ptr<ThreadDataPack> &data, cv::Ma
     }
 
     /// 热调参数 && 设置替换后预测器和新增预测器参数
-    //load_param(true);
+    load_param(true);
 
     /// 突出强调本次击打的装甲板
     if (is_show)
