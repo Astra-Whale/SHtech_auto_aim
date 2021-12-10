@@ -8,6 +8,7 @@
 //submodules
 #include "tools.hpp"
 #include "StaticPredictor.hpp"
+#include "LinearPredictor.hpp"
 
 //modules
 #include "common.hpp"
