@@ -21,7 +21,7 @@ namespace predict
 
         LOGM_S("[predict] running");
 
-        StaticPredictor _predictor;
+        LinearPredictor _predictor;
 
         do
         {
@@ -34,7 +34,7 @@ namespace predict
             {
                 auto &send = obj->robotcommand;
                 LOGM_S("[predict] pitch %6.2f, yaw %6.2f, dist %4.1f",
-                       sned.pitch_angle, send.yaw_angle,
+                       send.pitch_angle, send.yaw_angle,
                        (float)send.distance / 10);
             }
             if (_show)
