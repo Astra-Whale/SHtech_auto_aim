@@ -45,7 +45,7 @@ bool Comm::isOpen() const
     return state;
 }
 
-bool Comm::transmit(float x, float y, float z)
+bool Comm::transmit(float _yaw, float _pit, float _spd, float _dist)
 {
     if (!state)
     {
@@ -55,9 +55,10 @@ bool Comm::transmit(float x, float y, float z)
     uint16_t len;
 
     detection_t msg = {
-        .yaw = x,
-        .pit = y,
-        .dist = z,
+        .yaw = _yaw,
+        .pit = _pit,
+        .yaw_spd = _spd,
+        .dist = _dist,
         .shoot = 1};
     len = protocol_provider.pack(send, SOF, GIMCtrl_CMD_ID, (uint8_t *)&msg, sizeof(detection_t));
     return ser.write(send, len);

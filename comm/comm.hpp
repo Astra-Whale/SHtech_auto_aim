@@ -13,11 +13,12 @@
 #define DEFAULT_BUFF_LENGTH 1000
 
 #define SOF 0xA5
-#define GIMCtrl_CMD_ID 0x0501
+#define GIMCtrl_CMD_ID 0x0502
 typedef struct __attribute__((packed))
 {
     float yaw;  //
     float pit;  //
+    float yaw_spd;
     float dist; //
     uint8_t shoot;
 } detection_t;
@@ -36,7 +37,7 @@ class Comm
 public:
     Comm();
     bool open(const std::string &port = "/dev/ttyUSB0");
-    bool transmit(float yaw, float pit, float dist);
+    bool transmit(float _yaw, float _pit, float _spd, float _dist);
     bool isOpen() const;
     bool receive();
 
