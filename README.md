@@ -22,6 +22,8 @@ TODO: 实装预测功能 实装串口通信 替换Log实现 替换cmd_praser实�
 更新记录: 
 
 * 2021-10-02: 代码框架初步搭建完成
+* 2021-11-20: 封装坐标转换相关代码，实现静态目标预测全部功能
+* 2021-12-10: 调整坐标转换封装结构，实现动态目标二阶线性预测
 
 <br>
 
@@ -62,7 +64,7 @@ TODO: 实装预测功能 实装串口通信 替换Log实现 替换cmd_praser实�
 │   ├── autoaim-param.yml: 自瞄参数文件，前一半是预测参数，一般无需修改，后一半是反陀螺参数，还没有仔细试过
 │   ├── camera-param.yml: 相机标定文件，通过 calibrate.py 任务生成
 │   ├── model-opt-4.cache: 使用的模型文件的cache缓存，如果第一次使用，会自动生成，在 nx 上的时间约为半小时
-│   └──model-opt-4.onnx: 模型文件: 本赛季使用
+│   └── model-opt-4.onnx: 模型文件: 本赛季使用
 ├── comm: 串口通信相关
 │   ├── CMakeLists.txt
 │   ├── comm.hpp\cpp: 串口通信类
@@ -80,8 +82,8 @@ TODO: 实装预测功能 实装串口通信 替换Log实现 替换cmd_praser实�
 │   │   ├── log.cpp
 │   │   └── log.hpp: LOG{M,W,E}_{S,F}向屏幕/文件输出消息/警告/错误
 │   └── timer: 计时 测fps
-│       ├── timer.hpp
-│       └── timer.cpp
+│       ├── timer.hpp
+│       └── timer.cpp
 ├── detect: 装甲板四角点检测
 │   ├── CMakeLists.txt
 │   ├── detect.hpp\cpp: 装甲板四角点检测任务类 派生自任务基类 init时实例化模型
@@ -89,16 +91,24 @@ TODO: 实装预测功能 实装串口通信 替换Log实现 替换cmd_praser实�
 ├── predict: 预测
 │   ├── CMakeLists.txt
 │   ├── predict.hpp\cpp: 预测任务类 派生自任务基类 TBD
-│   └── //TODO
+│   ├── tools.hpp: 坐标转换和弹道补偿相关函数
+|   |── StaticPredictor.hpp\cpp: 静态目标预测
+|   └── LinearPredictor.hpp\cpp: 动态目标线性预测
 ├── sensor: 传感器相关
 │   ├── CMakeLists.txt
 │   ├── sensor.hpp\cpp: 传感器数据获取任务类 派生自任务基类 init时打开传感器接口
 │   ├── cam_wrapper.hpp: 视频流基类
+│   ├── i2c: I2C通信支持库
+│   │   └── i2c.h\c
+│   ├── UartIMU: 串口位姿数据
+│   │   └── uartimu.hpp\cpp
+│   ├── BMI160: 板载IMU位姿数据
+│   │   └── BMI160.hpp\cpp
 │   ├── video: 视频图像读取
 │   │   └── video_wrapper.hpp\cpp
 │   └── hikcam: 相机图像读取
-│       ├── hikcam_wrapper.hpp\cpp
-│       └── ...: MVS相关头文件
+│       ├── hikcam_wrapper.hpp\cpp
+│       └── ...: MVS相关头文件
 ├── build: 编译目录
 ├── data: 数据存储部分
 ├── main.cpp: 主函数入口
@@ -117,5 +127,14 @@ TODO: 实装预测功能 实装串口通信 替换Log实现 替换cmd_praser实�
 
 通过`BasicTask`实现了基于`pipline`的线程生命周期管理。定义了`init`,`setdebug`,`setshow`,`stop`等方法并重载了`()`运算符，允许函数式调起任务。
 
+## 数据IO线程
 
+通过`sensor::Sensor`类管理并对外提供数据IO功能。通过 ***lauch.cfg*** 可管理数据源。
 
+## 装甲板检测线程
+
+通过`detect::Detect`类管理 **TensorRT** 推理资源。使用 ***lauch.cfg*** 中指定的onnx文件创建并缓存推理网络，基于 **OpenCV** 和 **TensorRT** 进行图像预处理、图像推理、数据后处理。
+
+## 目标预测线程
+
+通过`predict::Predict`类管理目标预测过程。在命名空间中实现了提供静态目标预测的`StaticPredictor`子类和提供二阶线性预测的`LinearPredictor`子类，利用 **Eigen** 和 **OpenCV** 的高效封装实现装甲板筛选、PNP解算、坐标变换、位置预测、弹道补偿等核心功能。
