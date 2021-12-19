@@ -21,6 +21,9 @@ else ()
     add_compile_options(-O0 -g)
 endif ()
 
+find_package(Eigen3 REQUIRED)
+include_directories(${EIGEN3_INCLUDE_DIR})
+
 add_executable(${exe_name} main.cpp)
 
 include_directories(common)
