@@ -9,14 +9,13 @@ TODO: 实装预测功能 实装串口通信 替换Log实现 替换cmd_praser实�
 * CUDA10.2
 * TensorRT8
 * gcc/g++-9: ubuntu18.04 设备均需手动升级
-* gLog: google log，安装方式: [编译安装](https://github.com/google/glog/)
 * Ceres-Solver: 计算库，安装方式: [编译安装](https://github.com/ceres-solver/ceres-solver)
 * OpenCV4: 计算机视觉库，安装方式: [编译安装](https://github.com/opencv/opencv.git)
 * OpenCV_contrib: OpenCV 额外模块，安装方式: 和 OpenCV 一起[编译安装](https://github.com/opencv/opencv_contrib.git)
 * CatKin: ROS组件，串口通信依赖，安装方式: apt install catkin
 * libserial: 串口通信库，安装方式: [编译安装](https://gitlab.rmshtech.tk/hegq/libserial)
 * MVS: 海康摄像头驱动，安装方式: [下载安装](https://www.hikrobotics.com/cn/machinevision/service/download?module=0)
-
+* [配置脚本参考](http://gitlab.rmshtech.tk/computer-vision/nvidianx-environment-config)
 ---
 
 更新记录: 
