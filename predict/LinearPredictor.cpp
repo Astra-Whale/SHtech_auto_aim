@@ -135,7 +135,7 @@ namespace predict
             auto p_x = filter_x.update(z_k_x, t);                                            // p_x: x轴滤波器状态量
             auto p_y = filter_y.update(z_k_y, t);                                            // p_y: y轴滤波器状态量
             double ft = FlightTimePredict(m_pw);                                             // ft: 预测弹丸飞行时间
-            Pos3D s_pw{p_x(0, 0) + ft * p_x(1, 0), p_y(0, 0) + ft * p_y(1, 0), pos_w(2, 0)}; // s_pw: ft后预测点
+            Pos3D s_pw{p_x(0, 0) + ft * p_x(1, 0), p_y(0, 0) + ft * p_y(1, 0), m_pw(2, 0)}; // s_pw: ft后预测点
             s_pw(2, 0) -= TrajectoryCompensation(s_pw);                                      // 抬枪后预测点
             Pos3D s_pc = position_transform.pw_to_pc(s_pw);                                  // point camera: 目标在相机坐标系下的坐标
             double s_yaw = atan(s_pc(0, 0) / s_pc(2, 0)) / M_PI * 180.;
