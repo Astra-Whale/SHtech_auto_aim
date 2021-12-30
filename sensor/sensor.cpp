@@ -27,7 +27,7 @@ namespace sensor
             imu->start();
 
         int totalFrameCounter = 0; /*!< 总帧数计数器 */
-	fps_counter total_fps("total_fps");
+        fps_counter total_fps("total_fps");
 
         do
         {
@@ -60,14 +60,15 @@ namespace sensor
                 auto &_attitude = obj->attitude;
                 comm.transmit(_attitude.yaw + val_limit(send.yaw_angle, 10),
                               _attitude.pitch + val_limit(send.pitch_angle, 10),
-                              send.distance / 10.0);
+                              send.yaw_speed, send.distance);
                 if (_debug)
                 {
-                    LOGM_S("[transmit] p-p:%6.2f | p-m:%6.2f | p-s:%6.2f | y-p:%6.2f | y-m:%6.2f | y-s:%6.2f",
+                    LOGM_S("[transmit] p-p:%6.2f | p-m:%6.2f | p-s:%6.2f | y-p:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f",
                            send.pitch_angle, _attitude.pitch,
                            _attitude.pitch + val_limit(send.pitch_angle, 10),
                            send.yaw_angle, _attitude.yaw,
-                           _attitude.yaw + val_limit(send.yaw_angle, 10));
+                           _attitude.yaw + val_limit(send.yaw_angle, 10),
+                           send.yaw_speed);
                 }
             }
 
@@ -89,7 +90,7 @@ namespace sensor
              */
             if (_debug)
             {
-                LOGM_S("[sensor]Info: Idx = %d, Bytes = %ld", obj->index, obj->frame.size().height * obj->frame.size().width);
+                LOGM_S("[sensor]Info: Idx = %d, Bytes = %d", obj->index, obj->frame.size().height * obj->frame.size().width);
             }
             pipafter.put(obj); /*!< 向下一线程的缓存队列提交报文指针*/
         } while (_run);
