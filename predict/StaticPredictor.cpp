@@ -14,7 +14,7 @@ namespace predict
     /// 远距离弹量控制
     constexpr double distant_threshold = 6.;
 
-    void StaticPredictor::predict(std::shared_ptr<ThreadDataPack> &data)
+    void StaticPredictor::predict(std::shared_ptr<ThreadDataPack> &data, PositionTransform &position_transform)
     {
         auto &detections = data->bboxes;
         auto q_raw = data->attitude.toQuaternion();
@@ -61,7 +61,7 @@ namespace predict
         if (new_detections.empty())
         {
             send.distance = -1;
-            //if (DEBUG) std::cout << "No valid armor!" << std::endl;
+            // if (DEBUG) std::cout << "No valid armor!" << std::endl;
             return;
         }
         armor = new_detections.front();

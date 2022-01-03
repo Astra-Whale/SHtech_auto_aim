@@ -14,7 +14,7 @@ namespace predict
     /// 远距离弹量控制
     constexpr double distant_threshold = 6.;
 
-    void LinearPredictor::predict(std::shared_ptr<ThreadDataPack> &data)
+    void LinearPredictor::predict(std::shared_ptr<ThreadDataPack> &data, PositionTransform &position_transform)
     {
         auto &detections = data->bboxes;
         auto q_raw = data->attitude.toQuaternion();

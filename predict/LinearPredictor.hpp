@@ -27,10 +27,9 @@ namespace predict
     class LinearPredictor
     {
     private:
-        PositionTransform position_transform{}; // 位置转换类
-        bool last_track{false};                 // 上一次是否有追踪目标
-        Pos3D last_pw;                          // 上一次世界坐标
-        bbox_t last_bbox;                       // 上一次预测框
+        bool last_track{false}; // 上一次是否有追踪目标
+        Pos3D last_pw;          // 上一次世界坐标
+        bbox_t last_bbox;       // 上一次预测框
         using _filter = Kalman<1, 2>;
         using Matx1 = _filter::Matrix_x1d;
         using Matxx = _filter::Matrix_xxd;
@@ -63,7 +62,7 @@ namespace predict
             filter_x = _filter(A, H, R, Q, init, std::chrono::high_resolution_clock::now());
             filter_y = _filter(A, H, R, Q, init, std::chrono::high_resolution_clock::now());
         };
-        void predict(std::shared_ptr<ThreadDataPack> &data);
+        void predict(std::shared_ptr<ThreadDataPack> &data, PositionTransform &position_transform);
     };
 }
 

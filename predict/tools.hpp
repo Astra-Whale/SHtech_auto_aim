@@ -39,7 +39,17 @@ namespace predict
     public:
         explicit PositionTransform()
         {
-            cv::FileStorage fin(PROJECT_DIR "/asset/camera-param.yml", cv::FileStorage::READ);
+            cv::FileStorage fin("asset/camera-param.yml", cv::FileStorage::READ);
+            fin["Tcb"] >> R_CI_MAT;
+            fin["K"] >> F_MAT;
+            fin["D"] >> C_MAT;
+            cv::cv2eigen(R_CI_MAT, R_CI);
+            cv::cv2eigen(F_MAT, F);
+            cv::cv2eigen(C_MAT, C);
+        }
+        explicit PositionTransform(const std::string camera_param)
+        {
+            cv::FileStorage fin(camera_param, cv::FileStorage::READ);
             fin["Tcb"] >> R_CI_MAT;
             fin["K"] >> F_MAT;
             fin["D"] >> C_MAT;

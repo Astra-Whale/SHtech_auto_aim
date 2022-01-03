@@ -28,7 +28,7 @@ namespace predict
             auto obj = pipbefore.get(); /*!< 从上一线程的缓存队列获取报文指针 */
             cv::Mat img_show;
 
-            _predictor.predict(obj);
+            _predictor.predict(obj, position_transform);
 
             if (_debug)
             {
