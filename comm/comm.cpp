@@ -9,7 +9,7 @@ static void imu_handler(uint8_t *data, uint16_t length)
     gim_state.curr_yaw = gim_state.curr_yaw;
     gim_state.curr_pitch = gim_state.curr_pitch;
 
-    //update_pose(mcu_data->curr_yaw, mcu_data->curr_pitch, 0);
+    // update_pose(mcu_data->curr_yaw, mcu_data->curr_pitch, 0);
 }
 
 Comm::Comm() : state(false)
@@ -26,7 +26,7 @@ bool Comm::open(const std::string &port)
         ser.setBytesize(serial::eightbits);
         ser.setStopbits(serial::stopbits_one);
         ser.setParity(serial::parity_even);
-        auto timeout = serial::Timeout(1000);
+        auto timeout = serial::Timeout(0x7FFFFFFF, 1000, 0, 1000, 0);
         ser.setTimeout(timeout);
         ser.open();
         std::cout << "Open Serial Success!" << std::endl;
@@ -45,7 +45,7 @@ bool Comm::isOpen() const
     return state;
 }
 
-bool Comm::transmit(float _yaw, float _pit, float _spd, float _dist)
+bool Comm::transmit(float _yaw, float _pit,float _dist)
 {
     if (!state)
     {
@@ -57,10 +57,28 @@ bool Comm::transmit(float _yaw, float _pit, float _spd, float _dist)
     detection_t msg = {
         .yaw = _yaw,
         .pit = _pit,
-        .yaw_spd = _spd,
         .dist = _dist,
         .shoot = 1};
     len = protocol_provider.pack(send, SOF, GIMCtrl_CMD_ID, (uint8_t *)&msg, sizeof(detection_t));
+    return ser.write(send, len);
+}
+
+bool Comm::transmit(float _yaw, float _pit, float _spd, float _dist)
+{
+    if (!state)
+    {
+        return false;
+    }
+
+    uint16_t len;
+
+    adv_detection_t msg = {
+        .yaw = _yaw,
+        .pit = _pit,
+        .yaw_spd = _spd,
+        .dist = _dist,
+        .shoot = 1};
+    len = protocol_provider.pack(send, SOF, GIMAdv_CMD_ID, (uint8_t *)&msg, sizeof(adv_detection_t));
     return ser.write(send, len);
 }
 
