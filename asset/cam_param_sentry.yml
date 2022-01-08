@@ -16,10 +16,15 @@ D: !!opencv-matrix
    data: [ 2.1427427700353163e-01, -2.1757942876549069e-01,
        1.7333239474651502e-02, 6.9568026909657743e-02,
        -5.8880053995334102e-02 ]
-Tcb: !!opencv-matrix
+Rcb: !!opencv-matrix
    rows: 3
    cols: 3
    dt: f
-   data: [ 1., 0., 0.,
+   data: [ -1., 0., 0.,
            0., 0., 1.,
            0., 1., 0. ]
+Tcb: !!opencv-matrix
+   rows: 3
+   cols: 1
+   dt: f
+   data: [ 0., -4.0e-02, 5.0e-02 ]
