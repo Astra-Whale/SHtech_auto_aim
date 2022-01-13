@@ -9,6 +9,7 @@
 #include "tools.hpp"
 #include "StaticPredictor.hpp"
 #include "LinearPredictor.hpp"
+#include "RvecPredictor.hpp"
 
 //modules
 #include "common.hpp"

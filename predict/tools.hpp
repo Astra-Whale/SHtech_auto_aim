@@ -110,6 +110,49 @@ namespace predict
         {
             R_IW = _R_IW;
         }
+
+        double pnp_get_angle(const cv::Point2f p[4], int armor_number)
+        {
+
+            static const std::vector<cv::Point3d> pw_small = {// 单位：m
+                                                              {-0.066, 0.027, 0.},
+                                                              {-0.066, -0.027, 0.},
+                                                              {0.066, -0.027, 0.},
+                                                              {0.066, 0.027, 0.}};
+            static const std::vector<cv::Point3d> pw_big = {// 单位：m
+                                                            {-0.115, 0.029, 0.},
+                                                            {-0.115, -0.029, 0.},
+                                                            {0.115, -0.029, 0.},
+                                                            {0.115, 0.029, 0.}};
+            std::vector<cv::Point3d> pw_cur;
+            std::vector<cv::Point2d> pu(p, p + 4);
+
+            cv::Mat rvec, tvec, mat_R;
+            Eigen::MatrixXd R, T, w_p[4];
+            Pos3D e_x, a_hat;
+
+            if (armor_number == 0 || armor_number == 1 || armor_number == 8)
+                pw_cur = pw_big;
+            else
+                pw_cur = pw_small;
+            cv::solvePnP(pw_cur, pu, F_MAT, C_MAT, rvec, tvec);
+
+            cv::Rodrigues(rvec, mat_R);
+            cv::cv2eigen(mat_R, R);
+            cv::cv2eigen(tvec, T);
+
+            for (int i = 0; i < 4; ++i) {
+                cv::cv2eigen(pw_cur[i], w_p[i]);
+                w_p[i] = R * w_p[i].transpose() + T;
+            }
+
+            e_x << 1, 0, 0;
+            a_hat = w_p[2] - w_P[1];
+            double angle = a_hat.dot(e_x) / a_hat.norm() / e_x.norm();
+            std::cout << acos(angle) << std::endl;
+
+            return angle;
+        }
     };
 
     // xy平面上的两点距离

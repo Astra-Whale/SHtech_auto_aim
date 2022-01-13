@@ -21,7 +21,7 @@ namespace predict
 
         LOGM_S("[predict] running");
 
-        LinearPredictor _predictor;
+        RvecPredictor _predictor;
 
         do
         {
