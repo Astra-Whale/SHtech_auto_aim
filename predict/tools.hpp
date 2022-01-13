@@ -5,11 +5,11 @@
 #ifndef PREDICT_TOOLS_H
 #define PREDICT_TOOLS_H
 
-//modules
+// modules
 #include "predict.hpp"
 #include "common.hpp"
 
-//packages
+// packages
 #include <ctime>
 #include <array>
 #include <string>
@@ -18,7 +18,6 @@
 #include <thread>
 #include <chrono>
 #include <Eigen/Dense>
-#include <ceres/ceres.h>
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/eigen.hpp>
 
@@ -31,20 +30,36 @@ namespace predict
     {
     private:
         Eigen::Matrix3d R_CI;          // 陀螺仪坐标系到相机坐标系旋转矩阵EIGEN-Matrix
+        Eigen::Vector3d T_CI;          // 陀螺仪坐标系到相机坐标系平移向量EIGEN-Matrix
         Eigen::Matrix3d F;             // 相机内参矩阵EIGEN-Matrix
         Eigen::Matrix<double, 1, 5> C; // 相机畸变矩阵EIGEN-Matrix
         Eigen::Matrix3d R_IW;          // 陀螺仪坐标系到世界坐标系旋转矩阵EIGEN-Matrix
         cv::Mat R_CI_MAT;              // 陀螺仪坐标系到相机坐标系旋转矩阵CV-Mat
+        cv::Mat T_CI_MAT;              // 陀螺仪坐标系到相机坐标系平移矩阵CV-Mat
         cv::Mat F_MAT;                 // 相机内参矩阵CV-Mat
         cv::Mat C_MAT;                 // 相机畸变矩阵CV-Mat
     public:
         explicit PositionTransform()
         {
-            cv::FileStorage fin(PROJECT_DIR "/asset/camera-param.yml", cv::FileStorage::READ);
-            fin["Tcb"] >> R_CI_MAT;
+            cv::FileStorage fin("asset/camera-param.yml", cv::FileStorage::READ);
+            fin["Rcb"] >> R_CI_MAT;
+            fin["Tcb"] >> T_CI_MAT;
             fin["K"] >> F_MAT;
             fin["D"] >> C_MAT;
             cv::cv2eigen(R_CI_MAT, R_CI);
+            cv::cv2eigen(T_CI_MAT, T_CI);
+            cv::cv2eigen(F_MAT, F);
+            cv::cv2eigen(C_MAT, C);
+        }
+        explicit PositionTransform(const std::string camera_param)
+        {
+            cv::FileStorage fin(camera_param, cv::FileStorage::READ);
+            fin["Rcb"] >> R_CI_MAT;
+            fin["Tcb"] >> T_CI_MAT;
+            fin["K"] >> F_MAT;
+            fin["D"] >> C_MAT;
+            cv::cv2eigen(R_CI_MAT, R_CI);
+            cv::cv2eigen(T_CI_MAT, T_CI);
             cv::cv2eigen(F_MAT, F);
             cv::cv2eigen(C_MAT, C);
         }
@@ -72,9 +87,7 @@ namespace predict
 
             Pos3D pc;
             cv::cv2eigen(tvec, pc);
-            pc[0] += 0.0278;
-            pc[1] += 0.0165;
-            pc[2] += 0.0659;
+            pc += T_CI;
             return pc;
         }
 
@@ -248,4 +261,4 @@ namespace predict
 
 }
 
-#endif //PREDICT_TOOLS_H
+#endif // PREDICT_TOOLS_H

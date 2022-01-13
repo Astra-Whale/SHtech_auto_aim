@@ -9,7 +9,7 @@ TODO: 实装预测功能 实装串口通信 替换Log实现 替换cmd_praser实�
 * CUDA10.2
 * TensorRT8
 * gcc/g++-9: ubuntu18.04 设备均需手动升级
-* Ceres-Solver: 计算库，安装方式: [编译安装](https://github.com/ceres-solver/ceres-solver)
+* Ceres-Solver: 计算库，安装方式: [编译安装](https://github.com/ceres-solver/ceres-solver) (Not necessary so far)
 * OpenCV4: 计算机视觉库，安装方式: [编译安装](https://github.com/opencv/opencv.git)
 * OpenCV_contrib: OpenCV 额外模块，安装方式: 和 OpenCV 一起[编译安装](https://github.com/opencv/opencv_contrib.git)
 * CatKin: ROS组件，串口通信依赖，安装方式: apt install catkin

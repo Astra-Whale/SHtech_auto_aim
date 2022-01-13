@@ -14,7 +14,7 @@ namespace predict
     /// 远距离弹量控制
     constexpr double distant_threshold = 6.;
 
-    void LinearPredictor::predict(std::shared_ptr<ThreadDataPack> &data)
+    void LinearPredictor::predict(std::shared_ptr<ThreadDataPack> &data, PositionTransform &position_transform)
     {
         auto &detections = data->bboxes;
         auto q_raw = data->attitude.toQuaternion();
@@ -23,10 +23,9 @@ namespace predict
         auto &send = data->robotcommand;
         auto robot_status = data->robotstatus;
 
-        Eigen::Quaternionf q(q_raw.matrix().transpose());
+        Eigen::Quaternionf q(q_raw.matrix().transpose()); // 重建四元数
         Eigen::Matrix3d R_IW = q.matrix().cast<double>(); // 生成旋转矩阵
-
-        position_transform.update_R_IW(R_IW);
+        position_transform.update_R_IW(R_IW);             // 更新旋转矩阵
 
         bbox_t armor;
 
@@ -61,7 +60,8 @@ namespace predict
         }
         if (new_detections.empty())
         {
-            send.distance = -1;
+            send.distance = -1.f;
+            send.yaw_speed = 0.f;
             last_track = false;
             return;
         }
@@ -73,7 +73,7 @@ namespace predict
 
         if (last_track) // 寻找上一次打击的装甲板
         {
-            LOGM_S("[linear] Try Armor");
+            // LOGM_S("[linear] Try Armor");
             for (auto &d : new_detections)
             {
                 auto center = points_center(d.pts);
@@ -129,20 +129,24 @@ namespace predict
 
         if (same_armor || need_init)
         {
-            Pos3D m_pw = position_transform.pnp_get_pw(armor.pts, armor.tag_id);             // point world: 目标在世界坐标系下的坐标
-            Eigen::Matrix<double, 1, 1> z_k_x{m_pw(0, 0)};                                   // z_k_x: x轴滤波器观测量
-            Eigen::Matrix<double, 1, 1> z_k_y{m_pw(1, 0)};                                   // z_k_y: y轴滤波器观测量
-            auto p_x = filter_x.update(z_k_x, t);                                            // p_x: x轴滤波器状态量
-            auto p_y = filter_y.update(z_k_y, t);                                            // p_y: y轴滤波器状态量
-            double ft = FlightTimePredict(m_pw);                                             // ft: 预测弹丸飞行时间
-            Pos3D s_pw{p_x(0, 0) + ft * p_x(1, 0), p_y(0, 0) + ft * p_y(1, 0), pos_w(2, 0)}; // s_pw: ft后预测点
-            s_pw(2, 0) -= TrajectoryCompensation(s_pw);                                      // 抬枪后预测点
-            Pos3D s_pc = position_transform.pw_to_pc(s_pw);                                  // point camera: 目标在相机坐标系下的坐标
+            Pos3D m_pw = position_transform.pnp_get_pw(armor.pts, armor.tag_id);                  // point world: 目标在世界坐标系下的坐标
+            Eigen::Matrix<double, 1, 1> z_k_x{m_pw(0, 0)};                                        // z_k_x: x轴滤波器观测量
+            Eigen::Matrix<double, 1, 1> z_k_y{m_pw(1, 0)};                                        // z_k_y: y轴滤波器观测量
+            auto p_x = filter_x.update(z_k_x, t);                                                 // p_x: x轴滤波器状态量
+            auto p_y = filter_y.update(z_k_y, t);                                                 // p_y: y轴滤波器状态量
+            double ft = FlightTimePredict(m_pw);                                                  // ft: 预测弹丸飞行时间
+            Pos3D s_pw{p_x(0, 0) + ft * p_x(1, 0), p_y(0, 0) + ft * p_y(1, 0), m_pw(2, 0)};       // s_pw: ft后预测点
+            Eigen::Vector2d r_vec(p_x(0, 0), p_y(0, 0));                                          // 目标装甲板位矢
+            Eigen::Vector2d v_vec(p_y(1, 0), -p_x(1, 0));                                         // 目标装甲板速度
+            s_pw(2, 0) -= TrajectoryCompensation(s_pw);                                           // 抬枪后预测点
+            Pos3D s_pc = position_transform.pw_to_pc(s_pw);                                       // point camera: 目标在相机坐标系下的坐标
+            double s_yaw_spd = -(r_vec.dot(v_vec)) / (r_vec.norm() * r_vec.norm()) / M_PI * 180.; // s_yaw_spd: yaw轴速度计算值
             double s_yaw = atan(s_pc(0, 0) / s_pc(2, 0)) / M_PI * 180.;
             double s_pitch = atan(s_pc(1, 0) / s_pc(2, 0)) / M_PI * 180.;
 
-            send.distance = distance_2D(s_pw);
+            send.distance = (float)distance_2D(s_pw);
             send.yaw_angle = (float)s_yaw;
+            send.yaw_speed = (float)s_yaw_spd;
             send.pitch_angle = (float)s_pitch;
         }
         else
@@ -155,8 +159,9 @@ namespace predict
             double s_yaw = atan(s_pc(0, 0) / s_pc(2, 0)) / M_PI * 180.;
             double s_pitch = atan(s_pc(1, 0) / s_pc(2, 0)) / M_PI * 180.;
 
-            send.distance = distance_2D(s_pw);
+            send.distance = (float)distance_2D(s_pw);
             send.yaw_angle = (float)s_yaw;
+            send.yaw_speed = 0.f;
             send.pitch_angle = (float)s_pitch;
 
             LOGW_S("[Linear] New Filter");

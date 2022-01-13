@@ -5,16 +5,16 @@
 #ifndef PREDICT_PREDICT_H
 #define PREDICT_PREDICT_H
 
-//submodules
+// submodules
 #include "tools.hpp"
 #include "StaticPredictor.hpp"
 #include "LinearPredictor.hpp"
 #include "RvecPredictor.hpp"
 
-//modules
+// modules
 #include "common.hpp"
 
-//packages
+// packages
 #include <ctime>
 #include <array>
 #include <string>
@@ -23,7 +23,6 @@
 #include <thread>
 #include <chrono>
 #include <Eigen/Dense>
-#include <ceres/ceres.h>
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/eigen.hpp>
 
@@ -38,6 +37,16 @@ namespace predict
     {
     public:
         /**
+         * @brief   传感器类初始化
+         * @details 创建 PositionTransform 类实例用于位置解算
+         * @param[in]
+         */
+        void init(const std::string camera_param)
+        {
+            position_transform = PositionTransform(camera_param);
+            BasicTask::init();
+        }
+        /**
          * @brief   预测线程主函数
          * @details 读取上一线程提交至缓存队列的报文指针 detection_obj_t*::obj
          *          调用 Predictor 进行预测并将结果写入报文 robotcommand 对象中
@@ -50,7 +59,8 @@ namespace predict
         void operator()(autoaim_pipline &pipbefore, autoaim_pipline &pipafter);
 
     private:
+        PositionTransform position_transform;
     };
 }
 
-#endif //PREDICT_PREDICT_H
+#endif // PREDICT_PREDICT_H

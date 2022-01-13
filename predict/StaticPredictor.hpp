@@ -5,11 +5,11 @@
 #ifndef PREDICT_STATIC_PREDICTOR_H
 #define PREDICT_STATIC_PREDICTOR_H
 
-//modules
+// modules
 #include "predict.hpp"
 #include "common.hpp"
 
-//packages
+// packages
 #include <ctime>
 #include <array>
 #include <string>
@@ -18,7 +18,6 @@
 #include <thread>
 #include <chrono>
 #include <Eigen/Dense>
-#include <ceres/ceres.h>
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/eigen.hpp>
 
@@ -27,12 +26,10 @@ namespace predict
     class StaticPredictor
     {
     private:
-        PositionTransform position_transform;
-
     public:
-        explicit StaticPredictor() : position_transform() {};
-        void predict(std::shared_ptr<ThreadDataPack> &data);
+        explicit StaticPredictor() {}
+        void predict(std::shared_ptr<ThreadDataPack> &data, PositionTransform &position_transform);
     };
 }
 
-#endif //PREDICT_STATIC_PREDICTOR_H
+#endif // PREDICT_STATIC_PREDICTOR_H
