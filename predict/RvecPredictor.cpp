@@ -1,5 +1,5 @@
 //
-// Created by Haoran-Jiang on 2021/11/20.
+// Created by Qingcheng-Zhao on 2021/11/20.
 //
 
 #include "RvecPredictor.hpp"
@@ -14,7 +14,7 @@ namespace predict
     /// 远距离弹量控制
     constexpr double distant_threshold = 6.;
 
-    void RvecPredictor::predict(std::shared_ptr<ThreadDataPack> &data)
+    void RvecPredictor::predict(std::shared_ptr<ThreadDataPack> &data, PositionTransform &position_transform)
     {
         auto &detections = data->bboxes;
         auto q_raw = data->attitude.toQuaternion();
@@ -61,11 +61,11 @@ namespace predict
         if (new_detections.empty())
         {
             send.distance = -1;
-            //if (DEBUG) std::cout << "No valid armor!" << std::endl;
+            // if (DEBUG) std::cout << "No valid armor!" << std::endl;
             return;
         }
         armor = new_detections.front();
 
-        Pos3D m_pw = position_transform.pnp_get_pw(armor.pts, armor.tag_id); // point world: 目标在世界坐标系下的坐标。（世界坐标系:陀螺仪的全局世界坐标系）
+        double angle = position_transform.pnp_get_angle(armor.pts, armor.tag_id);
     }
 }

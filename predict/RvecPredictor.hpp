@@ -18,7 +18,6 @@
 #include <thread>
 #include <chrono>
 #include <Eigen/Dense>
-#include <ceres/ceres.h>
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/eigen.hpp>
 
@@ -27,11 +26,9 @@ namespace predict
     class RvecPredictor
     {
     private:
-        PositionTransform position_transform;
-
     public:
-        explicit RvecPredictor() : position_transform() {};
-        void predict(std::shared_ptr<ThreadDataPack> &data);
+        explicit RvecPredictor() {}
+        void predict(std::shared_ptr<ThreadDataPack> &data, PositionTransform &position_transform);
     };
 }
 

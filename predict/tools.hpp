@@ -124,7 +124,11 @@ namespace predict
             R_IW = _R_IW;
         }
 
-        double pnp_get_angle(const cv::Point2f p[4], int armor_number)
+		inline double rad2deg(double x) {
+			return x / acos(-1) * 180;
+		}
+
+        inline double pnp_get_angle(const cv::Point2f p[4], int armor_number)
         {
 
             static const std::vector<cv::Point3d> pw_small = {// 单位：m
@@ -137,17 +141,21 @@ namespace predict
                                                             {-0.115, -0.029, 0.},
                                                             {0.115, -0.029, 0.},
                                                             {0.115, 0.029, 0.}};
+
             std::vector<cv::Point3d> pw_cur;
             std::vector<cv::Point2d> pu(p, p + 4);
 
             cv::Mat rvec, tvec, mat_R;
-            Eigen::MatrixXd R, T, w_p[4];
-            Pos3D e_x, a_hat;
+
+            Eigen::MatrixXd R;
+
+            Pos3D e_x, a_hat, c_p[4], T;
 
             if (armor_number == 0 || armor_number == 1 || armor_number == 8)
                 pw_cur = pw_big;
             else
                 pw_cur = pw_small;
+
             cv::solvePnP(pw_cur, pu, F_MAT, C_MAT, rvec, tvec);
 
             cv::Rodrigues(rvec, mat_R);
@@ -155,14 +163,18 @@ namespace predict
             cv::cv2eigen(tvec, T);
 
             for (int i = 0; i < 4; ++i) {
-                cv::cv2eigen(pw_cur[i], w_p[i]);
-                w_p[i] = R * w_p[i].transpose() + T;
+				Pos3D temp(pw_cur[i].x, pw_cur[i].y, pw_cur[i].z);
+                c_p[i] = R * temp + T;
             }
 
-            e_x << 1, 0, 0;
-            a_hat = w_p[2] - w_P[1];
-            double angle = a_hat.dot(e_x) / a_hat.norm() / e_x.norm();
-            std::cout << acos(angle) << std::endl;
+            a_hat = c_p[2] - c_p[1];
+			std::cout << "C_1: \n" << c_p[1] << std::endl;
+			std::cout << "C_2: \n" << c_p[2] << std::endl;
+			std::cout << "a_hat: \n" << a_hat << std::endl;
+			a_hat[1] = 0;
+			std::cout << "norm: \n" << a_hat.norm() << std::endl;
+            double angle = acos(a_hat[2] / a_hat.norm());
+            std::cout << "Angle " << rad2deg(angle) << std::endl << std::endl;
 
             return angle;
         }
