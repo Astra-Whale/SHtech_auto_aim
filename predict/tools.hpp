@@ -38,7 +38,6 @@ namespace predict
         cv::Mat T_CI_MAT;              // 陀螺仪坐标系到相机坐标系平移矩阵CV-Mat
         cv::Mat F_MAT;                 // 相机内参矩阵CV-Mat
         cv::Mat C_MAT;                 // 相机畸变矩阵CV-Mat
-        const double EPS = 1e-4;
     public:
         explicit PositionTransform()
         {
@@ -150,7 +149,7 @@ namespace predict
 
             Eigen::Matrix3d R;
 
-            Pos3D e_x, a_hat, c_p[4], T;
+            Pos3D e_x, c_p[4], T;
 
             if (armor_number == 0 || armor_number == 1 || armor_number == 8)
                 pw_cur = pw_big;
@@ -178,7 +177,7 @@ namespace predict
             
             std::vector<Pos3D> c_p = pnp_get_cam_pos(p, armor_number);
 
-            a_hat = c_p[2] - c_p[1];
+            Pos3D a_hat = c_p[2] - c_p[1];
 			a_hat[1] = 0;
             double angle = acos(a_hat[2] / a_hat.norm());
 
@@ -188,43 +187,47 @@ namespace predict
         inline Pos3D pnp_get_center(const cv::Point2f p1[4], const cv::Point2f p2[4], int armor_number)
         {
             
+			const double EPS = 1e-4;
             std::vector<Pos3D> c_p1 = pnp_get_cam_pos(p1, armor_number);
             std::vector<Pos3D> c_p2 = pnp_get_cam_pos(p2, armor_number);
 
             Pos3D temp1, temp2;
             temp1 = c_p1[1] - c_p1[2];
-            temp2 = c_p1[1] - c_p1[2];
+            temp2 = c_p2[1] - c_p2[2];
 
-            Eigen::Vector2d edge1(temp1.x, temp1.z);
-            Eigen::Vector2d edge2(temp2.x, temp2.z);
-            Eigen::Vector2d mid1((c_p1[1].x + c_p1[2].x) / 2, (c_p1[1].z + c_p1[2].z) / 2);
-            Eigen::Vector2d mid2((c_p2[1].x + c_p2[2].x) / 2, (c_p2[1].z + c_p2[2].z) / 2);
+            Eigen::Vector2d edge1;
+			edge1[0] = temp1[0]; edge1[1] = temp1[2];
+            Eigen::Vector2d edge2;
+			edge2[0] = temp2[0]; edge2[1] = temp2[2];
+
+            Eigen::Vector2d mid1((c_p1[1][0] + c_p1[2][0]) / 2, (c_p1[1][2] + c_p1[2][2]) / 2);
+            Eigen::Vector2d mid2((c_p2[1][0] + c_p2[2][0]) / 2, (c_p2[1][2] + c_p2[2][2]) / 2);
             Eigen::Vector2d dir1, dir2, b, t, o;
 
-            if(fabs(edge1.x) < EPS && fabs(edge1.y) < EPS) {
+            if(fabs(edge1[0]) < EPS && fabs(edge1[1]) < EPS) {
                 Pos3D res(0, 0, -0x3f3f3f);
                 return res;
             }
             
-            dir1.y = fabs(edge1.x) / edge1.norm();
-            dir1.x = edge1.y / edge1.norm() * (edge1.x * edge1.y > 0 ? -1 : 1);
+            dir1[1] = fabs(edge1[0]) / edge1.norm();
+            dir1[0] = edge1[1] / edge1.norm() * (edge1[0] * edge1[1] > 0 ? -1 : 1);
 
-            dir2.y = fabs(edge2.x) / edge2.norm();
-            dir2.x = edge2.y / edge2.norm() * (edge2.x * edge2.y > 0 ? -1 : 1);
+            dir2[1] = fabs(edge2[0]) / edge2.norm();
+            dir2[0] = edge2[1] / edge2.norm() * (edge2[0] * edge2[1] > 0 ? -1 : 1);
 
             Eigen::Matrix2d A;
             dir2 = -dir2;
             A << dir1, dir2;
             b = dir2 - dir1;
             
-            if(!A.isInvertible()) {
+            if(fabs(A.determinant()) < EPS) {
                 Pos3D res(0, 0, -0x3f3f3f);
                 return res;
             }
             t = A.inverse() * b;
-            o = mid1 + t.x * dir1;
+            o = mid1 + t[0] * dir1;
 
-            Pos3D res(o.x, 0, o.y);
+            Pos3D res(o[0], 0, o[1]);
             return res;
         }
 

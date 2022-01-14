@@ -64,8 +64,14 @@ namespace predict
             // if (DEBUG) std::cout << "No valid armor!" << std::endl;
             return;
         }
-        armor = new_detections.front();
+		if(new_detections.size() > 1) {
+			Pos3D center = position_transform.pnp_get_center(new_detections[0].pts, new_detections[1].pts, new_detections[0].tag_id);
+			if(center[2] > -0x3f3f3f + 1) {
+				std::cout << center << std::endl;
+			}
+		}
+        //armor = new_detections.front();
 
-        double angle = position_transform.pnp_get_angle(armor.pts, armor.tag_id);
+        //double angle = position_transform.pnp_get_angle(armor.pts, armor.tag_id);
     }
 }
