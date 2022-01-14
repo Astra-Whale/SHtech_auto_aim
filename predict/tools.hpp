@@ -147,7 +147,7 @@ namespace predict
 
             cv::Mat rvec, tvec, mat_R;
 
-            Eigen::MatrixXd R;
+            Eigen::Matrix3d R;
 
             Pos3D e_x, a_hat, c_p[4], T;
 
@@ -162,17 +162,24 @@ namespace predict
             cv::cv2eigen(mat_R, R);
             cv::cv2eigen(tvec, T);
 
-            for (int i = 0; i < 4; ++i) {
+            for (int i = 0; i < 4; ++i)
+			{
 				Pos3D temp(pw_cur[i].x, pw_cur[i].y, pw_cur[i].z);
                 c_p[i] = R * temp + T;
             }
 
             a_hat = c_p[2] - c_p[1];
+			std::cout << "Picture: \n" << pu << std::endl;
+			std::cout << "Rod CV: \n" << mat_R << std::endl;
+			std::cout << "Rod EI: \n" << R << std::endl;
+
+			std::cout << "C_0: \n" << c_p[0] << std::endl;
 			std::cout << "C_1: \n" << c_p[1] << std::endl;
 			std::cout << "C_2: \n" << c_p[2] << std::endl;
+			std::cout << "C_3: \n" << c_p[3] << std::endl;
 			std::cout << "a_hat: \n" << a_hat << std::endl;
 			a_hat[1] = 0;
-			std::cout << "norm: \n" << a_hat.norm() << std::endl;
+			//std::cout << "norm: \n" << a_hat.norm() << std::endl;
             double angle = acos(a_hat[2] / a_hat.norm());
             std::cout << "Angle " << rad2deg(angle) << std::endl << std::endl;
 
