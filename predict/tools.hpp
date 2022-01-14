@@ -38,6 +38,7 @@ namespace predict
         cv::Mat T_CI_MAT;              // 陀螺仪坐标系到相机坐标系平移矩阵CV-Mat
         cv::Mat F_MAT;                 // 相机内参矩阵CV-Mat
         cv::Mat C_MAT;                 // 相机畸变矩阵CV-Mat
+        const double EPS = 1e-4;
     public:
         explicit PositionTransform()
         {
@@ -127,10 +128,10 @@ namespace predict
 		inline double rad2deg(double x) {
 			return x / acos(-1) * 180;
 		}
-
-        inline double pnp_get_angle(const cv::Point2f p[4], int armor_number)
+        
+        //pnp解算:求出装甲板四角点在相机坐标系的位置
+        inline std::vector<Pos3D> pnp_get_cam_pos(const cv::Point2f p[4], int armor_number)
         {
-
             static const std::vector<cv::Point3d> pw_small = {// 单位：m
                                                               {-0.066, 0.027, 0.},
                                                               {-0.066, -0.027, 0.},
@@ -167,24 +168,66 @@ namespace predict
 				Pos3D temp(pw_cur[i].x, pw_cur[i].y, pw_cur[i].z);
                 c_p[i] = R * temp + T;
             }
+            
+            std::vector<Pos3D> res(c_p, c_p + 4);
+            return res;
+        }
+
+        inline double pnp_get_angle(const cv::Point2f p[4], int armor_number)
+        {
+            
+            std::vector<Pos3D> c_p = pnp_get_cam_pos(p, armor_number);
 
             a_hat = c_p[2] - c_p[1];
-			std::cout << "Picture: \n" << pu << std::endl;
-			std::cout << "Rod CV: \n" << mat_R << std::endl;
-			std::cout << "Rod EI: \n" << R << std::endl;
-
-			std::cout << "C_0: \n" << c_p[0] << std::endl;
-			std::cout << "C_1: \n" << c_p[1] << std::endl;
-			std::cout << "C_2: \n" << c_p[2] << std::endl;
-			std::cout << "C_3: \n" << c_p[3] << std::endl;
-			std::cout << "a_hat: \n" << a_hat << std::endl;
 			a_hat[1] = 0;
-			//std::cout << "norm: \n" << a_hat.norm() << std::endl;
             double angle = acos(a_hat[2] / a_hat.norm());
-            std::cout << "Angle " << rad2deg(angle) << std::endl << std::endl;
 
             return angle;
         }
+
+        inline Pos3D pnp_get_center(const cv::Point2f p1[4], const cv::Point2f p2[4], int armor_number)
+        {
+            
+            std::vector<Pos3D> c_p1 = pnp_get_cam_pos(p1, armor_number);
+            std::vector<Pos3D> c_p2 = pnp_get_cam_pos(p2, armor_number);
+
+            Pos3D temp1, temp2;
+            temp1 = c_p1[1] - c_p1[2];
+            temp2 = c_p1[1] - c_p1[2];
+
+            Eigen::Vector2d edge1(temp1.x, temp1.z);
+            Eigen::Vector2d edge2(temp2.x, temp2.z);
+            Eigen::Vector2d mid1((c_p1[1].x + c_p1[2].x) / 2, (c_p1[1].z + c_p1[2].z) / 2);
+            Eigen::Vector2d mid2((c_p2[1].x + c_p2[2].x) / 2, (c_p2[1].z + c_p2[2].z) / 2);
+            Eigen::Vector2d dir1, dir2, b, t, o;
+
+            if(fabs(edge1.x) < EPS && fabs(edge1.y) < EPS) {
+                Pos3D res(0, 0, -0x3f3f3f);
+                return res;
+            }
+            
+            dir1.y = fabs(edge1.x) / edge1.norm();
+            dir1.x = edge1.y / edge1.norm() * (edge1.x * edge1.y > 0 ? -1 : 1);
+
+            dir2.y = fabs(edge2.x) / edge2.norm();
+            dir2.x = edge2.y / edge2.norm() * (edge2.x * edge2.y > 0 ? -1 : 1);
+
+            Eigen::Matrix2d A;
+            dir2 = -dir2;
+            A << dir1, dir2;
+            b = dir2 - dir1;
+            
+            if(!A.isInvertible()) {
+                Pos3D res(0, 0, -0x3f3f3f);
+                return res;
+            }
+            t = A.inverse() * b;
+            o = mid1 + t.x * dir1;
+
+            Pos3D res(o.x, 0, o.y);
+            return res;
+        }
+
     };
 
     // xy平面上的两点距离
