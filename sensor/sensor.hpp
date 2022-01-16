@@ -44,7 +44,7 @@ namespace sensor
             imu->close();
         }
 
-        void init(const std::string VideoSource, const std::string ImuSource, const std::string port)
+        void init(const std::string VideoSource, const std::string ImuSource, const std::string port, const std::string flip_image)
         {
             LOGM_S("[sensor] comm I/O on %s", port.c_str());
             if (port != "None")
@@ -84,6 +84,16 @@ namespace sensor
             {
                 LOGE_S("[sensor]Error: IMU init failed");
             }
+            if (flip_image == "1")
+            {
+                is_image_input_flipped = true;
+				LOGW_S("[sensor] Input image will be flipped");
+            }
+            else 
+            {
+                is_image_input_flipped = false;
+				LOGW_S("[sensor] Input image will not be flipped");
+            }
             LOGM_S("[senosr] IMU ready");
             LOGM_S("[sensor] ready");
             BasicTask::init();
@@ -106,6 +116,7 @@ namespace sensor
         WrapperHead *video; /*!< unique_ptr 智能指针 指向一个用于 TensorRT 推理的 TRTModule 对象 在 init 期间完成初始化 */
         ImuHead *imu;
         Comm comm;
+        bool is_image_input_flipped;
     };
 }
 

@@ -38,7 +38,7 @@ bool init(void)
     LOGM_F("open log file success!");
     LOGM_S("open log file success!");
 
-    sensor_reader.init(info["source"], info["imu"], info["port"]);
+    sensor_reader.init(info["source"], info["imu"], info["port"], info["flip"]);
     detector.init(info["model"]);
     predictor.init(info["camera_para"]);
     sensor_reader.setdebug(display["sensor_debug"]);

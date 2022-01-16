@@ -6,10 +6,70 @@
 #include "sensor.hpp"
 namespace sensor
 {
+    /**
+     * @brief 控制输入的最大范围
+     *
+     * @param input 输入量
+     * @param max 最大值（绝对值）
+     * @return float 约化的输出值
+     */
     float val_limit(float input, float max)
     {
         return input < max ? input > -max ? input : -max : max;
     }
+
+    /**
+     * @brief 用于输出角度滤波的辅助类
+     *
+     */
+    class AngleFilter
+    {
+	private:
+        float angle{0.f};
+        bool init{true};
+		
+	public:
+        /**
+         * @brief 重置滤波器
+         *
+         */
+        void reset()
+        {
+            angle = 0.f;
+            init = true;
+        }
+
+        /**
+         * @brief 更新滤波器输入
+         *
+         * @param input 输入
+         * @return float 输出
+         */
+        float update(float input)
+        {
+            if (init)
+            {
+                angle = input;
+                init = false;
+            }
+            else
+            {
+                angle = angle * 0.9f + input * 0.1f;
+            }
+            return angle;
+        }
+
+        /**
+         * @brief 获取滤波器输出
+         *
+         * @return float 输出
+         */
+        float output()
+        {
+            return angle;
+        }
+    };
+
     void Sensor::operator()(autoaim_pipline &pipbefore, autoaim_pipline &pipafter)
     {
         /**
@@ -28,6 +88,7 @@ namespace sensor
 
         int totalFrameCounter = 0; /*!< 总帧数计数器 */
         fps_counter total_fps("total_fps");
+        AngleFilter pitch_angle_filter;
 
         do
         {
@@ -54,18 +115,23 @@ namespace sensor
                 continue;
             }
 
-            if (comm.isOpen() && obj->robotcommand.distance != -1)
+            if (is_image_input_flipped)
+            {
+                cv::flip(obj->frame, obj->frame, -1);
+            }
+
+            if (comm.isOpen() && obj->robotcommand.distance > 0)
             {
                 auto &send = obj->robotcommand;
                 auto &_attitude = obj->attitude;
                 comm.transmit(_attitude.yaw + val_limit(send.yaw_angle, 10),
-                              _attitude.pitch + val_limit(send.pitch_angle, 10),
+                              pitch_angle_filter.update(_attitude.pitch + val_limit(send.pitch_angle, 10)),
                               send.yaw_speed, send.distance);
                 if (_debug)
                 {
                     LOGM_S("[transmit] p-p:%6.2f | p-m:%6.2f | p-s:%6.2f | y-p:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f",
                            send.pitch_angle, _attitude.pitch,
-                           _attitude.pitch + val_limit(send.pitch_angle, 10),
+                           pitch_angle_filter.output(),
                            send.yaw_angle, _attitude.yaw,
                            _attitude.yaw + val_limit(send.yaw_angle, 10),
                            send.yaw_speed);
@@ -80,9 +146,9 @@ namespace sensor
              */
             if (_show)
             {
-                /*cv::Mat im2show = obj->frame.clone();
+                cv::Mat im2show = obj->frame.clone();
                 cv::imshow("sensor", im2show);
-                cv::waitKey(1);*/
+                cv::waitKey(1);
             }
 
             /**
@@ -90,7 +156,8 @@ namespace sensor
              */
             if (_debug)
             {
-                LOGM_S("[sensor]Info: Idx = %d, Bytes = %d", obj->index, obj->frame.size().height * obj->frame.size().width);
+                CNT_FPS(total_fps, {});
+                // LOGM_S("[sensor]Info: Idx = %d, Bytes = %d", obj->index, obj->frame.size().height * obj->frame.size().width);
             }
             pipafter.put(obj); /*!< 向下一线程的缓存队列提交报文指针*/
         } while (_run);
