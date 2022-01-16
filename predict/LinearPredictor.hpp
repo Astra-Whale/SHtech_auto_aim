@@ -48,16 +48,13 @@ namespace predict
             Matxx A = Matxx::Identity(); //转移矩阵
             Matzx H;                     //观测矩阵
             Matxx R;                     //过程噪声矩阵
-            Matzz Q{0.1};                //测量噪声矩阵
+            Matzz Q{0.05};               //测量噪声矩阵
             Matx1 init{0, 0};            //初始值
             ///初始化观测矩阵
             H(0, 0) = 1;
             ///初始化过程方差
-            R(0, 0) = 0.01;
-            for (int i = 1; i < 2; i++)
-            {
-                R(i, i) = 100;
-            }
+            R(0, 0) = 10;
+            R(1, 1) = 10;
             ///初始化滤波器
             filter_x = _filter(A, H, R, Q, init, std::chrono::high_resolution_clock::now());
             filter_y = _filter(A, H, R, Q, init, std::chrono::high_resolution_clock::now());
