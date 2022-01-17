@@ -137,6 +137,10 @@ namespace sensor
                            send.yaw_speed);
                 }
             }
+            else
+            {
+                pitch_angle_filter.reset();
+            }
 
             if (imu != nullptr)
                 imu->get_attitude(obj->attitude);
