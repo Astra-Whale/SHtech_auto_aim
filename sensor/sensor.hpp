@@ -76,10 +76,6 @@ namespace sensor
                 else
                     imu = new UartIMU(&comm);
             }
-            else if (ImuSource == "BMI")
-            {
-                imu = new BMI160();
-            }
             if (imu == nullptr || !imu->init())
             {
                 LOGE_S("[sensor]Error: IMU init failed");
