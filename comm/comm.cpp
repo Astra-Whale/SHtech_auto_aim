@@ -2,6 +2,7 @@
 #include <algorithm>
 
 pc_mcu_data_t gim_state = {0};
+robot_data_t robot_state = {0};
 
 static void imu_handler(uint8_t *data, uint16_t length)
 {
@@ -10,6 +11,11 @@ static void imu_handler(uint8_t *data, uint16_t length)
     gim_state.curr_pitch = gim_state.curr_pitch;
 
     // update_pose(mcu_data->curr_yaw, mcu_data->curr_pitch, 0);
+}
+
+static void robot_state_handler(uint8_t *data, uint16_t length)
+{
+    robot_state = *(robot_data_t *)data;
 }
 
 Comm::Comm() : state(false)
@@ -45,7 +51,7 @@ bool Comm::isOpen() const
     return state;
 }
 
-bool Comm::transmit(float _yaw, float _pit,float _dist)
+bool Comm::transmit(float _yaw, float _pit, float _dist)
 {
     if (!state)
     {
