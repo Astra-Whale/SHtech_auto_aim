@@ -21,7 +21,6 @@ public:
 };
 
 //submodules
-#include "bmi160/BMI160.hpp"
 #include "UartIMU/uartimu.hpp"
 
 #endif

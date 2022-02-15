@@ -8,13 +8,10 @@ find_package(Threads REQUIRED)
 
 include_directories(${OpenCV_INCLUDE_DIRS})
 include_directories(${EIGEN3_INCLUDE_DIR})
-include_directories(i2c)
 
 aux_source_directory(video video_src)
 aux_source_directory(hikcam hikcam_src)
-aux_source_directory(bmi160 bmi160_src)
 aux_source_directory(UartIMU uartimu_src)
-aux_source_directory(i2c i2c_src)
 
 #Hik Cam Supporting libraries
 SET(MVS_LD_FLAGS "-Wl,-rpath,")
