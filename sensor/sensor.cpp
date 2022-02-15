@@ -24,11 +24,11 @@ namespace sensor
      */
     class AngleFilter
     {
-	private:
+    private:
         float angle{0.f};
         bool init{true};
-		
-	public:
+
+    public:
         /**
          * @brief 重置滤波器
          *
@@ -143,7 +143,10 @@ namespace sensor
             }
 
             if (imu != nullptr)
+            {
                 imu->get_attitude(obj->attitude);
+                imu->get_robotstatus(obj->robotstatus);
+            }
 
             /**
              * @brief 当需要展示结果时，绘制 bounding box

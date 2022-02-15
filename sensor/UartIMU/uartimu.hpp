@@ -21,6 +21,7 @@ class UartIMU : public ImuHead
 private:
     Comm *comm;
     Attitude attitude_buf;
+    RobotStatus robotstatus_buf;
     bool mRun;
     std::thread t_imu_read;
 
@@ -47,6 +48,10 @@ public:
     void get_quaternion(Eigen::Quaternionf &q) final
     {
         attitude_buf.toQuaternion(q);
+    }
+    void get_robotstatus(RobotStatus &robotstatus) final
+    {
+        robotstatus = robotstatus_buf;
     }
     ~UartIMU()
     {
