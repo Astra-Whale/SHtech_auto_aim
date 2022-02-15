@@ -10,7 +10,7 @@
 
 #include "common.hpp"
 
-//packages
+// packages
 #include <stdint.h>
 #include <array>
 #include <chrono>
@@ -21,6 +21,7 @@ enum class EnemyColor : uint8_t
     // 敌方颜色
     RED = 0,
     BLUE = 1,
+    GRAY = 2,
 };
 
 enum class ProgramMode : uint8_t
@@ -57,11 +58,10 @@ struct RobotStatus
 {
     ProgramMode program_mode = ProgramMode::AUTO_AIM;
     float robot_speed_mps = 28.0f;
-    uint8_t enemy[6];                         // 敌方哨兵0、英雄1、工程2、步兵3、步兵4、步兵5
-                                              // int(真实血量 / 10)
+    uint16_t enemy[6];                        // 敌方哨兵0、英雄1、工程2、步兵3、步兵4、步兵5
     GameState game_state = GameState::COMMON; // 是否设计远处
     EnemyColor enemy_color;
-} __attribute__((packed));
+};
 
 struct RobotCommand
 {
@@ -70,9 +70,9 @@ struct RobotCommand
     float yaw_speed;
     float pitch_angle;
     float pitch_speed;
-    uint8_t shoot_mode;
+    ShootMode shoot_mode;
     int target_id;
-} __attribute__((packed));
+};
 
 struct bbox_t
 {
@@ -101,15 +101,13 @@ public:
     {
         Eigen::Quaternionf q;
         q = Eigen::AngleAxisf(yaw / 180 * M_PI, Eigen::Vector3f::UnitZ()) *
-            Eigen::AngleAxisf(pitch / 180 * M_PI, Eigen::Vector3f::UnitY()) *
-            Eigen::AngleAxisf(roll / 180 * M_PI, Eigen::Vector3f::UnitX());
+            Eigen::AngleAxisf(pitch / 180 * M_PI, Eigen::Vector3f::UnitX());
         return q;
     }
     void toQuaternion(Eigen::Quaternionf &q)
     {
         q = Eigen::AngleAxisf(yaw / 180 * M_PI, Eigen::Vector3f::UnitZ()) *
-            Eigen::AngleAxisf(pitch / 180 * M_PI, Eigen::Vector3f::UnitY()) *
-            Eigen::AngleAxisf(roll / 180 * M_PI, Eigen::Vector3f::UnitX());
+            Eigen::AngleAxisf(pitch / 180 * M_PI, Eigen::Vector3f::UnitX());
     }
 };
 
@@ -127,4 +125,4 @@ struct ThreadDataPack
     std::chrono::high_resolution_clock::time_point time;
 };
 
-#endif //COMMON_ROBOT_H
+#endif // COMMON_ROBOT_H
