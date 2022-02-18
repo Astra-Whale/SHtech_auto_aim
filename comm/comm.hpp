@@ -41,8 +41,8 @@ typedef struct __attribute__((packed))
 typedef struct __attribute__((packed))
 {
     float yaw;
-    float pit;
     float yaw_spd;
+    float pit;
     float dist;
     uint8_t shoot;
 } adv_detection_t;

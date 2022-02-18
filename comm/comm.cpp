@@ -80,8 +80,8 @@ bool Comm::transmit(float _yaw, float _pit, float _spd, float _dist)
 
     adv_detection_t msg = {
         .yaw = _yaw,
-        .pit = _pit,
         .yaw_spd = _spd,
+        .pit = _pit,
         .dist = _dist,
         .shoot = 1};
     len = protocol_provider.pack(send, SOF, GIMAdv_CMD_ID, (uint8_t *)&msg, sizeof(adv_detection_t));
