@@ -16,6 +16,7 @@ public:
     virtual bool init() = 0;
     virtual void get_attitude(Attitude &_attitude) = 0;
     virtual void get_quaternion(Eigen::Quaternionf&) = 0;
+    virtual void get_robotstatus(RobotStatus &robotstatus) = 0;
     virtual void start() = 0;
     virtual void close() = 0;
 };
