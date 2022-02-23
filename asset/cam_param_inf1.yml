@@ -27,4 +27,4 @@ Tcb: !!opencv-matrix
    rows: 3
    cols: 1
    dt: f
-   data: [ 0., -4.4e-02, 8.7e-02 ]
+   data: [ 0., 4.4e-02, 8.7e-02 ]
