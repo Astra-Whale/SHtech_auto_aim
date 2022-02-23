@@ -60,7 +60,7 @@ struct RobotStatus
     float robot_speed_mps = 28.0f;
     uint16_t enemy[6];                        // 敌方哨兵0、英雄1、工程2、步兵3、步兵4、步兵5
     GameState game_state = GameState::COMMON; // 是否设计远处
-    EnemyColor enemy_color;
+    EnemyColor enemy_color = EnemyColor::RED;
 };
 
 struct RobotCommand
