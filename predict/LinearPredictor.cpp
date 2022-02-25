@@ -34,8 +34,7 @@ namespace predict
         for (auto &d : detections)
         {
             if ((int(robot_status.enemy_color) == d.color_id && d.tag_id != 0 && d.tag_id != 6) ||
-                (int(robot_status.enemy_color) == 2)
-            ) // 不能随意修改，否则会数组越界0-5
+                (int(robot_status.enemy_color) == 2)) // 不能随意修改，否则会数组越界0-5
             {
                 /* 放行正确颜色的装甲板 */
                 Pos3D m_pc = position_transform.pnp_get_pc(d.pts, d.tag_id); // point camera: 目标在相机坐标系下的坐标
@@ -136,11 +135,11 @@ namespace predict
             Eigen::Matrix<double, 1, 1> z_k_y{m_pw(1, 0)};                                        // z_k_y: y轴滤波器观测量
             auto p_x = filter_x.update(z_k_x, t);                                                 // p_x: x轴滤波器状态量
             auto p_y = filter_y.update(z_k_y, t);                                                 // p_y: y轴滤波器状态量
-            double ft = FlightTimePredict(m_pw);                                                  // ft: 预测弹丸飞行时间
+            double ft = FlightTimePredict(m_pw, robot_status.robot_speed_mps);                    // ft: 预测弹丸飞行时间
             Pos3D s_pw{p_x(0, 0) + ft * p_x(1, 0), p_y(0, 0) + ft * p_y(1, 0), m_pw(2, 0)};       // s_pw: ft后预测点
             Eigen::Vector2d r_vec(p_x(0, 0), p_y(0, 0));                                          // 目标装甲板位矢
             Eigen::Vector2d v_vec(p_y(1, 0), -p_x(1, 0));                                         // 目标装甲板速度
-            s_pw(2, 0) -= TrajectoryCompensation(s_pw);                                           // 抬枪后预测点
+            s_pw(2, 0) -= TrajectoryCompensation(s_pw, robot_status.robot_speed_mps);             // 抬枪后预测点
             Pos3D s_pc = position_transform.pw_to_pc(s_pw);                                       // point camera: 目标在相机坐标系下的坐标
             double s_yaw_spd = -(r_vec.dot(v_vec)) / (r_vec.norm() * r_vec.norm()) / M_PI * 180.; // s_yaw_spd: yaw轴速度计算值
             double s_yaw = atan(s_pc(0, 0) / s_pc(2, 0)) / M_PI * 180.;
@@ -153,11 +152,11 @@ namespace predict
         }
         else
         {
-            Pos3D m_pw = position_transform.pnp_get_pw(armor.pts, armor.tag_id); // point world: 目标在世界坐标系下的坐标
-            filter_x.reset(m_pw(0, 0), t), filter_y.reset(m_pw(1, 0), t);        // 重置 x,y 轴滤波器
-            double height = TrajectoryCompensation(m_pw);                        // height: 弹道下坠高度
-            Pos3D s_pw{m_pw(0, 0), m_pw(1, 0), m_pw(2, 0) - height};             // 抬枪后预测点
-            Pos3D s_pc = position_transform.pw_to_pc(s_pw);                      // point camera: 目标在相机坐标系下的坐标
+            Pos3D m_pw = position_transform.pnp_get_pw(armor.pts, armor.tag_id);        // point world: 目标在世界坐标系下的坐标
+            filter_x.reset(m_pw(0, 0), t), filter_y.reset(m_pw(1, 0), t);               // 重置 x,y 轴滤波器
+            double height = TrajectoryCompensation(m_pw, robot_status.robot_speed_mps); // height: 弹道下坠高度
+            Pos3D s_pw{m_pw(0, 0), m_pw(1, 0), m_pw(2, 0) - height};                    // 抬枪后预测点
+            Pos3D s_pc = position_transform.pw_to_pc(s_pw);                             // point camera: 目标在相机坐标系下的坐标
             double s_yaw = atan(s_pc(0, 0) / s_pc(2, 0)) / M_PI * 180.;
             double s_pitch = atan(s_pc(1, 0) / s_pc(2, 0)) / M_PI * 180.;
 

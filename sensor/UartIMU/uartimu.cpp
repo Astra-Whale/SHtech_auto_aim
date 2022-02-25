@@ -10,6 +10,10 @@ void UartIMU::read_handler()
         attitude_buf.pitch = gim_state.curr_pitch;
         attitude_buf.roll = 0;
         robotstatus_buf.robot_speed_mps = gim_state.shoot_speed;
+        if (robotstatus_buf.robot_speed_mps < 10.0f)
+        {
+            robotstatus_buf.robot_speed_mps = 10.0f;
+        }
         if (0 < robot_state.robot_id && robot_state.robot_id < 20)
         {
             robotstatus_buf.enemy_color = EnemyColor::BLUE;
