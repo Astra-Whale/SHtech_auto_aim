@@ -9,8 +9,6 @@ static void imu_handler(uint8_t *data, uint16_t length)
     gim_state = *(pc_mcu_data_t *)data;
     gim_state.curr_yaw = gim_state.curr_yaw;
     gim_state.curr_pitch = gim_state.curr_pitch;
-
-    // update_pose(mcu_data->curr_yaw, mcu_data->curr_pitch, 0);
 }
 
 static void robot_state_handler(uint8_t *data, uint16_t length)
@@ -21,6 +19,7 @@ static void robot_state_handler(uint8_t *data, uint16_t length)
 Comm::Comm() : state(false)
 {
     rec.register_handler(CMD_MCU_DATA, imu_handler);
+    rec.register_handler(CMD_ROBOT_DATA, robot_state_handler);
 }
 
 bool Comm::open(const std::string &port)
