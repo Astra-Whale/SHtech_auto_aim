@@ -128,7 +128,7 @@ namespace predict
             need_init = true;
         }
 
-        if (same_armor || need_init)
+        if (same_armor)
         {
             Pos3D m_pw = position_transform.pnp_get_pw(armor.pts, armor.tag_id);                  // point world: 目标在世界坐标系下的坐标
             Eigen::Matrix<double, 1, 1> z_k_x{m_pw(0, 0)};                                        // z_k_x: x轴滤波器观测量
