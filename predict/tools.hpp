@@ -41,11 +41,10 @@ namespace predict
     public:
         explicit PositionTransform()
         {
-            cv::FileStorage fin("asset/camera-param.yml", cv::FileStorage::READ);
-            fin["Rcb"] >> R_CI_MAT;
-            fin["Tcb"] >> T_CI_MAT;
-            fin["K"] >> F_MAT;
-            fin["D"] >> C_MAT;
+            R_CI_MAT = cv::Mat::zeros(3, 3, CV_64FC1);
+            T_CI_MAT = cv::Mat::zeros(3, 1, CV_64FC1);
+            F_MAT = cv::Mat::zeros(3, 3, CV_64FC1);
+            C_MAT = cv::Mat::zeros(1, 5, CV_64FC1);
             cv::cv2eigen(R_CI_MAT, R_CI);
             cv::cv2eigen(T_CI_MAT, T_CI);
             cv::cv2eigen(F_MAT, F);
