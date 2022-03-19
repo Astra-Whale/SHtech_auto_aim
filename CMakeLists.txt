@@ -21,8 +21,12 @@ else ()
     add_compile_options(-O0 -g)
 endif ()
 
+find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(CUDA REQUIRED)
+include_directories(${OpenCV_INCLUDE_DIRS})
 include_directories(${EIGEN3_INCLUDE_DIR})
+include_directories(${CUDA_INCLUDE_DIRS})
 
 add_executable(${exe_name} main.cpp)
 
