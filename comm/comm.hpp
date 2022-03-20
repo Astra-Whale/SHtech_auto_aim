@@ -94,8 +94,8 @@ class Comm
 public:
     Comm();
     bool open(const std::string &port = "/dev/ttyUSB0");
-    bool transmit(float _yaw, float _pit, float _dist);
-    bool transmit(float _yaw, float _pit, float _spd, float _dist);
+    bool transmit_Classic(float _yaw, float _pit, float _dist, uint8_t _shoot = 1);
+    bool transmit(float _yaw, float _pit, float _spd, float _dist, uint8_t _shoot = 1);
     bool isOpen() const;
     bool receive();
 

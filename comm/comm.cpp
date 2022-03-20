@@ -50,7 +50,7 @@ bool Comm::isOpen() const
     return state;
 }
 
-bool Comm::transmit(float _yaw, float _pit, float _dist)
+bool Comm::transmit_Classic(float _yaw, float _pit, float _dist, uint8_t _shoot)
 {
     if (!state)
     {
@@ -63,12 +63,12 @@ bool Comm::transmit(float _yaw, float _pit, float _dist)
         .yaw = _yaw,
         .pit = _pit,
         .dist = _dist,
-        .shoot = 1};
+        .shoot = _shoot};
     len = protocol_provider.pack(send, SOF, GIMCtrl_CMD_ID, (uint8_t *)&msg, sizeof(detection_t));
     return ser.write(send, len);
 }
 
-bool Comm::transmit(float _yaw, float _pit, float _spd, float _dist)
+bool Comm::transmit(float _yaw, float _pit, float _spd, float _dist, uint8_t _shoot)
 {
     if (!state)
     {
@@ -82,7 +82,8 @@ bool Comm::transmit(float _yaw, float _pit, float _spd, float _dist)
         .yaw_spd = _spd,
         .pit = _pit,
         .dist = _dist,
-        .shoot = 1};
+        .shoot = _shoot
+    };
     len = protocol_provider.pack(send, SOF, GIMAdv_CMD_ID, (uint8_t *)&msg, sizeof(adv_detection_t));
     return ser.write(send, len);
 }
