@@ -40,7 +40,7 @@ bool init(void)
 
     sensor_reader.init(info["source"], info["imu"], info["port"], info["flip"]);
     detector.init(info["model"]);
-    predictor.init(info["camera_para"]);
+    predictor.init(info["camera_para"], atoi(info["latency"].c_str()));
     sensor_reader.setdebug(display["sensor_debug"]);
     detector.setdebug(display["detect_debug"]);
     predictor.setdebug(display["predic_debug"]);

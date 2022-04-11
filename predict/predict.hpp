@@ -40,9 +40,10 @@ namespace predict
          * @details 创建 PositionTransform 类实例用于位置解算
          * @param[in]
          */
-        void init(const std::string camera_param)
+        void init(const std::string camera_param, int latency = 20)
         {
             position_transform = PositionTransform(camera_param);
+            comm_latency = latency / 1e3;
             BasicTask::init();
         }
         /**
@@ -59,6 +60,7 @@ namespace predict
 
     private:
         PositionTransform position_transform;
+        double comm_latency;
     };
 }
 

@@ -30,6 +30,7 @@ namespace predict
         bool last_track{false}; // 上一次是否有追踪目标
         Pos3D last_pw;          // 上一次世界坐标
         bbox_t last_bbox;       // 上一次预测框
+        double comm_latency;    // 通讯相关延迟
         using _filter = Kalman<1, 2>;
         using Matx1 = _filter::Matrix_x1d;
         using Matxx = _filter::Matrix_xxd;
@@ -41,9 +42,10 @@ namespace predict
         _filter filter_y; // y轴滤波
 
     public:
-        explicit LinearPredictor()
+        explicit LinearPredictor(double latency = .020)
         {
             last_track = false;
+            comm_latency = latency;
             ///初始化滤波器参数
             Matxx A = Matxx::Identity(); //转移矩阵
             Matzx H;                     //观测矩阵
