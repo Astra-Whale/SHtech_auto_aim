@@ -13,7 +13,7 @@ public:
 
     bool init();
 
-    bool setGain(double gain); //this function has been deleted, please use HikCamApp to set camera gain
+    bool setGain(int gain); //this function has been deleted, please use HikCamApp to set camera gain
     int getFps();
 
     bool read(cv::Mat &src);

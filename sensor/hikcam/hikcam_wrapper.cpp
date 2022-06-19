@@ -241,8 +241,7 @@ cv::Size HikCamWrapper::getSize()
     return cv::Size(stOutFrame.stFrameInfo.nWidth, stOutFrame.stFrameInfo.nHeight);
 }
 
-bool HikCamWrapper::setGain(double gain)
+bool HikCamWrapper::setGain(int gain)
 {
-    this->gain = gain;
-    return true;
+    return MV_CC_SetBrightness(cam_handle, gain) == MV_OK;
 }

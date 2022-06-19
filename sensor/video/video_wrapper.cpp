@@ -26,7 +26,7 @@ bool VideoWrapper::read(cv::Mat &src)
     return video.read(src);
 }
 
-bool VideoWrapper::setGain(double gain)
+bool VideoWrapper::setGain(int gain)
 {
     return true;
 }
