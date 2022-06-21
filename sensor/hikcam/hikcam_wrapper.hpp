@@ -13,7 +13,7 @@ public:
 
     bool init();
 
-    bool setGain(int gain); //this function has been deleted, please use HikCamApp to set camera gain
+    bool setBrightness(int brightness);
     int getFps();
 
     bool read(cv::Mat &src);
