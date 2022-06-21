@@ -20,7 +20,7 @@ public:
     ;
     virtual bool init() = 0;
     virtual bool read(cv::Mat &src) = 0;
-    virtual bool setGain(double gain) = 0;
+    virtual bool setBrightness(int brightness) = 0;
     virtual int getFps() = 0;
     virtual cv::Size getSize() = 0;
     virtual bool close() = 0;

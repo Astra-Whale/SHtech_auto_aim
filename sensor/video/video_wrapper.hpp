@@ -31,7 +31,7 @@ public:
      * @return bool value: whether the reading is successful
      */
     bool read(cv::Mat &src) final;
-    bool setGain(double gain);
+    bool setBrightness(int gain);
     int getFps();
     bool close();
     cv::Size getSize() { return cv::Size(video.get(cv::CAP_PROP_FRAME_WIDTH), video.get(cv::CAP_PROP_FRAME_HEIGHT)); };
