@@ -88,7 +88,7 @@ bool Comm::transmit(float _yaw, float _pit, float _spd, float _dist, uint8_t _sh
     return ser.write(send, len);
 }
 
-bool Comm::advv_transmit(float _yaw, float _pit, float _yawspd, float _pitchspd; float _dist, uint8_t _shoot)
+bool Comm::advv_transmit(float _yaw, float _pit, float _yawspd, float _pitchspd, float _dist, uint8_t _shoot)
 {
     if (!state)
     {
@@ -97,7 +97,7 @@ bool Comm::advv_transmit(float _yaw, float _pit, float _yawspd, float _pitchspd;
 
     uint16_t len;
 
-    adv_detection_t msg = {
+    advv_detection_t msg = {
         .yaw = _yaw,
         .yaw_spd = _yawspd,
         .pit = _pit,

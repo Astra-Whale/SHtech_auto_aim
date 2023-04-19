@@ -114,7 +114,7 @@ public:
     bool open(const std::string &port = "/dev/ttyUSB0");
     bool transmit_Classic(float _yaw, float _pit, float _dist, uint8_t _shoot = 1);
     bool transmit(float _yaw, float _pit, float _spd, float _dist, uint8_t _shoot = 1);
-    bool advv_transmit(float _yaw, float _pit, float _yawspd, float _pitchspd; float _dist, uint8_t _shoot = 1);
+    bool advv_transmit(float _yaw, float _pit, float _yawspd, float _pitchspd, float _dist, uint8_t _shoot = 1);
     bool isOpen() const;
     bool receive();
 

@@ -126,7 +126,7 @@ namespace sensor
                 auto &_attitude = obj->attitude;
                 comm.advv_transmit(_attitude.yaw + val_limit(send.yaw_angle, 10),
                               pitch_angle_filter.update(_attitude.pitch + val_limit(send.pitch_angle, 10)),
-                              send.yaw_speed, send.pitch_speed ,send.distance);
+                              send.yaw_speed, send.pitch_speed, send.distance);
                 if (_debug)
                 {
                     LOGM_S("[transmit] p-p:%6.2f | p-m:%6.2f | p-s:%6.2f | y-p:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f",
