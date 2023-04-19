@@ -47,6 +47,24 @@ typedef struct __attribute__((packed))
     uint8_t shoot;
 } adv_detection_t;
 
+
+/**
+ * @brief 超高级控制指令
+ *
+ * @note  包含角度信息和供预测的角速度信息
+ */
+#define GIMAdvv_CMD_ID 0x0503
+typedef struct __attribute__((packed))
+{
+    float yaw;
+    float yaw_spd;
+    float pit;
+    float pitch_spd;
+    float dist;
+    uint8_t shoot;
+} advv_detection_t;
+
+
 /*****************************************
  *               上行报文                 *
  *****************************************/
@@ -96,6 +114,7 @@ public:
     bool open(const std::string &port = "/dev/ttyUSB0");
     bool transmit_Classic(float _yaw, float _pit, float _dist, uint8_t _shoot = 1);
     bool transmit(float _yaw, float _pit, float _spd, float _dist, uint8_t _shoot = 1);
+    bool advv_transmit(float _yaw, float _pit, float _yawspd, float _pitchspd; float _dist, uint8_t _shoot = 1);
     bool isOpen() const;
     bool receive();
 

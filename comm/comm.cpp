@@ -88,6 +88,27 @@ bool Comm::transmit(float _yaw, float _pit, float _spd, float _dist, uint8_t _sh
     return ser.write(send, len);
 }
 
+bool Comm::advv_transmit(float _yaw, float _pit, float _yawspd, float _pitchspd; float _dist, uint8_t _shoot)
+{
+    if (!state)
+    {
+        return false;
+    }
+
+    uint16_t len;
+
+    adv_detection_t msg = {
+        .yaw = _yaw,
+        .yaw_spd = _yawspd,
+        .pit = _pit,
+        .pitch_spd = _pitchspd,
+        .dist = _dist,
+        .shoot = _shoot
+    };
+    len = protocol_provider.pack(send, SOF, GIMAdvv_CMD_ID, (uint8_t *)&msg, sizeof(advv_detection_t));
+    return ser.write(send, len);
+}
+
 bool Comm::receive()
 {
     if (!state)
