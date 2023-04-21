@@ -99,9 +99,12 @@ namespace sensor
 
             if (!state)
             {
-                LOGE_S("[sensor]Error: read image fail!");
-                LOGM_S("[sensor] Total frames handled: %d", totalFrameCounter);
-                LOGM_S("[sensor] ReOpen Camera");
+                if (_debug)
+                {
+                    LOGE_S("[sensor]Error: read image fail!");
+                    LOGM_S("[sensor] Total frames handled: %d", totalFrameCounter);
+                    LOGM_S("[sensor] ReOpen Camera");
+                }
                 video->close();
                 video->init();
                 pipbefore.put(obj);
