@@ -93,7 +93,7 @@ namespace sensor
         do
         {
             auto obj = pipbefore.get();           /*!< 从上一线程的缓存队列获取报文指针 */
-            bool state = video->read(obj->frame); /*!< 读取是否成功 */
+            bool state = video->read(obj->frame, _debug); /*!< 读取是否成功 */
             obj->index = totalFrameCounter++;
             obj->time = std::chrono::high_resolution_clock::now();
 
@@ -105,8 +105,8 @@ namespace sensor
                     LOGM_S("[sensor] Total frames handled: %d", totalFrameCounter);
                     LOGM_S("[sensor] ReOpen Camera");
                 }
-                video->close();
-                video->init();
+                video->close( _debug);
+                video->init(_debug);
                 pipbefore.put(obj);
                 continue;
             }

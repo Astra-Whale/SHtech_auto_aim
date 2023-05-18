@@ -22,7 +22,7 @@ public:
      * @brief initialize cameras
      * @return bool value: whether it success
      */
-    bool init() final;
+    bool init(bool debug = false) final;
 
     /**
      * @brief read images from camera
@@ -30,10 +30,10 @@ public:
      * @param src_right : output source video of right camera
      * @return bool value: whether the reading is successful
      */
-    bool read(cv::Mat &src) final;
+    bool read(cv::Mat &src, bool debug = false) final;
     bool setBrightness(int gain);
     int getFps();
-    bool close();
+    bool close(bool debug = false);
     cv::Size getSize() { return cv::Size(video.get(cv::CAP_PROP_FRAME_WIDTH), video.get(cv::CAP_PROP_FRAME_HEIGHT)); };
 
 private:

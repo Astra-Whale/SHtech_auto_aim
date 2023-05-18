@@ -18,12 +18,12 @@ class WrapperHead
 public:
     virtual ~WrapperHead() = default;
     ;
-    virtual bool init() = 0;
-    virtual bool read(cv::Mat &src) = 0;
+    virtual bool init(bool debug = false) = 0;
+    virtual bool read(cv::Mat &src, bool debug = false) = 0;
     virtual bool setBrightness(int brightness) = 0;
     virtual int getFps() = 0;
     virtual cv::Size getSize() = 0;
-    virtual bool close() = 0;
+    virtual bool close(bool debug = false) = 0;
 };
 
 //submodules

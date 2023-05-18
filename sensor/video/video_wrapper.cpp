@@ -14,14 +14,14 @@ VideoWrapper::VideoWrapper(const std::string &filename)
 
 VideoWrapper::~VideoWrapper() { printf("Close Camera Success!\n"); }
 
-bool VideoWrapper::init()
+bool VideoWrapper::init(bool debug)
 {
     return video.isOpened();
 }
 
-bool VideoWrapper::close() { return false; };
+bool VideoWrapper::close(bool debug) { return false; };
 
-bool VideoWrapper::read(cv::Mat &src)
+bool VideoWrapper::read(cv::Mat &src, bool debug)
 {
     return video.read(src);
 }

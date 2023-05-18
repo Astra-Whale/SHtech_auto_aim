@@ -11,14 +11,14 @@ public:
     HikCamWrapper(int dev_num = 0);
     ~HikCamWrapper();
 
-    bool init();
+    bool init(bool debug = false);
 
     bool setBrightness(int brightness);
     int getFps();
 
-    bool read(cv::Mat &src);
+    bool read(cv::Mat &src, bool debug = false);
 
-    bool close();
+    bool close(bool debug = false);
 
     cv::Size getSize();
 

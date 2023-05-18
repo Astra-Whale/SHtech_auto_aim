@@ -14,7 +14,7 @@ HikCamWrapper::HikCamWrapper(int dev_num)
     memset(&stOutFrame, 0, sizeof(MV_FRAME_OUT_INFO_EX));
 }
 
-bool HikCamWrapper::init()
+bool HikCamWrapper::init(bool debug)
 {
     int nRet = MV_OK;
     do
@@ -26,7 +26,8 @@ bool HikCamWrapper::init()
         nRet = MV_CC_EnumDevices(MV_USB_DEVICE, &stDeviceList);
         if (MV_OK != nRet)
         {
-            std::cout << "Enum Devices Fail!" << std::endl;
+            if (debug)
+                std::cout << "Enum Devices Fail!" << std::endl;
             break;
         }
         for (unsigned int i = 0; i < stDeviceList.nDeviceNum; i++)
@@ -41,23 +42,27 @@ bool HikCamWrapper::init()
         }
         if (stDeviceList.nDeviceNum == 0)
         {
-            std::cout << "Find No Devices!" << std::endl;
+            if (debug)
+                std::cout << "Find No Devices!" << std::endl;
             break;
         }
         if (dev_num >= stDeviceList.nDeviceNum)
         {
-            std::cout << "Out Of Device Index" << std::endl;
+            if (debug)
+                std::cout << "Out Of Device Index" << std::endl;
             break;
         }
-
-        std::cout << "Camera index: " << dev_num << std::endl;
+        
+        if (debug)
+            std::cout << "Camera index: " << dev_num << std::endl;
 
         // 选择设备并创建句柄
         nRet = MV_CC_CreateHandle(&cam_handle, stDeviceList.pDeviceInfo[dev_num]);
 
         if (MV_OK != nRet)
         {
-            std::cout << "MV_CC_CreateHandle Fail! nRet " << std::hex << nRet << std::endl;
+            if (debug)
+                std::cout << "MV_CC_CreateHandle Fail! nRet " << std::hex << nRet << std::endl;
             break;
         }
 
@@ -65,7 +70,8 @@ bool HikCamWrapper::init()
         nRet = MV_CC_OpenDevice(cam_handle);
         if (MV_OK != nRet)
         {
-            std::cout << "MV_CC_OpenDevice Fail! nRet " << std::hex << nRet << std::endl;
+            if (debug)
+                std::cout << "MV_CC_OpenDevice Fail! nRet " << std::hex << nRet << std::endl;
             break;
         }
 
@@ -73,7 +79,8 @@ bool HikCamWrapper::init()
         nRet = MV_CC_SetEnumValue(cam_handle, "TriggerMode", 0);
         if (MV_OK != nRet)
         {
-            std::cout << "MV_CC_SetTriggerMode Fail! nRet " << std::hex << nRet << std::endl;
+            if (debug)
+                std::cout << "MV_CC_SetTriggerMode Fail! nRet " << std::hex << nRet << std::endl;
             break;
         }
 
@@ -81,14 +88,16 @@ bool HikCamWrapper::init()
         nRet = MV_CC_GetIntValue(cam_handle, "PayloadSize", &stParam);
         if (MV_OK != nRet)
         {
-            std::cout << "Get PayloadSize fail! nRet " << std::hex << nRet << std::endl;
+            if (debug)
+                std::cout << "Get PayloadSize fail! nRet " << std::hex << nRet << std::endl;
         }
 
         // 开始取流
         nRet = MV_CC_StartGrabbing(cam_handle);
         if (MV_OK != nRet)
         {
-            std::cout << "MV_CC_StartGarbbing Fail! nRet" << std::hex << nRet << std::endl;
+            if (debug)
+                std::cout << "MV_CC_StartGarbbing Fail! nRet" << std::hex << nRet << std::endl;
             break;
         }
 
@@ -101,14 +110,16 @@ bool HikCamWrapper::init()
             nRet = MV_CC_GetImageBuffer(cam_handle, &stOutFrame, 1000);
             if (MV_OK != nRet)
             {
-                std::cout << "Fail To Read First 10 Frames" << std::endl;
+                if (debug)
+                    std::cout << "Fail To Read First 10 Frames" << std::endl;
             }
             if (NULL != stOutFrame.pBufAddr)
             {
                 nRet = MV_CC_FreeImageBuffer(cam_handle, &stOutFrame);
                 if (nRet != MV_OK)
                 {
-                    std::cout << "Free Image Buffer fail! nRet " << std::hex << nRet << std::endl;
+                    if (debug)
+                        std::cout << "Free Image Buffer fail! nRet " << std::hex << nRet << std::endl;
                     break;
                 }
             }
@@ -117,16 +128,17 @@ bool HikCamWrapper::init()
 
     if (nRet != MV_OK)
     {
-        close();
+        close(debug);
         return false;
     }
 
     return true;
 }
 
-bool HikCamWrapper::close()
+bool HikCamWrapper::close(bool debug)
 {
-    std::cout << "closing camera...\n";
+    if (debug)
+        std::cout << "closing camera...\n";
     int nRet = MV_OK;
 
     // 停止取流
@@ -134,7 +146,8 @@ bool HikCamWrapper::close()
     nRet = MV_CC_StopGrabbing(cam_handle);
     if (MV_OK != nRet)
     {
-        std::cout << "MV_CC_StopGrabbing fail! nRet " << nRet << std::endl;
+        if (debug)
+            std::cout << "MV_CC_StopGrabbing fail! nRet " << nRet << std::endl;
     }
 
     // 关闭设备
@@ -142,7 +155,8 @@ bool HikCamWrapper::close()
     nRet = MV_CC_CloseDevice(cam_handle);
     if (MV_OK != nRet)
     {
-        std::cout << "MV_CC_CloseDevice fail! nRet " << nRet << std::endl;
+        if (debug)
+            std::cout << "MV_CC_CloseDevice fail! nRet " << nRet << std::endl;
     }
 
     // 销毁句柄
@@ -150,13 +164,15 @@ bool HikCamWrapper::close()
     nRet = MV_CC_DestroyHandle(cam_handle);
     if (MV_OK != nRet)
     {
-        std::cout << "MV_CC_DestroyHandle fail! nRet " << nRet << std::endl;
+        if (debug)
+            std::cout << "MV_CC_DestroyHandle fail! nRet " << nRet << std::endl;
     }
     if (!pData)
     {
         free(pData);
     }
-    std::cout << "HikCam Close Success" << std::endl;
+    if (debug)
+        std::cout << "HikCam Close Success" << std::endl;
     return nRet == MV_OK;
 }
 
@@ -165,14 +181,15 @@ HikCamWrapper::~HikCamWrapper()
     close();
 }
 
-bool HikCamWrapper::read(cv::Mat &src)
+bool HikCamWrapper::read(cv::Mat &src, bool debug)
 {
     int nRet = MV_CC_GetImageBuffer(cam_handle, &stOutFrame, 1000);
     //int nRet = MV_CC_GetOneFrameTimeout(cam_handle, pData, nDataSize, &stImageInfo, 20);
 
     if (MV_OK != nRet)
     {
-        std::cout << "MV_CC_GetImageBuffer fail! nRet" << nRet << std::endl;
+        if (debug)
+            std::cout << "MV_CC_GetImageBuffer fail! nRet" << nRet << std::endl;
         return false;
     }
 
@@ -189,7 +206,8 @@ bool HikCamWrapper::read(cv::Mat &src)
         nRet = MV_CC_FreeImageBuffer(cam_handle, &stOutFrame);
         if (nRet != MV_OK)
         {
-            std::cout << "Free Image Buffer fail! nRet " << std::hex << nRet << std::endl;
+            if (debug)
+                std::cout << "Free Image Buffer fail! nRet " << std::hex << nRet << std::endl;
             return false;
         }
     }
