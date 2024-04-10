@@ -21,7 +21,5 @@ public:
     virtual void close() = 0;
 };
 
-//submodules
-#include "UartIMU/uartimu.hpp"
 
 #endif

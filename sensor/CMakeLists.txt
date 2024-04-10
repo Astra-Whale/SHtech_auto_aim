@@ -11,7 +11,6 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 
 aux_source_directory(video video_src)
 aux_source_directory(hikcam hikcam_src)
-aux_source_directory(UartIMU uartimu_src)
 
 #Hik Cam Supporting libraries
 SET(MVS_LD_FLAGS "-Wl,-rpath,")
@@ -23,7 +22,7 @@ LINK_DIRECTORIES($ENV{MVS_PATH})
 
 FILE(GLOB MVS_LIBS "$ENV{MVS_PATH}/lib*.so")
 
-ADD_LIBRARY(sensor OBJECT sensor.cpp ${video_src} ${hikcam_src} ${bmi160_src} ${i2c_src} ${uartimu_src})
+ADD_LIBRARY(sensor OBJECT sensor.cpp ${video_src} ${hikcam_src} ${bmi160_src} ${i2c_src})
 target_link_libraries(sensor ${OpenCV_LIBS})
 target_link_libraries(sensor libMvCameraControl.so ${MVS_LIBS})
 set_target_properties(sensor PROPERTIES LINK_FLAGS ${MVS_LD_FLAGS})

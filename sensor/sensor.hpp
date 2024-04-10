@@ -12,7 +12,6 @@
 
 //modules
 #include "common.hpp"
-#include "comm.hpp"
 
 //packages
 #include <chrono>
@@ -46,11 +45,6 @@ namespace sensor
 
         void init(const std::string VideoSource, const std::string ImuSource, const std::string port, const std::string flip_image)
         {
-            LOGM_S("[sensor] comm I/O on %s", port.c_str());
-            if (port != "None")
-            {
-                comm.open(port);
-            }
             LOGM_S("[sensor] video input from %s", VideoSource.c_str());
             if (VideoSource == "0")
             {
@@ -65,17 +59,6 @@ namespace sensor
                 LOGE_S("[sensor]Error: Initialize video stream failed");
             }
             LOGM_S("[senosr] video ready");
-            LOGM_S("[senosr] IMU input from %s", ImuSource.c_str());
-            imu = nullptr;
-            if (ImuSource == "UART")
-            {
-                if (comm.isOpen() == false)
-                {
-                    LOGE_S("[sensor] port not specified while UartImu Enabled");
-                }
-                else
-                    imu = new UartIMU(&comm);
-            }
             if (imu == nullptr || !imu->init())
             {
                 LOGE_S("[sensor]Error: IMU init failed");
@@ -111,7 +94,6 @@ namespace sensor
     private:
         WrapperHead *video; /*!< unique_ptr 智能指针 指向一个用于 TensorRT 推理的 TRTModule 对象 在 init 期间完成初始化 */
         ImuHead *imu;
-        Comm comm;
         bool is_image_input_flipped;
     };
 }

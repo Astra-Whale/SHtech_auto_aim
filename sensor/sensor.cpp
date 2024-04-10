@@ -123,28 +123,6 @@ namespace sensor
                 cv::flip(obj->frame, obj->frame, -1);
             }
 
-            if (comm.isOpen() && obj->robotcommand.distance > 0)
-            {
-                auto &send = obj->robotcommand;
-                auto &_attitude = obj->attitude;
-                comm.advv_transmit(_attitude.yaw + val_limit(send.yaw_angle, 10),
-                              pitch_angle_filter.update(_attitude.pitch + val_limit(send.pitch_angle, 10)),
-                              send.yaw_speed, send.pitch_speed, send.distance);
-                if (_debug)
-                {
-                    LOGM_S("[transmit] p-p:%6.2f | p-m:%6.2f | p-s:%6.2f | y-p:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f",
-                           send.pitch_angle, _attitude.pitch,
-                           pitch_angle_filter.output(),
-                           send.yaw_angle, _attitude.yaw,
-                           _attitude.yaw + val_limit(send.yaw_angle, 10),
-                           send.yaw_speed);
-                }
-            }
-            else
-            {
-                pitch_angle_filter.reset();
-            }
-
             if (imu != nullptr)
             {
                 imu->get_attitude(obj->attitude);

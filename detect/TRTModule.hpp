@@ -8,36 +8,9 @@
 #define _ONNXTRTMODULE_HPP_
 
 #include <opencv2/core.hpp>
-#include <NvInfer.h>
+#include "ncnn/mat.h"
+#include "ncnn/net.h"
 #include "common.hpp"
-
-class Logger : public nvinfer1::ILogger
-{
-public:
-    void log(Severity severity, const char *msg) throw() override
-    {
-        //suppress info-level message
-        switch (severity)
-        {
-        case Severity::kINTERNAL_ERROR:
-        case Severity::kERROR:
-            LOGE_F("[detect]Error: %s", msg);
-	    LOGE_S("[detect]Error: %s", msg);
-	    break;
-        case Severity::kWARNING:
-            LOGW_F("[detect]Warning: %s", msg);
-            LOGW_S("[detect]Warning: %s", msg);
-	    break;
-        case Severity::kINFO:
-	case Severity::kVERBOSE:
-            LOGM_F("[detect]Info: %s", msg);
-        }
-    }
-    void StageLog(std::string msg)
-    {
-        LOGM_F("[detect] %s", msg.c_str());
-    }
-};
 
 /*
  * 四点模型
@@ -56,21 +29,13 @@ public:
 
     TRTModule operator=(const TRTModule &) = delete;
 
-    std::vector<bbox_t> operator()(const cv::Mat &src) const;
-    void operator()(const cv::Mat &src, std::vector<bbox_t> &det) const;
+    //std::vector<bbox_t> operator()(const cv::Mat &src) const;
+    void operator()(const cv::Mat &src, std::vector<bbox_t> &det);
 
 private:
-    void build_engine_from_onnx(const std::string &onnx_file);
-
-    void build_engine_from_cache(const std::string &cache_file);
-
-    void cache_engine(const std::string &cache_file);
-
-    nvinfer1::ICudaEngine *engine;
-    nvinfer1::IExecutionContext *context;
-    mutable void *device_buffer[2];
-    float *output_buffer;
-    cudaStream_t stream;
+    void load_engine(const std::string &onnx_file);
+    ncnn::Net net;
+    ncnn::Extractor* ex;
     int input_idx, output_idx;
     size_t input_sz, output_sz;
 };
