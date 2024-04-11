@@ -81,13 +81,23 @@ struct bbox_t
     int color_id; // 0: blue, 1: red, 2: gray
     int tag_id;   // 0: guard, 1-5: number, 6: base
 
-    bool operator==(const bbox_t &a)
+    bool operator==(const bbox_t &a) const
     {
         return pts[0] == a.pts[0] && pts[1] == a.pts[1] && pts[2] == a.pts[2] && pts[3] == a.pts[3];
     }
-    bool operator!=(const bbox_t &a)
+    bool operator!=(const bbox_t &a) const
     {
         return !(*this == a);
+    }
+    
+    bool operator < (const bbox_t &a) const
+    {
+        return confidence < a.confidence;
+    }
+    
+    bool operator > (const bbox_t &a) const
+    {
+        return confidence > a.confidence;
     }
 };
 

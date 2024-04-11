@@ -5,6 +5,8 @@
 //
 
 #include "detect.hpp"
+#include "chrono"
+#include <iostream>
 namespace detect
 {
     void Detect::operator()(autoaim_pipline &pipbefore, autoaim_pipline &pipafter)
@@ -21,8 +23,11 @@ namespace detect
         do
         {
             auto obj = pipbefore.get();        /*!< 从上一线程的缓存队列获取报文指针*/
+            auto t1 = std::chrono::steady_clock::now();
             (*model)(obj->frame, obj->bboxes); /*!< 对报文中的图片 (frame) 进行推理并将结果存入报文 (bboxes)*/
-
+            
+            auto t2 = std::chrono::steady_clock::now();
+            //std::cout << std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count()*1000<<std::endl;
             /**
              * @brief 当需要展示结果时，绘制 bounding box
              */

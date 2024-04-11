@@ -18,7 +18,7 @@
 class TRTModule
 {
     static constexpr int TOPK_NUM = 128;
-    static constexpr float KEEP_THRES = 0.1f;
+    static constexpr float KEEP_THRES = 0.001f;
 
 public:
     explicit TRTModule(const std::string &onnx_file);

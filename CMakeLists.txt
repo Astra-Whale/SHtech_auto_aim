@@ -25,6 +25,7 @@ find_package(OpenCV REQUIRED)
 find_package(Eigen3 REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 include_directories(${EIGEN3_INCLUDE_DIR})
+include_directories(/usr/local/ncnn/include)
 
 add_executable(${exe_name} main.cpp)
 
