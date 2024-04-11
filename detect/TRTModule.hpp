@@ -8,9 +8,19 @@
 #define _ONNXTRTMODULE_HPP_
 
 #include <opencv2/core.hpp>
-#include "ncnn/mat.h"
-#include "ncnn/net.h"
+#include <onnxruntime_cxx_api.h>
 #include "common.hpp"
+
+#include <chrono>
+#include <cmath>
+#include <exception>
+#include <fstream>
+#include <iostream>
+#include <limits>
+#include <numeric>
+#include <string>
+#include <vector>
+#include <stdexcept>
 
 /*
  * 四点模型
@@ -33,11 +43,17 @@ public:
     void operator()(const cv::Mat &src, std::vector<bbox_t> &det);
 
 private:
-    void load_engine(const std::string &onnx_file);
-    ncnn::Net net;
-    ncnn::Extractor* ex;
+    Ort::Env env;
+    Ort::SessionOptions sessionOptions;
+    Ort::Session *session_ptr;
+    Ort::AllocatorWithDefaultOptions allocator;
     int input_idx, output_idx;
     size_t input_sz, output_sz;
+    std::vector<float> inputTensorValues;
+    std::vector<float> outputTensorValues;
+
+    std::vector<int64_t> inputDims;
+    std::vector<int64_t> outputDims;
 };
 
 #endif /* _ONNXTRTMODULE_HPP_ */
