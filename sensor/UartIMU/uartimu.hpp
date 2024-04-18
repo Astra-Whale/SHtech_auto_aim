@@ -1,57 +1,47 @@
 #ifndef SENSOR_IMU_UARTIMU_H
 #define SENSOR_IMU_UARTIMU_H
-#include "imu.hpp"
-
 //modules
-#include "comm.hpp"
 #include "common.hpp"
 
 //packages
+#include <RMCVSerial/RMCVSerial.hpp>
 #include <stdint.h>
-#include <memory.h>
-#include <string.h>
-#include <chrono>
-#include <thread>
-#include <mutex>
-#include <atomic>
-#include <condition_variable>
+#include <string>
 
-class UartIMU : public ImuHead
+class UartIMU
 {
 private:
-    Comm *comm;
-    Attitude attitude_buf;
-    RobotStatus robotstatus_buf;
-    bool mRun;
-    std::thread t_imu_read;
+    Attitude m_attitude;
+    RobotStatus m_robotstatus;
+    const std::string m_device_name;
+    drivers::RMCVSerial m_serial;
 
 public:
-    UartIMU(Comm *_comm) : comm(_comm) {}
-    bool init() final { return comm != nullptr; }
-    void start() final
+    UartIMU(const std::string device_name);
+    bool init() { m_serial.open(m_device_name); return m_serial.is_open();}
+    bool is_open() {return m_serial.is_open();}
+    void start()
     {
-        mRun = true;
-        t_imu_read = std::thread(&UartIMU::read_handler, this);
+        m_serial.start_async_receive();
     }
-    void close() final
+    void close()
     {
-        if (mRun)
-        {
-            mRun = false;
-        }
-        t_imu_read.join();
+        m_serial.stop_async_receive();
     }
-    void get_attitude(Attitude &attitude) final
+    void on_receive_imu(drivers::packet_data_t * packet_ptr, drivers::packet_length_t len);
+    void on_receive_sts(drivers::packet_data_t * packet_ptr, drivers::packet_length_t len);
+    void transmit_cmd(float yaw, float yaw_spd, float pitch, float pitch_spd, float dist, uint8_t shoot = 1);
+    void get_attitude(Attitude &attitude)
     {
-        attitude = attitude_buf;
+        attitude = m_attitude;
     }
-    void get_quaternion(Eigen::Quaternionf &q) final
+    void get_quaternion(Eigen::Quaternionf &q)
     {
-        attitude_buf.toQuaternion(q);
+        m_attitude.toQuaternion(q);
     }
-    void get_robotstatus(RobotStatus &robotstatus) final
+    void get_robotstatus(RobotStatus &robotstatus)
     {
-        robotstatus = robotstatus_buf;
+        robotstatus = m_robotstatus;
     }
     ~UartIMU()
     {

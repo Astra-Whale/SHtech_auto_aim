@@ -32,18 +32,15 @@ add_executable(${exe_name} main.cpp)
 
 include_directories(common)
 include_directories(sensor)
-include_directories(comm)
 include_directories(detect)
 include_directories(predict)
 
 add_subdirectory(common)
-add_subdirectory(comm)
 add_subdirectory(detect)
 add_subdirectory(predict)
 add_subdirectory(sensor)
 
 target_link_libraries(${exe_name} common)
-target_link_libraries(${exe_name} comm)
 target_link_libraries(${exe_name} detect)
 target_link_libraries(${exe_name} predict)
 target_link_libraries(${exe_name} sensor)
