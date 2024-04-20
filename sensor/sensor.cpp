@@ -70,7 +70,7 @@ namespace sensor
         }
     };
 
-    void Sensor::operator()(autoaim_pipline &pipbefore, autoaim_pipline &pipafter)
+    void Sensor::operator()(autoaim_pipeline &pipebefore, autoaim_pipeline &pipeafter)
     {
         /**
          * @brief 检查类是否正确初始化
@@ -92,7 +92,12 @@ namespace sensor
 
         do
         {
-            auto obj = pipbefore.get();           /*!< 从上一线程的缓存队列获取报文指针 */
+            auto obj = pipebefore.get(this);           /*!< 从上一线程的缓存队列获取报文指针 */
+            if (obj == nullptr)
+            {
+            	LOGM_S("[sensor] null ptr get");
+                continue;
+            }
             bool state = video->read(obj->frame, _debug); /*!< 读取是否成功 */
             obj->index = totalFrameCounter++;
             obj->time = std::chrono::high_resolution_clock::now();
@@ -107,14 +112,14 @@ namespace sensor
                 }
                 video->close( _debug);
                 video->init(_debug);
-                pipbefore.put(obj);
+                pipebefore.put(obj);
                 continue;
             }
 
             if (obj->frame.empty())
             {
                 LOGW_S("empty image");
-                pipbefore.put(obj);
+                pipebefore.put(obj);
                 continue;
             }
 
@@ -174,7 +179,7 @@ namespace sensor
                 CNT_FPS(total_fps, {});
                 // LOGM_S("[sensor]Info: Idx = %d, Bytes = %d", obj->index, obj->frame.size().height * obj->frame.size().width);
             }
-            pipafter.put(obj); /*!< 向下一线程的缓存队列提交报文指针*/
+            pipeafter.put(obj, this); /*!< 向下一线程的缓存队列提交报文指针*/
         } while (_run);
         LOGM_S("[sensor] stop");
     }

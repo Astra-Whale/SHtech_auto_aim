@@ -8,7 +8,7 @@
 
 namespace predict
 {
-    void Predict::operator()(autoaim_pipline &pipbefore, autoaim_pipline &pipafter)
+    void Predict::operator()(autoaim_pipeline &pipebefore, autoaim_pipeline &pipeafter)
     {
         /**
          * @brief 检查类是否正确初始化
@@ -25,7 +25,11 @@ namespace predict
 
         do
         {
-            auto obj = pipbefore.get(); /*!< 从上一线程的缓存队列获取报文指针 */
+            auto obj = pipebefore.get(this);           /*!< 从上一线程的缓存队列获取报文指针 */
+            if (obj == nullptr)
+            {
+                continue;
+            }
             cv::Mat img_show;
 
             _predictor.predict(obj, position_transform);
@@ -41,7 +45,7 @@ namespace predict
             {
             }
 
-            pipafter.put(obj); /*!< 向下一线程的缓存队列提交报文指针*/
+            pipeafter.put(obj, this); /*!< 向下一线程的缓存队列提交报文指针*/
         } while (_run);
         LOGM_S("[predict] stop");
     }

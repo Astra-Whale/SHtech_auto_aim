@@ -26,7 +26,7 @@ public:
 	    break;
         case Severity::kWARNING:
             LOGW_F("[detect]Warning: %s", msg);
-            LOGW_S("[detect]Warning: %s", msg);
+            //LOGW_S("[detect]Warning: %s", msg);
 	    break;
         case Severity::kINFO:
 	case Severity::kVERBOSE:
