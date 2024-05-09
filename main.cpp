@@ -19,8 +19,8 @@ void stop(int signal)
 
 bool init(void)
 {
-    //signal(SIGINT, stop);
-    //signal(SIGSEGV, stop);
+    signal(SIGINT, stop);
+    signal(SIGSEGV, stop);
     cmd_parser parser;
     map<string, string> info;
     map<string, bool> display;
@@ -61,7 +61,7 @@ int main(void)
     }
 
     const int max_mem = 5;
-    autoaim_pipline cap2det(2), det2pre(2), pre2cap(max_mem + 1);
+    autoaim_pipeline cap2det(2), det2pre(2), pre2cap(max_mem + 1);
     for (int i = 0; i < max_mem; i++)
     {
         pre2cap.put(std::make_shared<ThreadDataPack>());
@@ -87,12 +87,12 @@ int main(void)
 
     pthread_sigmask(SIG_SETMASK, &oldmask, NULL);
 
-    t_sensor.join();
-    LOGM_S("Read Thread Quit Success!");
     t_detect.join();
     LOGM_S("Detect Thread Quit Success!");
     t_predict.join();
     LOGM_S("Predict Thread Quit Success!");
+    t_sensor.join();
+    LOGM_S("Read Thread Quit Success!");
 
     std::cout << "finish join" << std::endl;
 

@@ -9,7 +9,7 @@
 #include <iostream>
 namespace detect
 {
-    void Detect::operator()(autoaim_pipline &pipbefore, autoaim_pipline &pipafter)
+    void Detect::operator()(autoaim_pipeline &pipebefore, autoaim_pipeline &pipeafter)
     {
         /**
          * @brief 检查类是否正确初始化
@@ -22,8 +22,11 @@ namespace detect
         LOGM_S("[detect] running");
         do
         {
-            auto obj = pipbefore.get();        /*!< 从上一线程的缓存队列获取报文指针*/
-            auto t1 = std::chrono::steady_clock::now();
+            auto obj = pipebefore.get(this);           /*!< 从上一线程的缓存队列获取报文指针 */
+            if (obj == nullptr)
+            {
+                continue;
+            }
             (*model)(obj->frame, obj->bboxes); /*!< 对报文中的图片 (frame) 进行推理并将结果存入报文 (bboxes)*/
             
             auto t2 = std::chrono::steady_clock::now();
@@ -58,7 +61,7 @@ namespace detect
                     LOGM_S("[detect]Detect_Data: colorid: %d, tag_id: %d",b.color_id, b.tag_id);
                 }
             }
-            pipafter.put(obj); /*!< 向下一线程的缓存队列提交报文指针*/
+            pipeafter.put(obj, this); /*!< 向下一线程的缓存队列提交报文指针*/
         } while (_run);
         LOGM_S("[detect] stop");
     }

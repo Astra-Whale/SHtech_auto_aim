@@ -70,7 +70,7 @@ namespace sensor
         }
     };
 
-    void Sensor::operator()(autoaim_pipline &pipbefore, autoaim_pipline &pipafter)
+    void Sensor::operator()(autoaim_pipeline &pipebefore, autoaim_pipeline &pipeafter)
     {
         /**
          * @brief 检查类是否正确初始化
@@ -92,7 +92,12 @@ namespace sensor
 
         do
         {
-            auto obj = pipbefore.get();           /*!< 从上一线程的缓存队列获取报文指针 */
+            auto obj = pipebefore.get(this);           /*!< 从上一线程的缓存队列获取报文指针 */
+            if (obj == nullptr)
+            {
+            	LOGM_S("[sensor] null ptr get");
+                continue;
+            }
             bool state = video->read(obj->frame, _debug); /*!< 读取是否成功 */
             obj->index = totalFrameCounter++;
             obj->time = std::chrono::high_resolution_clock::now();
@@ -107,20 +112,47 @@ namespace sensor
                 }
                 video->close( _debug);
                 video->init(_debug);
-                pipbefore.put(obj);
+                pipebefore.put(obj);
                 continue;
             }
 
             if (obj->frame.empty())
             {
                 LOGW_S("empty image");
-                pipbefore.put(obj);
+                pipebefore.put(obj);
                 continue;
             }
 
             if (is_image_input_flipped)
             {
                 cv::flip(obj->frame, obj->frame, -1);
+            }
+
+            if (imu->is_open() && obj->robotcommand.distance > 0)
+            {
+                auto &send = obj->robotcommand;
+                auto &_attitude = obj->attitude;
+                imu->transmit_cmd(
+                    _attitude.yaw + val_limit(send.yaw_angle, 10),
+                    pitch_angle_filter.update(_attitude.pitch + val_limit(send.pitch_angle, 10)),
+                    send.yaw_speed, 
+                    send.pitch_speed, 
+                    send.distance
+                );
+                
+                if (_debug)
+                {
+                    LOGM_S("[transmit] p-p:%6.2f | p-m:%6.2f | p-s:%6.2f | y-p:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f",
+                           send.pitch_angle, _attitude.pitch,
+                           pitch_angle_filter.output(),
+                           send.yaw_angle, _attitude.yaw,
+                           _attitude.yaw + val_limit(send.yaw_angle, 10),
+                           send.yaw_speed);
+                }
+            }
+            else
+            {
+                pitch_angle_filter.reset();
             }
 
             if (imu != nullptr)
@@ -147,7 +179,7 @@ namespace sensor
                 CNT_FPS(total_fps, {});
                 // LOGM_S("[sensor]Info: Idx = %d, Bytes = %d", obj->index, obj->frame.size().height * obj->frame.size().width);
             }
-            pipafter.put(obj); /*!< 向下一线程的缓存队列提交报文指针*/
+            pipeafter.put(obj, this); /*!< 向下一线程的缓存队列提交报文指针*/
         } while (_run);
         LOGM_S("[sensor] stop");
     }

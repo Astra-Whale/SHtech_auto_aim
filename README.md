@@ -72,7 +72,7 @@ TODO: 实装预测功能 实装串口通信 替换Log实现 替换cmd_praser实�
 ├── common: 通用工具
 │   ├── CMakeLists.txt
 │   ├── common.hpp: 总头文件
-│   ├── pipline.hpp: 线程间通信 任务基类
+│   ├── pipeline.hpp: 线程间通信 任务基类
 │   ├── robot_status.hpp: 机器人状态 通用数据交换结构
 │   ├── cmd_parser: cfg文件读取相关
 │   │   ├── cmd_parser.cpp
@@ -120,11 +120,11 @@ TODO: 实装预测功能 实装串口通信 替换Log实现 替换cmd_praser实�
 
 ## 线程间通信
 
-通过`pipline_queue_t`实现的报文缓存队列控制自瞄流水线，报文对象以`shared_ptr`智能指针的形式在线程间循环使用。报文对象中为线程间通信所需的所有变量预留了空间，节省了时间开销。
+通过`pipeline_queue_t`实现的报文缓存队列控制自瞄流水线，报文对象以`shared_ptr`智能指针的形式在线程间循环使用。报文对象中为线程间通信所需的所有变量预留了空间，节省了时间开销。
 
 ## 任务基类
 
-通过`BasicTask`实现了基于`pipline`的线程生命周期管理。定义了`init`,`setdebug`,`setshow`,`stop`等方法并重载了`()`运算符，允许函数式调起任务。
+通过`BasicTask`实现了基于`pipeline`的线程生命周期管理。定义了`init`,`setdebug`,`setshow`,`stop`等方法并重载了`()`运算符，允许函数式调起任务。
 
 ## 数据IO线程
 

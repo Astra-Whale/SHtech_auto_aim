@@ -30,3 +30,5 @@
 #include "common.hpp"
 
 #define GPU
+
+using pipeline::autoaim_pipeline;
