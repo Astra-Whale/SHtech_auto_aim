@@ -113,8 +113,9 @@ constexpr float sigmoid(float x)
 TRTModule::TRTModule(const std::string &onnx_file) : env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING,"image-classification-inference")
 {
     const auto& api = Ort::GetApi();
-    Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_MIGraphX(sessionOptions, 0));
-    sessionOptions.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_DISABLE_ALL);
+    Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_ROCM(sessionOptions, 0));
+    sessionOptions.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+    sessionOptions.SetIntraOpNumThreads(8);
     session_ptr = new Ort::Session(env, onnx_file.c_str(), sessionOptions);
 
     size_t numInputNodes = session_ptr->GetInputCount();
@@ -155,6 +156,15 @@ TRTModule::TRTModule(const std::string &onnx_file) : env(OrtLoggingLevel::ORT_LO
     inputTensorValues = std::vector<float>(input_sz);
 
     outputTensorValues = std::vector<float>(output_sz);
+    
+    Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(
+        OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
+    inputTensors.push_back(Ort::Value::CreateTensor<float>(
+        memoryInfo, inputTensorValues.data(), input_sz, inputDims.data(),
+        inputDims.size()));
+    outputTensors.push_back(Ort::Value::CreateTensor<float>(
+        memoryInfo, outputTensorValues.data(), output_sz,
+        outputDims.data(), outputDims.size()));
 }
 
 TRTModule::~TRTModule()
@@ -168,7 +178,7 @@ void TRTModule::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
     det.clear();
     cv::Mat x;
     float fx = (float)src.cols / 640.f, fy = (float)src.rows / 384.f;
-    //cv::cvtColor(src, x, cv::COLOR_BGR2RGB);
+    cv::cvtColor(src, x, cv::COLOR_BGR2RGB);
     x = src;
     if (src.cols != 640 || src.rows != 384)
     {
@@ -178,65 +188,51 @@ void TRTModule::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
 
     inputTensorValues.assign((float*)x.data, (float*)x.data+input_sz);
 
-    std::vector<Ort::Value> inputTensors;
-    std::vector<Ort::Value> outputTensors;
 
     auto inputNodeName = session_ptr->GetInputNameAllocated(0, allocator);
     const char* inputName = inputNodeName.get();
     auto outputNodeName = session_ptr->GetOutputNameAllocated(0, allocator);
     const char* outputName = outputNodeName.get();
+
     std::vector<const char*> inputNames{inputName};
     std::vector<const char*> outputNames{outputName};
-
-    /*
-    Creating ONNX Runtime inference sessions, querying input and output names, 
-    dimensions, and types are trivial.
-    Setup inputs & outputs: The input & output tensors are created here. */
-
-    Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(
-        OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
-    inputTensors.push_back(Ort::Value::CreateTensor<float>(
-        memoryInfo, inputTensorValues.data(), input_sz, inputDims.data(),
-        inputDims.size()));
-    outputTensors.push_back(Ort::Value::CreateTensor<float>(
-        memoryInfo, outputTensorValues.data(), output_sz,
-        outputDims.data(), outputDims.size()));
 
     session_ptr->Run(Ort::RunOptions{nullptr}, inputNames.data(),
                 inputTensors.data(), 1, outputNames.data(),
                 outputTensors.data(), 1);
-    // std::vector<bbox_t> candidates;
-    // for (size_t i = 0; i < out.h; i++)
-    // {
-    //     const float* box_buffer = out.row(i);
-    //     if (box_buffer[8] < inv_sigmoid(KEEP_THRES))
-    //         continue;
-    //     candidates.emplace_back();
-    //     auto &box = candidates.back();
-    //     memcpy(&box.pts, box_buffer, 8 * sizeof(float));
-    //     for (auto &pt : box.pts)
-    //         pt.x *= fx, pt.y *= fy;
-    //     box.confidence = sigmoid(box_buffer[8]);
-    //     box.color_id = argmax(box_buffer + 9, 4);
-    //     box.tag_id = argmax(box_buffer + 13, 7);
-    // }
-    // std::sort(candidates.begin(), candidates.end(), std::greater<bbox_t>());
-    // // post-process [nms]
-    // det.reserve(TOPK_NUM);
-    // std::vector<uint8_t> removed(TOPK_NUM);
-    // for (int i = 0; i < TOPK_NUM && i < candidates.size(); i++)
-    // {
-    //     if (removed[i])
-    //         continue;
-    // 	auto& box1 = candidates.at(i);
-    //     for (int j = i + 1; j < TOPK_NUM && j < candidates.size(); j++)
-    //     {
-    //         auto& box2 = candidates.at(j);
-    //         if (removed[j])
-    //             continue;
-    //         if (is_overlap(box1, box2))
-    //             removed[j] = true;
-    //     }
-    // }
-    // std::cout<<ret<<"ret/"<<out.w<<","<<out.h<<","<<out.c<<"candidates:"<<candidates.size()<<"final:"<<det.size()<<std::endl;
+    std::vector<bbox_t> candidates;
+    float* out = outputTensorValues.data();
+    for (size_t i = 0; i < 15120; i++)
+    {
+        const float* box_buffer = out+20*i;
+        if (box_buffer[8] < inv_sigmoid(KEEP_THRES))
+            continue;
+        candidates.emplace_back();
+        auto &box = candidates.back();
+        memcpy(&box.pts, box_buffer, 8 * sizeof(float));
+        for (auto &pt : box.pts)
+            pt.x *= fx, pt.y *= fy;
+        box.confidence = sigmoid(box_buffer[8]);
+        box.color_id = argmax(box_buffer + 9, 4);
+        box.tag_id = argmax(box_buffer + 13, 7);
+    }
+    std::sort(candidates.begin(), candidates.end(), std::greater<bbox_t>());
+    // post-process [nms]
+    det.reserve(TOPK_NUM);
+    std::vector<uint8_t> removed(TOPK_NUM);
+    for (int i = 0; i < TOPK_NUM && i < candidates.size(); i++)
+    {
+        if (removed[i])
+            continue;
+    	auto& box1 = candidates.at(i);
+        for (int j = i + 1; j < TOPK_NUM && j < candidates.size(); j++)
+        {
+            auto& box2 = candidates.at(j);
+            if (removed[j])
+                continue;
+            if (is_overlap(box1, box2))
+                removed[j] = true;
+        }
+        det.push_back(box1);
+    }
 }

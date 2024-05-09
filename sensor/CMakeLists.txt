@@ -11,6 +11,7 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 
 aux_source_directory(video video_src)
 aux_source_directory(hikcam hikcam_src)
+aux_source_directory(UartIMU uartimu_src)
 
 #Hik Cam Supporting libraries
 SET(MVS_LD_FLAGS "-Wl,-rpath,")

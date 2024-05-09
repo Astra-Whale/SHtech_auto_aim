@@ -54,6 +54,9 @@ private:
 
     std::vector<int64_t> inputDims;
     std::vector<int64_t> outputDims;
+
+    std::vector<Ort::Value> inputTensors;
+    std::vector<Ort::Value> outputTensors;
 };
 
 #endif /* _ONNXTRTMODULE_HPP_ */
