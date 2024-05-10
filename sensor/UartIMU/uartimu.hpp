@@ -1,9 +1,9 @@
 #ifndef SENSOR_IMU_UARTIMU_H
 #define SENSOR_IMU_UARTIMU_H
-//modules
+// modules
 #include "common.hpp"
 
-//packages
+// packages
 #include <RMCVSerial/RMCVSerial.hpp>
 #include <stdint.h>
 #include <string>
@@ -18,8 +18,13 @@ private:
 
 public:
     UartIMU(const std::string device_name);
-    bool init() { m_serial.open(m_device_name); return m_serial.is_open();}
-    bool is_open() {return m_serial.is_open();}
+    bool init()
+    {
+        LOGM_S("Opening %s ", m_device_name.c_str());
+        m_serial.open(m_device_name);
+        return m_serial.is_open();
+    }
+    bool is_open() { return m_serial.is_open(); }
     void start()
     {
         m_serial.start_async_receive();
@@ -28,8 +33,8 @@ public:
     {
         m_serial.stop_async_receive();
     }
-    void on_receive_imu(drivers::packet_data_t * packet_ptr, drivers::packet_length_t len);
-    void on_receive_sts(drivers::packet_data_t * packet_ptr, drivers::packet_length_t len);
+    void on_receive_imu(drivers::packet_data_t *packet_ptr, drivers::packet_length_t len);
+    void on_receive_sts(drivers::packet_data_t *packet_ptr, drivers::packet_length_t len);
     void transmit_cmd(float yaw, float yaw_spd, float pitch, float pitch_spd, float dist, uint8_t shoot = 1);
     void get_attitude(Attitude &attitude)
     {
@@ -52,4 +57,4 @@ private:
     void read_handler();
 };
 
-#endif //SENOSR_IMU_UARTIMU_H
+#endif // SENOSR_IMU_UARTIMU_H

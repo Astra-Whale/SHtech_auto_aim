@@ -4,11 +4,34 @@
 // Detect armor from opencv mat
 //
 
+//submodules
+#include "TRTModule.hpp"
 #include "detect.hpp"
 #include "chrono"
 #include <iostream>
 namespace detect
 {
+
+    void Detect::init(const std::string OnnxFileName)
+    {
+        LOGM_S("[detect] init");
+        model.reset(new TRTModule(OnnxFileName));
+        LOGM_S("[detect] ready");
+        BasicTask::init();
+    }
+
+    /**
+     * @brief   装甲板检测线程主函数
+     * @details 读取上一线程提交至缓存队列的报文指针 detection_obj_t*::obj
+     *          调用 model 指向的 TensorRT 推理器对报文中的 cv::Mat::frame 变量进行推理
+     *          将推理结果写入报文中的 std::vector<bbox_t>::bboxes 变量
+     *          将报文指针提交给下一线程的缓存队列
+     * @param[in] pipebefore 与装甲板检测的上一流程交互的线程间通信对象
+     * @param[in] pipeafter  与装甲板检测的下一流程交互的线程间通信对象
+     * @note    通过 stop() 控制启停
+     *          必须先进行初始化
+     */
+
     void Detect::operator()(autoaim_pipeline &pipebefore, autoaim_pipeline &pipeafter)
     {
         /**

@@ -7,9 +7,6 @@
 #ifndef DETECT_DETECT_H
 #define DETECT_DETECT_H
 
-//submodules
-#include "TRTModule.hpp"
-
 //modules
 #include "common.hpp"
 
@@ -19,6 +16,7 @@
 #include <string>
 #include <opencv2/opencv.hpp>
 
+class TRTModule;
 namespace detect
 {
     using pipeline::BasicTask;
@@ -35,13 +33,7 @@ namespace detect
          * @details 创建 TRTModule 实例用于 TensorRT 推理
          * @param[in] OnnxFileName 用于推理的 Onnx 文件路径
          */
-        void init(const std::string OnnxFileName)
-        {
-            LOGM_S("[detect] init");
-            model.reset(new TRTModule(OnnxFileName));
-            LOGM_S("[detect] ready");
-            BasicTask::init();
-        }
+        void init(const std::string OnnxFileName);
 
         /**
          * @brief   装甲板检测线程主函数

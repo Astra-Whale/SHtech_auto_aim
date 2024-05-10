@@ -8,7 +8,6 @@
 #define _ONNXTRTMODULE_HPP_
 
 #include <opencv2/core.hpp>
-#include <onnxruntime_cxx_api.h>
 #include "common.hpp"
 
 #include <chrono>
@@ -22,16 +21,23 @@
 #include <vector>
 #include <stdexcept>
 
+#include <migraphx/migraphx.hpp>
 /*
  * 四点模型
  */
 class TRTModule
 {
     static constexpr int TOPK_NUM = 128;
-    static constexpr float KEEP_THRES = 0.001f;
+    static constexpr float KEEP_THRES = 0.1f;
 
 public:
     explicit TRTModule(const std::string &onnx_file);
+
+    void build_engine_from_onnx(const std::string &onnx_file);
+
+    void build_engine_from_cache(const std::string &cache_file_path);
+
+    void cache_engine(const std::string &cache_file_path);
 
     ~TRTModule();
 
@@ -43,20 +49,8 @@ public:
     void operator()(const cv::Mat &src, std::vector<bbox_t> &det);
 
 private:
-    Ort::Env env;
-    Ort::SessionOptions sessionOptions;
-    Ort::Session *session_ptr;
-    Ort::AllocatorWithDefaultOptions allocator;
-    int input_idx, output_idx;
-    size_t input_sz, output_sz;
+    migraphx::program net;
     std::vector<float> inputTensorValues;
-    std::vector<float> outputTensorValues;
-
-    std::vector<int64_t> inputDims;
-    std::vector<int64_t> outputDims;
-
-    std::vector<Ort::Value> inputTensors;
-    std::vector<Ort::Value> outputTensors;
 };
 
 #endif /* _ONNXTRTMODULE_HPP_ */

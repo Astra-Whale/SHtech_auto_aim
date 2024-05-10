@@ -11,37 +11,6 @@
 #include <opencv2/imgproc.hpp>
 #include <algorithm>
 
-template <typename T>
-std::ostream& operator<<(std::ostream& os, const std::vector<T>& v)
-{
-    os << "[";
-    for (int i = 0; i < v.size(); ++i)
-    {
-        os << v[i];
-        if (i != v.size() - 1)
-        {
-            os << ", ";
-        }
-    }
-    os << "]";
-    return os;
-}
-
-
-template <typename T>
-T vectorProduct(const std::vector<T>& v)
-{
-    return accumulate(v.begin(), v.end(), 1, std::multiplies<T>());
-}
-
-//Handling divide by zero
-float division(float num, float den){
-   if (den == 0) {
-      throw std::runtime_error("[ ERROR ] Math error: Attempted to divide by Zero\n");
-   }
-   return (num / den);
-}
-
 template <class F, class T, class... Ts>
 T reduce(F &&func, T x, Ts... xs)
 {
@@ -110,66 +79,52 @@ constexpr float sigmoid(float x)
     return 1 / (1 + std::exp(-x));
 }
 
-TRTModule::TRTModule(const std::string &onnx_file) : env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING,"image-classification-inference")
+TRTModule::TRTModule(const std::string &onnx_file)
 {
-    const auto& api = Ort::GetApi();
-    Ort::ThrowOnError(OrtSessionOptionsAppendExecutionProvider_ROCM(sessionOptions, 0));
-    sessionOptions.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
-    sessionOptions.SetIntraOpNumThreads(8);
-    session_ptr = new Ort::Session(env, onnx_file.c_str(), sessionOptions);
+    std::filesystem::path onnx_file_path(onnx_file);
+    auto cache_file_path = onnx_file_path;
+    cache_file_path.replace_extension("cache");
+    if (std::filesystem::exists(cache_file_path))
+    {
+        build_engine_from_cache(cache_file_path.c_str());
+    }
+    else
+    {
+        build_engine_from_onnx(onnx_file_path.c_str());
+        cache_engine(cache_file_path.c_str());
+    }
+}
 
-    size_t numInputNodes = session_ptr->GetInputCount();
-    size_t numOutputNodes = session_ptr->GetOutputCount();
+void TRTModule::build_engine_from_onnx(const std::string &onnx_file)
+{
+    migraphx::onnx_options onnx_opts;
+    // import and parse onnx file into migraphx::program
+    net = parse_onnx(onnx_file.c_str(), onnx_opts);
+    // print imported model
+    net.print();
+    migraphx::target targ = migraphx::target("gpu");
+    migraphx::compile_options comp_opts;
+    // migraphx::quantize_int8_options qopts;
+    migraphx::quantize_fp16(net);
+    comp_opts.set_offload_copy();
 
-    std::cout << "Number of Input Nodes: " << numInputNodes << std::endl;
-    std::cout << "Number of Output Nodes: " << numOutputNodes << std::endl;
+    net.compile(targ, comp_opts);
 
-    auto inputNodeName = session_ptr->GetInputNameAllocated(0, allocator);
-    const char* inputName = inputNodeName.get();
-    std::cout << "Input Name: " << inputName << std::endl;
+    net.print();
+}
 
-    Ort::TypeInfo inputTypeInfo = session_ptr->GetInputTypeInfo(0);
-    auto inputTensorInfo = inputTypeInfo.GetTensorTypeAndShapeInfo();
+void TRTModule::build_engine_from_cache(const std::string &cache_file_path)
+{
+    net = migraphx::load(cache_file_path.c_str());
+}
 
-    ONNXTensorElementDataType inputType = inputTensorInfo.GetElementType();
-    std::cout << "Input Type: " << inputType << std::endl;
-
-    inputDims = inputTensorInfo.GetShape();
-    std::cout << "Input Dimensions: " << inputDims << std::endl;
-
-    auto outputNodeName = session_ptr->GetOutputNameAllocated(0, allocator);
-    const char* outputName = outputNodeName.get();
-    std::cout << "Output Name: " << outputName << std::endl;
-
-    Ort::TypeInfo outputTypeInfo = session_ptr->GetOutputTypeInfo(0);
-    auto outputTensorInfo = outputTypeInfo.GetTensorTypeAndShapeInfo();
-
-    ONNXTensorElementDataType outputType = outputTensorInfo.GetElementType();
-    std::cout << "Output Type: " << outputType << std::endl;
-
-    outputDims = outputTensorInfo.GetShape();
-    std::cout << "Output Dimensions: " << outputDims << std::endl;
-
-    input_sz = vectorProduct(inputDims);
-    output_sz = vectorProduct(outputDims);
-
-    inputTensorValues = std::vector<float>(input_sz);
-
-    outputTensorValues = std::vector<float>(output_sz);
-    
-    Ort::MemoryInfo memoryInfo = Ort::MemoryInfo::CreateCpu(
-        OrtAllocatorType::OrtArenaAllocator, OrtMemType::OrtMemTypeDefault);
-    inputTensors.push_back(Ort::Value::CreateTensor<float>(
-        memoryInfo, inputTensorValues.data(), input_sz, inputDims.data(),
-        inputDims.size()));
-    outputTensors.push_back(Ort::Value::CreateTensor<float>(
-        memoryInfo, outputTensorValues.data(), output_sz,
-        outputDims.data(), outputDims.size()));
+void TRTModule::cache_engine(const std::string &cache_file_path)
+{
+    migraphx::save(net, cache_file_path.c_str());
 }
 
 TRTModule::~TRTModule()
 {
-    delete session_ptr;
 }
 
 void TRTModule::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
@@ -177,6 +132,7 @@ void TRTModule::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
     // pre-process [bgr2rgb & resize]
     det.clear();
     cv::Mat x;
+    cv::Mat preprocessedImage;
     float fx = (float)src.cols / 640.f, fy = (float)src.rows / 384.f;
     cv::cvtColor(src, x, cv::COLOR_BGR2RGB);
     x = src;
@@ -184,24 +140,25 @@ void TRTModule::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
     {
         cv::resize(x, x, {640, 384});
     }
-    x.convertTo(x, CV_32F);
+    x.convertTo(x, CV_32F, 1.0 / 255);
 
-    inputTensorValues.assign((float*)x.data, (float*)x.data+input_sz);
+    // step 8: Convert the image to CHW RGB float format.
+    // HWC to CHW
+    cv::dnn::blobFromImage(x, preprocessedImage);
 
+    inputTensorValues.assign(preprocessedImage.begin<float>(), preprocessedImage.end<float>());
 
-    auto inputNodeName = session_ptr->GetInputNameAllocated(0, allocator);
-    const char* inputName = inputNodeName.get();
-    auto outputNodeName = session_ptr->GetOutputNameAllocated(0, allocator);
-    const char* outputName = outputNodeName.get();
+    migraphx::program_parameters prog_params;
+    auto param_shapes = net.get_parameter_shapes();
+    auto input        = param_shapes.names().front();
+    // create argument for the parameter
+    prog_params.add(input, migraphx::argument(param_shapes[input], inputTensorValues.data()));
 
-    std::vector<const char*> inputNames{inputName};
-    std::vector<const char*> outputNames{outputName};
+    // run inference
+    auto outputs = net.eval(prog_params);
 
-    session_ptr->Run(Ort::RunOptions{nullptr}, inputNames.data(),
-                inputTensors.data(), 1, outputNames.data(),
-                outputTensors.data(), 1);
     std::vector<bbox_t> candidates;
-    float* out = outputTensorValues.data();
+    float* out = reinterpret_cast<float*>(outputs[0].data());
     for (size_t i = 0; i < 15120; i++)
     {
         const float* box_buffer = out+20*i;
