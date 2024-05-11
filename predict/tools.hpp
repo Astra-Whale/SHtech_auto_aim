@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 #include <cmath>
+#include <chrono>
 #include <thread>
 #include <chrono>
 #include <Eigen/Dense>
@@ -79,10 +80,13 @@ namespace predict
             std::vector<cv::Point2d> pu(p, p + 4);
             cv::Mat rvec, tvec;
 
+            auto t1 = std::chrono::steady_clock::now();
             if (armor_number == 0 || armor_number == 1 || armor_number == 8)
                 cv::solvePnP(pw_big, pu, F_MAT, C_MAT, rvec, tvec);
             else
                 cv::solvePnP(pw_small, pu, F_MAT, C_MAT, rvec, tvec);
+            auto t2 = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count()*1000<<std::endl;
 
             Pos3D pc;
             cv::cv2eigen(tvec, pc);

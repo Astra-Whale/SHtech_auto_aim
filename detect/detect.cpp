@@ -52,8 +52,6 @@ namespace detect
             }
             (*model)(obj->frame, obj->bboxes); /*!< 对报文中的图片 (frame) 进行推理并将结果存入报文 (bboxes)*/
             
-            auto t2 = std::chrono::steady_clock::now();
-            //std::cout << std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count()*1000<<std::endl;
             /**
              * @brief 当需要展示结果时，绘制 bounding box
              */
