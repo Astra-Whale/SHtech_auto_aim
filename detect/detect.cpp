@@ -45,13 +45,18 @@ namespace detect
         LOGM_S("[detect] running");
         do
         {
+            auto t1 = std::chrono::steady_clock::now();
             auto obj = pipebefore.get(this);           /*!< 从上一线程的缓存队列获取报文指针 */
             if (obj == nullptr)
             {
                 continue;
             }
+
+            auto t2 = std::chrono::steady_clock::now();
+
             (*model)(obj->frame, obj->bboxes); /*!< 对报文中的图片 (frame) 进行推理并将结果存入报文 (bboxes)*/
             
+            auto t3 = std::chrono::steady_clock::now();
             /**
              * @brief 当需要展示结果时，绘制 bounding box
              */
@@ -83,6 +88,13 @@ namespace detect
                 }
             }
             pipeafter.put(obj, this); /*!< 向下一线程的缓存队列提交报文指针*/
+            auto t4 = std::chrono::steady_clock::now();
+            // LOGM_S(
+            //     "Detect Read %.2lfms Detect %.2lfms Put %.2lfms", 
+            //     std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count()*1000,
+            //     std::chrono::duration_cast<std::chrono::duration<double>>(t3 - t2).count()*1000,
+            //     std::chrono::duration_cast<std::chrono::duration<double>>(t4 - t3).count()*1000
+            // );
         } while (_run);
         LOGM_S("[detect] stop");
     }

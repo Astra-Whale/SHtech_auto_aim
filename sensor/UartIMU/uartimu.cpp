@@ -64,7 +64,10 @@ void UartIMU::transmit_cmd(float yaw, float yaw_spd, float pitch, float pitch_sp
     data_to_send.pitch_spd = pitch_spd;
     data_to_send.dist = dist;
     data_to_send.shoot = shoot;
-
     m_serial.send(GIMAdvv_CMD_ID, (drivers::packet_data_t*)&data_to_send, sizeof(data_to_send));
-    m_serial.send_break();
+    // LOGM_S(
+    //     "Serial Send %.2lfms Break %.2lfms", 
+    //     std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count()*1000,
+    //     std::chrono::duration_cast<std::chrono::duration<double>>(t3 - t2).count()*1000
+    // );
 }

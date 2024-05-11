@@ -82,12 +82,10 @@ namespace predict
 
             auto t1 = std::chrono::steady_clock::now();
             if (armor_number == 0 || armor_number == 1 || armor_number == 8)
-                cv::solvePnP(pw_big, pu, F_MAT, C_MAT, rvec, tvec);
+                cv::solvePnP(pw_big, pu, F_MAT, C_MAT, rvec, tvec, false, cv::SOLVEPNP_IPPE);
             else
-                cv::solvePnP(pw_small, pu, F_MAT, C_MAT, rvec, tvec);
-            auto t2 = std::chrono::steady_clock::now();
-            std::cout << std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count()*1000<<std::endl;
-
+                cv::solvePnP(pw_small, pu, F_MAT, C_MAT, rvec, tvec, false, cv::SOLVEPNP_IPPE);
+                
             Pos3D pc;
             cv::cv2eigen(tvec, pc);
             pc += T_CI;
