@@ -91,6 +91,50 @@ namespace predict
             pc += T_CI;
             return pc;
         }
+        
+        double pnp_get_armor_angle(const cv::Point2f p[4], int armor_number)
+        {
+            static const std::vector<cv::Point3d> pw_small = {// 单位：m
+                                                              {-0.066, 0.029, 0.},
+                                                              {-0.066, -0.029, 0.},
+                                                              {0.066, -0.029, 0.},
+                                                              {0.066, 0.029, 0.}};
+            static const std::vector<cv::Point3d> pw_big = {// 单位：m
+                                                            {-0.115, 0.03, 0.},
+                                                            {-0.115, -0.03, 0.},
+                                                            {0.115, -0.03, 0.},
+                                                            {0.115, 0.03, 0.}};
+
+            std::vector<cv::Point3d> pw_cur;
+            std::vector<cv::Point2d> pu(p, p + 4);
+            
+            cv::Mat rvec, tvec, mat_R;
+            
+            Eigen::Matrix3d R;
+
+            Pos3D e_x, c_p[4], T;
+            if (armor_number == 0 || armor_number == 1 || armor_number == 8)
+                pw_cur = pw_big;
+            else
+                pw_cur = pw_small;
+
+            cv::solvePnP(pw_cur, pu, F_MAT, C_MAT, rvec, tvec);
+
+            cv::Rodrigues(rvec, mat_R);
+            cv::cv2eigen(mat_R, R);
+            cv::cv2eigen(tvec, T);
+
+            for (int i = 0; i < 4; ++i)
+			{
+				Pos3D temp(pw_cur[i].x, pw_cur[i].y, pw_cur[i].z);
+                c_p[i] = R * temp + T + T_CI;
+            }
+
+            Pos3D nml = (c_p[1]- c_p[0]).cross(c_p[2]-c_p[1]);
+            double Theta = fabs(atan2(nml(0,0),nml(2,0)));
+            return Theta;
+            
+	}
 
         // 相机坐标系内坐标--->世界坐标系内坐标
         inline Pos3D pc_to_pw(const Pos3D &pc)
