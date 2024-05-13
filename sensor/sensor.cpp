@@ -140,7 +140,7 @@ namespace sensor
                     send.yaw_speed, 
                     send.pitch_speed, 
                     send.distance,
-                    static_cast<uint8_t>(send.shoot_mode == ShootMode::COMMON),
+                    static_cast<uint8_t>(send.shoot_mode == ShootMode::COMMON)
                 );
                 
                 if (_debug)
