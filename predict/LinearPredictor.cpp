@@ -133,7 +133,10 @@ namespace predict
             Pos3D m_pw = position_transform.pnp_get_pw(armor.pts, armor.tag_id);                      // point world: 目标在世界坐标系下的坐标
             Eigen::Matrix<double, 1, 1> z_k_x{m_pw(0, 0)};                                            // z_k_x: x轴滤波器观测量
             Eigen::Matrix<double, 1, 1> z_k_y{m_pw(1, 0)};                                            // z_k_y: y轴滤波器观测量
-            Eigen::Matrix<double, 1, 1> z_k_yaw{position_transform.pnp_get_armor(armor.pts, armor.tag_id)};
+
+            double m_yaw = position_transform.pnp_get_armor(armor.pts, armor.tag_id);
+            Eigen::Matrix<double, 1, 1> z_k_yaw{m_yaw};
+
             auto p_x = filter_x.update(z_k_x, t);                                                     // p_x: x轴滤波器状态量
             auto p_y = filter_y.update(z_k_y, t);                                                     // p_y: y轴滤波器状态量
             auto p_yaw = filter_yaw.update(z_k_yaw, t);
@@ -176,6 +179,8 @@ namespace predict
         {
             Pos3D m_pw = position_transform.pnp_get_pw(armor.pts, armor.tag_id);        // point world: 目标在世界坐标系下的坐标
             filter_x.reset(m_pw(0, 0), t), filter_y.reset(m_pw(1, 0), t);               // 重置 x,y 轴滤波器
+            double m_yaw = position_transform.pnp_get_armor(armor.pts, armor.tag_id);
+            filter_yaw.reset(m_yaw, t);
             double height = TrajectoryCompensation(m_pw, robot_status.robot_speed_mps); // height: 弹道下坠高度
             Pos3D s_pw{m_pw(0, 0), m_pw(1, 0), m_pw(2, 0) - height};                    // 抬枪后预测点
             Pos3D s_pc = position_transform.pw_to_pc(s_pw);                             // point camera: 目标在相机坐标系下的坐标
