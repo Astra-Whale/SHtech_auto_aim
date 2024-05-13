@@ -131,7 +131,7 @@ namespace predict
             }
 
             Pos3D nml = (c_p[1]- c_p[0]).cross(c_p[2]-c_p[1]);
-            double Theta = fabs(atan2(nml(0,0),nml(2,0)));
+            double Theta = atan2(fabs(nml(0,0)),fabs(nml(2,0)))/3.1415926526*180;
             return Theta;
             
 	}
