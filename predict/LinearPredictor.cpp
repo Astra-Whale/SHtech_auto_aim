@@ -133,8 +133,27 @@ namespace predict
             Pos3D m_pw = position_transform.pnp_get_pw(armor.pts, armor.tag_id);                      // point world: 目标在世界坐标系下的坐标
             Eigen::Matrix<double, 1, 1> z_k_x{m_pw(0, 0)};                                            // z_k_x: x轴滤波器观测量
             Eigen::Matrix<double, 1, 1> z_k_y{m_pw(1, 0)};                                            // z_k_y: y轴滤波器观测量
+            Eigen::Matrix<double, 1, 1> z_k_yaw{position_transform.pnp_get_armor(armor.pts, armor.tag_id)};
             auto p_x = filter_x.update(z_k_x, t);                                                     // p_x: x轴滤波器状态量
             auto p_y = filter_y.update(z_k_y, t);                                                     // p_y: y轴滤波器状态量
+            auto p_yaw = filter_yaw.update(z_k_yaw, t);
+
+            // Switching strategy
+            double armar_yaw_angle = p_yaw(0, 0);
+            double armar_yaw_spd = p_yaw(1, 0);
+
+            if (false)
+            {
+                send.shoot_mode = ShootMode::FOLLOW;
+            } else {
+                send.shoot_mode = ShootMode::COMMON;
+            }
+            if (false) {
+                send.distance = -1.f;
+                send.yaw_speed = 0.f;
+                last_track = false;
+            }
+
             double ft = FlightTimePredict(m_pw, robot_status.robot_speed_mps);                        // ft: 预测弹丸飞行时间
             auto now_t = std::chrono::high_resolution_clock::now();                                   //
             double process_latency = duration_cast<microseconds>(now_t - t).count() / 1e6;            //
