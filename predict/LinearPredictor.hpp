@@ -40,6 +40,7 @@ namespace predict
         using Matzz = _filter::Matrix_zzd;
         _filter filter_x; // x轴滤波
         _filter filter_y; // y轴滤波
+        _filter filter_yaw; // Armor Yaw Filter
 
     public:
         explicit LinearPredictor(double latency = .020)
@@ -60,6 +61,13 @@ namespace predict
             ///初始化滤波器
             filter_x = _filter(A, H, R, Q, init, std::chrono::high_resolution_clock::now());
             filter_y = _filter(A, H, R, Q, init, std::chrono::high_resolution_clock::now());
+            //测量噪声矩阵
+            Q(0, 0) = 0.075;
+            ///初始化过程方差
+            R(0, 0) = 10;
+            R(1, 1) = 10;
+            filter_yaw = _filter(A, H, R, Q, init, std::chrono::high_resolution_clock::now());
+            
         };
         void predict(std::shared_ptr<ThreadDataPack> &data, PositionTransform &position_transform);
     };

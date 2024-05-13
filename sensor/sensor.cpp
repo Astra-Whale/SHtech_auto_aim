@@ -90,21 +90,11 @@ namespace sensor
         fps_counter total_fps("total_fps");
         AngleFilter pitch_angle_filter;
 
-        do
-        {
-            auto t1 = std::chrono::steady_clock::now();
-            auto obj = pipebefore.get(this);           /*!< 从上一线程的缓存队列获取报文指针 */
-            if (obj == nullptr)
-            {
-            	LOGM_S("[sensor] null ptr get");
-                continue;
-            }
-            bool state = video->read(obj->frame, _debug); /*!< 读取是否成功 */
-            obj->index = totalFrameCounter++;
-            obj->time = std::chrono::high_resolution_clock::now();
-
-            if (!state)
-            {
+            //测量噪声矩阵
+            Q(0, 0) = 0.075;
+            ///初始化过程方差
+            R(0, 0) = 10;
+            R(1, 1) = 10;
                 if (_debug)
                 {
                     LOGE_S("[sensor]Error: read image fail!");
@@ -139,7 +129,8 @@ namespace sensor
                     pitch_angle_filter.update(_attitude.pitch + val_limit(send.pitch_angle, 10)),
                     send.yaw_speed, 
                     send.pitch_speed, 
-                    send.distance
+                    send.distance,
+                    static_cast<uint8_t>(send.shoot_mode == ShootMode::COMMON),
                 );
                 
                 if (_debug)
