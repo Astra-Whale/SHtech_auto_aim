@@ -118,7 +118,7 @@ namespace predict
             else
                 pw_cur = pw_small;
 
-            cv::solvePnP(pw_cur, pu, F_MAT, C_MAT, rvec, tvec);
+            cv::solvePnP(pw_cur, pu, F_MAT, C_MAT, rvec, tvec, false, cv::SOLVEPNP_IPPE);
 
             cv::Rodrigues(rvec, mat_R);
             cv::cv2eigen(mat_R, R);

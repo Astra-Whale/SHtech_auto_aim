@@ -18,7 +18,7 @@ D: !!opencv-matrix
        2.9265256829639918e-01 ]
 Rcb: !!opencv-matrix
    rows: 3
-   cols: 3
+   cols: 3   
    dt: f
    data: [ -1., 0., 0.,
            0., 0., 1.,
@@ -27,4 +27,4 @@ Tcb: !!opencv-matrix
    rows: 3
    cols: 1
    dt: f
-   data: [ 0., 4.1e-02, 6.6e-02 ]
+   data: [ 4.5e-02 , -5.5e-02,  11.6e-02 ]

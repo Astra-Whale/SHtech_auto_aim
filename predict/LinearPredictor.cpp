@@ -3,6 +3,7 @@
 //
 
 #include "LinearPredictor.hpp"
+#include <iostream>
 
 namespace predict
 {
@@ -31,10 +32,10 @@ namespace predict
 
         /// 过滤出敌方颜色的装甲板 && 判断是否有英雄出现
         std::vector<bbox_t> new_detections; // new_detection: vector 是经过过滤后所有可能考虑的装甲板
+        LOGM_S("enemy_color %d", int(robot_status.enemy_color));
         for (auto &d : detections)
         {
-            if ((int(robot_status.enemy_color) == d.color_id && d.tag_id != 0 && d.tag_id != 6) ||
-                (int(robot_status.enemy_color) == 2) || true) // 不能随意修改，否则会数组越界0-5
+            if ((int(robot_status.enemy_color) == d.color_id)) // 不能随意修改，否则会数组越界0-5
             {
                 /* 放行正确颜色的装甲板 */
                 Pos3D m_pc = position_transform.pnp_get_pc(d.pts, d.tag_id); // point camera: 目标在相机坐标系下的坐标
@@ -61,6 +62,7 @@ namespace predict
         }
         if (new_detections.empty())
         {
+	    LOGM_S("No target");
             send.distance = -1.f;
             send.yaw_speed = 0.f;
             last_track = false;
@@ -142,16 +144,16 @@ namespace predict
             auto p_yaw = filter_yaw.update(z_k_yaw, t);
 
             // Switching strategy
-            double armar_yaw_angle = p_yaw(0, 0);
-            double armar_yaw_spd = p_yaw(1, 0);
+            double armor_yaw_angle = p_yaw(0, 0);
+            double armor_yaw_spd = p_yaw(1, 0);
 
-            if (false)
+            if (armor_yaw_spd < 0 && armor_yaw_angle > 30)
             {
                 send.shoot_mode = ShootMode::FOLLOW;
             } else {
                 send.shoot_mode = ShootMode::COMMON;
             }
-            if (false) {
+            if (armor_yaw_spd > 0) {
                 send.distance = -1.f;
                 send.yaw_speed = 0.f;
                 last_track = false;
@@ -174,6 +176,8 @@ namespace predict
             send.yaw_angle = (float)s_yaw;
             send.yaw_speed = (float)s_yaw_spd;
             send.pitch_angle = (float)s_pitch;
+
+            //std::cerr << send.distance << std::endl;
         }
         else
         {

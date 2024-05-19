@@ -62,7 +62,7 @@ namespace detect
              */
             if (_show)
             {
-                static const cv::Scalar colors[3] = {{255, 0, 0}, {0, 0, 255}, {0, 255, 0}};
+                static const cv::Scalar colors[3] = {{255, 0, 0}, {0, 0, 255}, {255, 255, 255}};
                 cv::Mat im2show = obj->frame.clone();
                 for (const auto &b : obj->bboxes)
                 {

@@ -142,20 +142,22 @@ namespace sensor
                     send.distance,
                     static_cast<uint8_t>(send.shoot_mode == ShootMode::COMMON)
                 );
-                
-                if (_debug)
-                {
-                    LOGM_S("[transmit] p-p:%6.2f | p-m:%6.2f | p-s:%6.2f | y-p:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f",
-                           send.pitch_angle, _attitude.pitch,
-                           pitch_angle_filter.output(),
-                           send.yaw_angle, _attitude.yaw,
-                           _attitude.yaw + val_limit(send.yaw_angle, 10),
-                           send.yaw_speed);
-                }
             }
             else
             {
                 pitch_angle_filter.reset();
+            }
+                
+            if (_debug)
+            {
+                auto &send = obj->robotcommand;
+                auto &_attitude = obj->attitude;
+                LOGM_S("[transmit] p-p:%6.2f | p-m:%6.2f | p-s:%6.2f | y-p:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f",
+                        send.pitch_angle, _attitude.pitch,
+                        pitch_angle_filter.output(),
+                        send.yaw_angle, _attitude.yaw,
+                        _attitude.yaw + val_limit(send.yaw_angle, 10),
+                        send.yaw_speed);
             }
 
             if (imu != nullptr)

@@ -15,6 +15,12 @@ void stop(int signal)
     detector.stop();
     predictor.stop();
     LOGM_S("Quit");
+    if (
+        !sensor_reader.isalive()
+        && !detector.isalive()
+        && !predictor.isalive()
+    )
+        exit(0);
 }
 
 bool init(void)
