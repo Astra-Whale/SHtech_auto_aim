@@ -47,7 +47,8 @@ public:
 private:
     AX_ENGINE_HANDLE handle;
     AX_ENGINE_IO_T io_data;
-    std::vector<uint8_t> inputTensorValues(3*384*640, 0);
+    std::vector<char> model_buffer;
+    std::vector<uint8_t> inputTensorValues;
 };
 
 #endif /* _AXCLMODULE_HPP_ */

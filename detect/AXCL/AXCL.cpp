@@ -216,9 +216,8 @@ constexpr float sigmoid(float x)
     return 1 / (1 + std::exp(-x));
 }
 
-AXCL::AXCL(const std::string &AXCL_file) : BackEnd() 
+AXCL::AXCL(const std::string &AXCL_file) : BackEnd(), inputTensorValues(3*384*640, 0)
 {
-    std::filesystem::path AXCL_file_path(AXCL_file);
     AX_ENGINE_NPU_ATTR_T npu_attr;
     memset(&npu_attr, 0, sizeof(npu_attr));
     npu_attr.eHardMode = AX_ENGINE_VIRTUAL_NPU_DISABLE;
@@ -231,7 +230,6 @@ AXCL::AXCL(const std::string &AXCL_file) : BackEnd()
     }
 
     // 2. load model
-    std::vector<char> model_buffer;
     if (!read_file(AXCL_file, model_buffer))
     {
         fprintf(stderr, "Read Run-Joint model(%s) file failed.\n", AXCL_file.c_str());
@@ -260,7 +258,7 @@ AXCL::AXCL(const std::string &AXCL_file) : BackEnd()
     }
 
     // 6. alloc io
-    ret = middleware::prepare_io(io_info, &io_data, std::make_pair(AX_ENGINE_ABST_DEFAULT, AX_ENGINE_ABST_CACHED));
+    ret = prepare_io(io_info, &io_data, std::make_pair(AX_ENGINE_ABST_DEFAULT, AX_ENGINE_ABST_CACHED));
     SAMPLE_AX_ENGINE_DEAL_HANDLE
     fprintf(stdout, "Engine alloc io is done. \n");
 }
@@ -282,9 +280,9 @@ void AXCL::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
     {
         cv::resize(src, src, {640, 384});
     }
-    cv::cvtColor(src, x, cv::COLOR_BGR2RGB);
+    cv::cvtColor(src, img_new, cv::COLOR_BGR2RGB);
     // 7. insert input
-    memcpy(io_data.Inputs[0].pVirAddr, inputTensorValues.data(), inputTensorValues.size());
+    memcpy(io_data.pInputs[0].pVirAddr, inputTensorValues.data(), inputTensorValues.size());
     
     auto ret = AX_ENGINE_RunSync(handle, &io_data);
     SAMPLE_AX_ENGINE_DEAL_HANDLE_IO
