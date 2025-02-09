@@ -50,7 +50,11 @@ namespace sensor
             LOGM_S("[sensor] video input from %s", VideoSource.c_str());
             if (VideoSource == "0")
             {
-                video = new HikCamWrapper();
+                #ifdef ENABLE_HIKCAM
+                    video = new HikCamWrapper();
+                #else
+                    LOGE_S("[sensor] hikcam not enabled!");
+                #endif
             }
             else
             {

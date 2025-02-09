@@ -7,6 +7,9 @@
 #ifndef DETECT_DETECT_H
 #define DETECT_DETECT_H
 
+//submodules
+#include "backend.hpp"
+
 //modules
 #include "common.hpp"
 
@@ -49,7 +52,7 @@ namespace detect
         void operator()(autoaim_pipeline &pipebefore, autoaim_pipeline &pipeafter);
 
     private:
-        SafeUniquePtr<TRTModule> model; /*!< unique_ptr 智能指针 指向一个用于 TensorRT 推理的 TRTModule 对象 在 init 期间完成初始化 */
+        SafeUniquePtr<BackEnd> model; /*!< unique_ptr 智能指针 指向一个用于 推理的 BackEnd 对象 在 init 期间完成初始化 */
     };
 }
 

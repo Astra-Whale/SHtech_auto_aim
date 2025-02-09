@@ -10,6 +10,11 @@ endif ()
 
 add_compile_definitions(PROJECT_DIR="${PROJECT_SOURCE_DIR}")
 
+set(INFERENCE_BACKEND "TRT" CACHE STRING "Select inference backend: ONNX, TRT, AXCL")
+set_property(CACHE INFERENCE_BACKEND PROPERTY STRINGS ONNX TRT AXCL)
+
+option(USE_HIKCAM "Build with HikCAM Lib" ON)
+
 add_compile_options(-Wall -Werror=return-type -Wno-unused-variable)
 if (CMAKE_BUILD_TYPE STREQUAL Release)
     add_compile_options(-O3 -flto -march=native)

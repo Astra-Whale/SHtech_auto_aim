@@ -5,17 +5,39 @@
 //
 
 //submodules
-#include "TRTModule.hpp"
 #include "detect.hpp"
 #include "chrono"
 #include <iostream>
+
+#if INFERENCE_BACKEND_TYPE == 1
+#include "ONNX/ONNX.hpp.h"
+#elif INFERENCE_BACKEND_TYPE == 2
+#include "TensorRT/TRTModule.hpp"
+#elif INFERENCE_BACKEND_TYPE == 3
+#include "AXCL/AXCL.h"
+#endif
+
 namespace detect
 {
 
+    /**
+        * @brief   装甲板检测初始化
+        * @details 创建 TRTModule 实例用于 TensorRT 推理
+        * @param[in] OnnxFileName 用于推理的 Onnx 文件路径
+        */
     void Detect::init(const std::string OnnxFileName)
     {
         LOGM_S("[detect] init");
-        model.reset(new TRTModule(OnnxFileName));
+        #if INFERENCE_BACKEND_TYPE == 1
+            model.reset(new ONNX(OnnxFileName));
+        #elif INFERENCE_BACKEND_TYPE == 2
+            model.reset(new TRTModule(OnnxFileName));
+        #elif INFERENCE_BACKEND_TYPE == 3
+            model.reset(new AXCL(OnnxFileName));
+        #else
+            #error "Invalid INFERENCE_BACKEND_TYPE"
+        #endif
+        // model.reset(new BackEnd(OnnxFileName));
         LOGM_S("[detect] ready");
         BasicTask::init();
     }

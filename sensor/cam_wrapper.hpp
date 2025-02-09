@@ -28,5 +28,7 @@ public:
 
 //submodules
 #include <video/video_wrapper.hpp>
+#ifdef ENABLE_HIKCAM
 #include <hikcam/hikcam_wrapper.hpp>
+#endif
 #endif //CAM_CAM_WRAPPER_H

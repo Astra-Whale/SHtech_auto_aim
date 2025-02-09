@@ -1,10 +1,10 @@
 //
-// Inherit from SJTU-CV-2021/autoaim/detector/TRTModule.hpp commit 7093b430 Harry-hhj on 21-05-24.
+// Inherit from SJTU-CV-2021/autoaim/detector/ONNX.hpp commit 7093b430 Harry-hhj on 21-05-24.
 // Modified by Haoran Jiang on 21-10-02: Refact framework.
 // Manage TRT Inference
 //
 
-#include "TRTModule.hpp"
+#include "ONNX.hpp"
 #include <fstream>
 #include <filesystem>
 #include <opencv2/core/core.hpp>
@@ -79,7 +79,7 @@ constexpr float sigmoid(float x)
     return 1 / (1 + std::exp(-x));
 }
 
-TRTModule::TRTModule(const std::string &onnx_file)
+ONNX::ONNX(const std::string &onnx_file) : BackEnd() 
 {
     std::filesystem::path onnx_file_path(onnx_file);
     auto cache_file_path = onnx_file_path;
@@ -95,7 +95,7 @@ TRTModule::TRTModule(const std::string &onnx_file)
     }
 }
 
-void TRTModule::build_engine_from_onnx(const std::string &onnx_file)
+void ONNX::build_engine_from_onnx(const std::string &onnx_file)
 {
     migraphx::onnx_options onnx_opts;
     // import and parse onnx file into migraphx::program
@@ -113,21 +113,21 @@ void TRTModule::build_engine_from_onnx(const std::string &onnx_file)
     net.print();
 }
 
-void TRTModule::build_engine_from_cache(const std::string &cache_file_path)
+void ONNX::build_engine_from_cache(const std::string &cache_file_path)
 {
     net = migraphx::load(cache_file_path.c_str());
 }
 
-void TRTModule::cache_engine(const std::string &cache_file_path)
+void ONNX::cache_engine(const std::string &cache_file_path)
 {
     migraphx::save(net, cache_file_path.c_str());
 }
 
-TRTModule::~TRTModule()
+ONNX::~ONNX()
 {
 }
 
-void TRTModule::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
+void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
 {
     // pre-process [bgr2rgb & resize]
     det.clear();
