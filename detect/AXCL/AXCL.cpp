@@ -225,7 +225,7 @@ AXCL::AXCL(const std::string &AXCL_file) : BackEnd(), inputTensorValues(3*384*64
 
     if (0 != ret)
     {
-        LOGE_S( "Init ENGINE failed.\n", AXCL_file.c_str());
+        LOGE_S( "Init ENGINE failed.\n");
         return;
     }
 
