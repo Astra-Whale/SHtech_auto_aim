@@ -278,7 +278,8 @@ void AXCL::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
     
     if (src.cols != 640 || src.rows != 384)
     {
-        cv::resize(src, src, {640, 384});
+        cv::resize(src, img_new, {640, 384});
+        cv::cvtColor(img_new, img_new, cv::COLOR_BGR2RGB);
     }
     cv::cvtColor(src, img_new, cv::COLOR_BGR2RGB);
     // 7. insert input
