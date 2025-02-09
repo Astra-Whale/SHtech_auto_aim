@@ -218,6 +218,7 @@ constexpr float sigmoid(float x)
 
 AXCL::AXCL(const std::string &AXCL_file) : BackEnd(), inputTensorValues(3*384*640, 0)
 {
+    AX_SYS_Init();
     AX_ENGINE_NPU_ATTR_T npu_attr;
     memset(&npu_attr, 0, sizeof(npu_attr));
     npu_attr.eHardMode = AX_ENGINE_VIRTUAL_NPU_DISABLE;
