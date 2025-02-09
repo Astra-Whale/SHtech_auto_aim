@@ -14,7 +14,7 @@
 #elif INFERENCE_BACKEND_TYPE == 2
 #include "TensorRT/TRTModule.hpp"
 #elif INFERENCE_BACKEND_TYPE == 3
-#include "AXCL/AXCL.h"
+#include "AXCL/AXCL.hpp"
 #endif
 
 namespace detect
