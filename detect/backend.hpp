@@ -17,7 +17,6 @@ public:
 
     BackEnd operator=(const BackEnd &) = delete;
 
-    virtual std::vector<bbox_t> operator()(const cv::Mat &src) const = 0;
     virtual void operator()(const cv::Mat &src, std::vector<bbox_t> &det) const = 0;
 };
 

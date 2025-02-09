@@ -214,59 +214,6 @@ void TRTModule::cache_engine(const std::string &cache_file)
     delete engine_buffer;
 }
 
-std::vector<bbox_t> TRTModule::operator()(const cv::Mat &src) const
-{
-    // pre-process [bgr2rgb & resize]
-    cv::Mat x;
-    float fx = (float)src.cols / 640.f, fy = (float)src.rows / 384.f;
-    cv::cvtColor(src, x, cv::COLOR_BGR2RGB);
-    if (src.cols != 640 || src.rows != 384)
-    {
-        cv::resize(x, x, {640, 384});
-    }
-    x.convertTo(x, CV_32F);
-
-    // run model
-    cudaMemcpyAsync(device_buffer[input_idx], x.data, input_sz * sizeof(float), cudaMemcpyHostToDevice, stream);
-    context->enqueue(1, device_buffer, stream, nullptr);
-    cudaMemcpyAsync(output_buffer, device_buffer[output_idx], output_sz * sizeof(float), cudaMemcpyDeviceToHost,
-                    stream);
-    cudaStreamSynchronize(stream);
-
-    // post-process [nms]
-    std::vector<bbox_t> rst;
-    rst.reserve(TOPK_NUM);
-    std::vector<uint8_t> removed(TOPK_NUM);
-    for (int i = 0; i < TOPK_NUM; i++)
-    {
-        auto *box_buffer = output_buffer + i * 20; // 20->23
-        if (box_buffer[8] < inv_sigmoid(KEEP_THRES))
-            break;
-        if (removed[i])
-            continue;
-        rst.emplace_back();
-        auto &box = rst.back();
-        memcpy(&box.pts, box_buffer, 8 * sizeof(float));
-        for (auto &pt : box.pts)
-            pt.x *= fx, pt.y *= fy;
-        box.confidence = sigmoid(box_buffer[8]);
-        box.color_id = argmax(box_buffer + 9, 4);
-        box.tag_id = argmax(box_buffer + 13, 7);
-        for (int j = i + 1; j < TOPK_NUM; j++)
-        {
-            auto *box2_buffer = output_buffer + j * 20;
-            if (box2_buffer[8] < inv_sigmoid(KEEP_THRES))
-                break;
-            if (removed[j])
-                continue;
-            if (is_overlap(box_buffer, box2_buffer))
-                removed[j] = true;
-        }
-    }
-
-    return rst;
-}
-
 void TRTModule::operator()(const cv::Mat &src, std::vector<bbox_t> &det) const
 {
     // pre-process [bgr2rgb & resize]

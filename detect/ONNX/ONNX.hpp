@@ -45,7 +45,6 @@ public:
 
     ONNX operator=(const ONNX &) = delete;
 
-    //std::vector<bbox_t> operator()(const cv::Mat &src) const;
     void operator()(const cv::Mat &src, std::vector<bbox_t> &det);
 
 private:
