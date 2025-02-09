@@ -39,6 +39,31 @@ typedef std::pair<AX_ENGINE_ALLOC_BUFFER_STRATEGY_T, AX_ENGINE_ALLOC_BUFFER_STRA
 
 const char* AX_CMM_SESSION_NAME = "ax-samples-cmm";
 
+void free_io_index(AX_ENGINE_IO_BUFFER_T* io_buf, size_t index)
+{
+    for (int i = 0; i < (int)index; ++i)
+    {
+        AX_ENGINE_IO_BUFFER_T* pBuf = io_buf + i;
+        AX_SYS_MemFree(pBuf->phyAddr, pBuf->pVirAddr);
+    }
+}
+
+void free_io(AX_ENGINE_IO_T* io)
+{
+    for (size_t j = 0; j < io->nInputSize; ++j)
+    {
+        AX_ENGINE_IO_BUFFER_T* pBuf = io->pInputs + j;
+        AX_SYS_MemFree(pBuf->phyAddr, pBuf->pVirAddr);
+    }
+    for (size_t j = 0; j < io->nOutputSize; ++j)
+    {
+        AX_ENGINE_IO_BUFFER_T* pBuf = io->pOutputs + j;
+        AX_SYS_MemFree(pBuf->phyAddr, pBuf->pVirAddr);
+    }
+    delete[] io->pInputs;
+    delete[] io->pOutputs;
+}
+
 static inline int prepare_io(AX_ENGINE_IO_INFO_T* info, AX_ENGINE_IO_T* io_data, INPUT_OUTPUT_ALLOC_STRATEGY strategy)
 {
     memset(io_data, 0, sizeof(*io_data));
@@ -96,31 +121,6 @@ static inline int prepare_io(AX_ENGINE_IO_INFO_T* info, AX_ENGINE_IO_T* io_data,
     }
 
     return 0;
-}
-
-void free_io_index(AX_ENGINE_IO_BUFFER_T* io_buf, size_t index)
-{
-    for (int i = 0; i < (int)index; ++i)
-    {
-        AX_ENGINE_IO_BUFFER_T* pBuf = io_buf + i;
-        AX_SYS_MemFree(pBuf->phyAddr, pBuf->pVirAddr);
-    }
-}
-
-void free_io(AX_ENGINE_IO_T* io)
-{
-    for (size_t j = 0; j < io->nInputSize; ++j)
-    {
-        AX_ENGINE_IO_BUFFER_T* pBuf = io->pInputs + j;
-        AX_SYS_MemFree(pBuf->phyAddr, pBuf->pVirAddr);
-    }
-    for (size_t j = 0; j < io->nOutputSize; ++j)
-    {
-        AX_ENGINE_IO_BUFFER_T* pBuf = io->pOutputs + j;
-        AX_SYS_MemFree(pBuf->phyAddr, pBuf->pVirAddr);
-    }
-    delete[] io->pInputs;
-    delete[] io->pOutputs;
 }
 
 bool read_file(const std::string& path, std::vector<char>& data)
@@ -273,7 +273,7 @@ void AXCL::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
 {
     // pre-process [bgr2rgb & resize]
     det.clear();
-    cv::Mat img_new(384, 640, CV_8UC3, image.data());
+    cv::Mat img_new(384, 640, CV_8UC3, inputTensorValues.data());
     float fx = (float)src.cols / 640.f, fy = (float)src.rows / 384.f;
     
     if (src.cols != 640 || src.rows != 384)
