@@ -46,8 +46,8 @@ elseif(INFERENCE_BACKEND STREQUAL "AXCL")
 
     add_library(detect OBJECT detect.cpp ${axcl_src})
 
-    target_link_libraries(${example_name} PRIVATE ${OpenCV_LIBS} ax_interpreter ax_sys ax_ivps ax_engine)
-    target_link_directories(${example_name} PRIVATE /soc/lib)
+    target_link_libraries(${example_name} ${OpenCV_LIBS} ax_interpreter ax_sys ax_ivps ax_engine)
+    target_link_directories(${example_name} PUBLIC /soc/lib)
     target_compile_definitions(detect PRIVATE INFERENCE_BACKEND_TYPE=1)
 
 else()
