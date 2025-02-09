@@ -268,6 +268,8 @@ AXCL::~AXCL()
 {
     free_io(&io_data);
     AX_ENGINE_DestroyHandle(handle);
+    AX_ENGINE_Deinit();
+    AX_SYS_Deinit();
 }
 
 void AXCL::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
