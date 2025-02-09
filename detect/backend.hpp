@@ -17,7 +17,7 @@ public:
 
     BackEnd operator=(const BackEnd &) = delete;
 
-    virtual void operator()(const cv::Mat &src, std::vector<bbox_t> &det) const = 0;
+    virtual void operator()(const cv::Mat &src, std::vector<bbox_t> &det) = 0;
 };
 
 #endif //_DETECT_BACKEND_HPP_

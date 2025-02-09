@@ -55,7 +55,7 @@ public:
 
     TRTModule operator=(const TRTModule &) = delete;
 
-    void operator()(const cv::Mat &src, std::vector<bbox_t> &det) const;
+    void operator()(const cv::Mat &src, std::vector<bbox_t> &det);
 
 private:
     void build_engine_from_onnx(const std::string &onnx_file);

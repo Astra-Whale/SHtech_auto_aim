@@ -214,7 +214,7 @@ void TRTModule::cache_engine(const std::string &cache_file)
     delete engine_buffer;
 }
 
-void TRTModule::operator()(const cv::Mat &src, std::vector<bbox_t> &det) const
+void TRTModule::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
 {
     // pre-process [bgr2rgb & resize]
     det.clear();
