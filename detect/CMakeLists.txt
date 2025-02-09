@@ -48,7 +48,7 @@ elseif(INFERENCE_BACKEND STREQUAL "AXCL")
 
     target_link_libraries(detect ${OpenCV_LIBS} ax_interpreter ax_sys ax_ivps ax_engine)
     target_link_directories(detect PUBLIC /soc/lib)
-    target_compile_definitions(detect PRIVATE INFERENCE_BACKEND_TYPE=1)
+    target_compile_definitions(detect PRIVATE INFERENCE_BACKEND_TYPE=3)
 
 else()
     message(FATAL_ERROR "Invalid inference backend selected")

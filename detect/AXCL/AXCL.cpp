@@ -15,15 +15,97 @@
 #define SAMPLE_AX_ENGINE_DEAL_HANDLE            \
     if (0 != ret)                               \
     {                                           \
-        return AX_ENGINE_DestroyHandle(handle); \
+        AX_ENGINE_DestroyHandle(handle);        \
+        return;                                 \
     }
 
 #define SAMPLE_AX_ENGINE_DEAL_HANDLE_IO         \
     if (0 != ret)                               \
     {                                           \
-        free_io(&io_data);          \
-        return AX_ENGINE_DestroyHandle(handle); \
+        free_io(&io_data);                      \
+        AX_ENGINE_DestroyHandle(handle);        \
+        return;                                 \
     }
+
+#define AX_CMM_ALIGN_SIZE 128
+
+typedef enum
+{
+    AX_ENGINE_ABST_DEFAULT = 0,
+    AX_ENGINE_ABST_CACHED = 1,
+} AX_ENGINE_ALLOC_BUFFER_STRATEGY_T;
+
+typedef std::pair<AX_ENGINE_ALLOC_BUFFER_STRATEGY_T, AX_ENGINE_ALLOC_BUFFER_STRATEGY_T> INPUT_OUTPUT_ALLOC_STRATEGY;
+
+const char* AX_CMM_SESSION_NAME = "ax-samples-cmm";
+
+static inline int prepare_io(AX_ENGINE_IO_INFO_T* info, AX_ENGINE_IO_T* io_data, INPUT_OUTPUT_ALLOC_STRATEGY strategy)
+{
+    memset(io_data, 0, sizeof(*io_data));
+    io_data->pInputs = new AX_ENGINE_IO_BUFFER_T[info->nInputSize];
+    memset(io_data->pInputs, 0, sizeof(AX_ENGINE_IO_BUFFER_T) * info->nInputSize);
+    io_data->nInputSize = info->nInputSize;
+
+    auto ret = 0;
+    for (int i = 0; i < (int)info->nInputSize; ++i)
+    {
+        auto meta = info->pInputs[i];
+        auto buffer = &io_data->pInputs[i];
+        if (strategy.first == AX_ENGINE_ABST_CACHED)
+        {
+            ret = AX_SYS_MemAllocCached((AX_U64*)(&buffer->phyAddr), &buffer->pVirAddr, meta.nSize, AX_CMM_ALIGN_SIZE, (const AX_S8*)(AX_CMM_SESSION_NAME));
+        }
+        else
+        {
+            ret = AX_SYS_MemAlloc((AX_U64*)(&buffer->phyAddr), &buffer->pVirAddr, meta.nSize, AX_CMM_ALIGN_SIZE, (const AX_S8*)(AX_CMM_SESSION_NAME));
+        }
+
+        if (ret != 0)
+        {
+            free_io_index(io_data->pInputs, i);
+            fprintf(stderr, "Allocate input{%d} { phy: %p, vir: %p, size: %lu Bytes }. fail \n", i, (void*)buffer->phyAddr, buffer->pVirAddr, (long)meta.nSize);
+            return ret;
+        }
+        // fprintf(stderr, "Allocate input{%d} { phy: %p, vir: %p, size: %lu Bytes }. \n", i, (void*)buffer->phyAddr, buffer->pVirAddr, (long)meta.nSize);
+    }
+
+    io_data->pOutputs = new AX_ENGINE_IO_BUFFER_T[info->nOutputSize];
+    memset(io_data->pOutputs, 0, sizeof(AX_ENGINE_IO_BUFFER_T) * info->nOutputSize);
+    io_data->nOutputSize = info->nOutputSize;
+    for (int i = 0; i < (int)info->nOutputSize; ++i)
+    {
+        auto meta = info->pOutputs[i];
+        auto buffer = &io_data->pOutputs[i];
+        buffer->nSize = meta.nSize;
+        if (strategy.second == AX_ENGINE_ABST_CACHED)
+        {
+            ret = AX_SYS_MemAllocCached((AX_U64*)(&buffer->phyAddr), &buffer->pVirAddr, meta.nSize, AX_CMM_ALIGN_SIZE, (const AX_S8*)(AX_CMM_SESSION_NAME));
+        }
+        else
+        {
+            ret = AX_SYS_MemAlloc((AX_U64*)(&buffer->phyAddr), &buffer->pVirAddr, meta.nSize, AX_CMM_ALIGN_SIZE, (const AX_S8*)(AX_CMM_SESSION_NAME));
+        }
+        if (ret != 0)
+        {
+            fprintf(stderr, "Allocate output{%d} { phy: %p, vir: %p, size: %lu Bytes }. fail \n", i, (void*)buffer->phyAddr, buffer->pVirAddr, (long)meta.nSize);
+            free_io_index(io_data->pInputs, io_data->nInputSize);
+            free_io_index(io_data->pOutputs, i);
+            return ret;
+        }
+        // fprintf(stderr, "Allocate output{%d} { phy: %p, vir: %p, size: %lu Bytes }.\n", i, (void*)buffer->phyAddr, buffer->pVirAddr, (long)meta.nSize);
+    }
+
+    return 0;
+}
+
+void free_io_index(AX_ENGINE_IO_BUFFER_T* io_buf, size_t index)
+{
+    for (int i = 0; i < (int)index; ++i)
+    {
+        AX_ENGINE_IO_BUFFER_T* pBuf = io_buf + i;
+        AX_SYS_MemFree(pBuf->phyAddr, pBuf->pVirAddr);
+    }
+}
 
 void free_io(AX_ENGINE_IO_T* io)
 {
@@ -40,6 +122,7 @@ void free_io(AX_ENGINE_IO_T* io)
     delete[] io->pInputs;
     delete[] io->pOutputs;
 }
+
 bool read_file(const std::string& path, std::vector<char>& data)
 {
     std::fstream fs(path, std::ios::in | std::ios::binary);
@@ -143,7 +226,8 @@ AXCL::AXCL(const std::string &AXCL_file) : BackEnd()
 
     if (0 != ret)
     {
-        return ret;
+        fprintf(stderr, "Init ENGINE failed.\n", AXCL_file.c_str());
+        return;
     }
 
     // 2. load model
@@ -151,7 +235,7 @@ AXCL::AXCL(const std::string &AXCL_file) : BackEnd()
     if (!read_file(AXCL_file, model_buffer))
     {
         fprintf(stderr, "Read Run-Joint model(%s) file failed.\n", AXCL_file.c_str());
-        return false;
+        return;
     }
 
     // 3. create handle
@@ -184,7 +268,7 @@ AXCL::AXCL(const std::string &AXCL_file) : BackEnd()
 AXCL::~AXCL()
 {
     free_io(&io_data);
-    return AX_ENGINE_DestroyHandle(handle);
+    AX_ENGINE_DestroyHandle(handle);
 }
 
 void AXCL::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
