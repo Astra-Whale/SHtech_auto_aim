@@ -5,16 +5,13 @@ TODO: 实装预测功能 实装串口通信 替换Log实现 替换cmd_praser实�
 
 
 项目依赖: 
-
-* CUDA10.2
-* TensorRT8
 * gcc/g++-9: ubuntu18.04 设备均需手动升级
-* Ceres-Solver: 计算库，安装方式: [编译安装](https://github.com/ceres-solver/ceres-solver) (Not necessary so far)
-* OpenCV4: 计算机视觉库，安装方式: [编译安装](https://github.com/opencv/opencv.git)
-* OpenCV_contrib: OpenCV 额外模块，安装方式: 和 OpenCV 一起[编译安装](https://github.com/opencv/opencv_contrib.git)
-* CatKin: ROS组件，串口通信依赖，安装方式: apt install catkin
-* libserial: 串口通信库，安装方式: [编译安装](https://gitlab.rmshtech.tk/hegq/libserial)
-* MVS: 海康摄像头驱动，安装方式: [下载安装](https://www.hikrobotics.com/cn/machinevision/service/download?module=0)
+* OpenCV4: 计算机视觉库，安装方式: `apt install libopencv-dev libopencv-contrib-dev` 或 [编译安装](https://github.com/opencv/opencv.git)
+* RMCVSerial: 串口库, 安装方式: [编译安装](https://gitlab.rmshtech.com/computer-vision/tools/rmcv_serial)
+* 使用TensorRT推理后端时: CUDA10.2 TensorRT8
+* 使用ONNXRunTime推理后端时: ONNX Runtime; ROCM
+* 使用AXCL推理后端时: AX650N开发板
+* 如需使用海康摄像头: MVS海康摄像头驱动，安装方式: [下载安装](https://www.hikrobotics.com/cn/machinevision/service/download?module=0)
 * [配置脚本参考](http://gitlab.rmshtech.tk/computer-vision/nvidianx-environment-config)
 ---
 
@@ -23,15 +20,26 @@ TODO: 实装预测功能 实装串口通信 替换Log实现 替换cmd_praser实�
 * 2021-10-02: 代码框架初步搭建完成
 * 2021-11-20: 封装坐标转换相关代码，实现静态目标预测全部功能
 * 2021-12-10: 调整坐标转换封装结构，实现动态目标二阶线性预测
+* 2025-02-14: 合并推理后端, 更新构建脚本
 
 <br>
+
+一键构建指南:
+```bash
+mkdir build
+cd build
+# 当希望包含MVS编译完整版本时
+cmake -DINFERENCE_BACKEND=TRT ..#取值可以为TRT ONNX 或 AXCL, 代表对应平台
+# 当不希望包含MVS编译仅从视频读取的测试版本时
+cmake -DUSE_HIKCAM=OFF -DINFERENCE_BACKEND=TRT ..#取值可以为TRT ONNX 或 AXCL, 代表对应平台
+```
 
 排坑指南: 
 
 -   MVS安装完成后需在`~/.bashrc`中设置`MVS_PATH`指向`libMvControl.so`所在文件夹。
 -   gcc/g++-9: 本项目中如果 gcc/g++ 版本不对，那么会出现以下几个错误
-    -   `autoaim/detector/TRTModule.hpp:83` 中 filesystem 报错
-    -   `autoaim/detector/TRTModule.hpp:17-18` 中 default 定义错误
+    -   `autoaim/detector/TensorRT/TRTModule.hpp:83` 中 filesystem 报错
+    -   `autoaim/detector/TensorRT/TRTModule.hpp:17-18` 中 default 定义错误
 
 
 
