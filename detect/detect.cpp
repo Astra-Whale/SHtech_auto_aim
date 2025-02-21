@@ -10,7 +10,7 @@
 #include <iostream>
 
 #if INFERENCE_BACKEND_TYPE == 1
-#include "ONNX/ONNX.hpp.h"
+#include "ONNX/ONNX.hpp"
 #elif INFERENCE_BACKEND_TYPE == 2
 #include "TensorRT/TRTModule.hpp"
 #elif INFERENCE_BACKEND_TYPE == 3

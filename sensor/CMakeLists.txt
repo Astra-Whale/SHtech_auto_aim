@@ -22,9 +22,9 @@ if(USE_HIKCAM)
     LINK_DIRECTORIES($ENV{MVS_PATH})
 
     FILE(GLOB MVS_LIBS "$ENV{MVS_PATH}/lib*.so")
-
-    target_compile_definitions(sensor PRIVATE ENABLE_HIKCAM)
     ADD_LIBRARY(sensor OBJECT sensor.cpp ${video_src} ${hikcam_src} ${uartimu_src})
+
+    target_compile_definitions(sensor PRIVATE ENABLE_HIKCAM=1)
     target_link_libraries(sensor ${OpenCV_LIBS} RMCVSerial)
     target_link_libraries(sensor libMvCameraControl.so ${MVS_LIBS})
     set_target_properties(sensor PROPERTIES LINK_FLAGS ${MVS_LD_FLAGS})

@@ -5,6 +5,7 @@
 //
 
 #include "cam_wrapper.hpp"
+#include "video_wrapper.hpp"
 #include <iostream>
 
 VideoWrapper::VideoWrapper(const std::string &filename)

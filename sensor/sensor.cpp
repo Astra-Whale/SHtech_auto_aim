@@ -4,6 +4,17 @@
 //
 
 #include "sensor.hpp"
+
+//submodules
+#include <video/video_wrapper.hpp>
+#ifdef ENABLE_HIKCAM
+#warning ENABLE_HIKCAM 
+#include <hikcam/hikcam_wrapper.hpp>
+#else
+#warning 
+#warning DISABLE_HIKCAM 
+#endif
+
 namespace sensor
 {
     /**
@@ -69,7 +80,54 @@ namespace sensor
             return angle;
         }
     };
-
+    void Sensor::init(const std::string VideoSource, const std::string ImuSource, const std::string port, const std::string flip_image)
+        {
+            LOGM_S("[sensor] comm I/O on %s", port.c_str());
+            LOGM_S("[sensor] video input from %s", VideoSource.c_str());
+            if (VideoSource == "0")
+            {
+                #ifdef ENABLE_HIKCAM
+                    video = new HikCamWrapper();
+                #else
+                    LOGE_S("[sensor] hikcam not enabled!");
+                #endif
+            }
+            else
+            {
+                video = new VideoWrapper(VideoSource);
+            }
+            if (!video->init())
+            {
+                LOGE_S("[sensor]Error: Initialize video stream failed");
+            }
+            LOGM_S("[senosr] video ready");
+            LOGM_S("[senosr] IMU input from %s", ImuSource.c_str());
+            imu = nullptr;
+            if (ImuSource == "UART")
+            {
+                imu = new UartIMU(port);
+            }
+            if (imu == nullptr || !imu->init())
+            {
+                LOGE_S("[sensor]Error: IMU init failed");
+            }
+            if (flip_image == "1")
+            {
+                is_image_input_flipped = true;
+				LOGW_S("[sensor] Input image will be flipped");
+            }
+            else 
+            {
+                is_image_input_flipped = false;
+				LOGW_S("[sensor] Input image will not be flipped");
+            }
+            LOGM_S("[senosr] IMU ready");
+            LOGM_S("[sensor] ready");
+            BasicTask::init();
+        }
+        
+        
+        
     void Sensor::operator()(autoaim_pipeline &pipebefore, autoaim_pipeline &pipeafter)
     {
         /**
