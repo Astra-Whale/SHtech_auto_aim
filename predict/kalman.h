@@ -80,26 +80,11 @@ namespace predict
             K = P * H.transpose() * (H * P * H.transpose() + Q).inverse(); //Kg(k)= P(k|k-1) H’ / (H P(k|k-1) H’ + R)
             //修正结果，即计算滤波值
             x_k1 = p_x_k +
-                K * (z_k - H * p_x_k); //利用残余的信息改善对x(t)的估计，给出后验估计，这个值也就是输出  X(k|k)= X(k|k-1)+Kg(k) (Z(k)-H X(k|k-1))
+                   K * (z_k - H * p_x_k); //利用残余的信息改善对x(t)的估计，给出后验估计，这个值也就是输出  X(k|k)= X(k|k-1)+Kg(k) (Z(k)-H X(k|k-1))
             //更新后验估计
             P = (Matrix_xxd::Identity() - K * H) * P; //计算后验均方差  P[n|n]=(1-K[n]*H)*P[n|n-1]
 
             return x_k1;
-        }
-
-        Matrix_x1d get_state()
-        {
-            return x_k1;
-        }
-
-        TP get_last_tp()
-        {
-            return last_tp;
-        }
-
-        double get_duration(TP time)
-        {
-            return duration_cast<microseconds>(time - last_tp).count() / 1e6;
         }
     };
 }

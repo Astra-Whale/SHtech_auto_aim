@@ -21,10 +21,11 @@ namespace predict
 
         LOGM_S("[predict] running");
 
-        SingleArmorModelPredictor _predictor(comm_latency);
+        LinearPredictor _predictor(comm_latency);
 
         do
         {
+            auto t1 = std::chrono::steady_clock::now();
             auto obj = pipebefore.get(this);           /*!< 从上一线程的缓存队列获取报文指针 */
             if (obj == nullptr)
             {
@@ -32,7 +33,9 @@ namespace predict
             }
             cv::Mat img_show;
 
+            auto t2 = std::chrono::steady_clock::now();
             _predictor.predict(obj, position_transform);
+            auto t3 = std::chrono::steady_clock::now();
 
             if (_debug)
             {
@@ -46,6 +49,7 @@ namespace predict
             }
 
             pipeafter.put(obj, this); /*!< 向下一线程的缓存队列提交报文指针*/
+            auto t4 = std::chrono::steady_clock::now();
             // LOGM_S(
             //     "Predict Read %.2lfms Detect %.2lfms Put %.2lfms", 
             //     std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count()*1000,

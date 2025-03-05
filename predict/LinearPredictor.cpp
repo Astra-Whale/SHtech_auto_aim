@@ -73,7 +73,6 @@ namespace predict
         bool same_armor = false;
         bool same_id = false;
         bool need_init = false;
-        Pos3D speed_pc,aim_pc;
 
         if (last_track) // 寻找上一次打击的装甲板
         {
@@ -165,12 +164,10 @@ namespace predict
             double process_latency = duration_cast<microseconds>(now_t - t).count() / 1e6;            //
             double t_delay = ft + comm_latency + process_latency;                                     //
             Pos3D s_pw{p_x(0, 0) + t_delay * p_x(1, 0), p_y(0, 0) + t_delay * p_y(1, 0), m_pw(2, 0)}; // s_pw: ft后预测点
-            speed_pc = position_transform.pw_to_pc(s_pw);
             Eigen::Vector2d r_vec(p_x(0, 0), p_y(0, 0));                                              // 目标装甲板位矢
             Eigen::Vector2d v_vec(p_y(1, 0), -p_x(1, 0));                                             // 目标装甲板速度
             s_pw(2, 0) -= TrajectoryCompensation(s_pw, robot_status.robot_speed_mps);                 // 抬枪后预测点
             Pos3D s_pc = position_transform.pw_to_pc(s_pw);                                           // point camera: 目标在相机坐标系下的坐标
-            aim_pc = s_pc;
             double s_yaw_spd = -(r_vec.dot(v_vec)) / (r_vec.norm() * r_vec.norm()) / M_PI * 180.;     // s_yaw_spd: yaw轴速度计算值
             double s_yaw = atan(s_pc(0, 0) / s_pc(2, 0)) / M_PI * 180.;
             double s_pitch = atan(s_pc(1, 0) / s_pc(2, 0)) / M_PI * 180.;
@@ -185,14 +182,12 @@ namespace predict
         else
         {
             Pos3D m_pw = position_transform.pnp_get_pw(armor.pts, armor.tag_id);        // point world: 目标在世界坐标系下的坐标
-            speed_pc = position_transform.pw_to_pc(m_pw);
             filter_x.reset(m_pw(0, 0), t), filter_y.reset(m_pw(1, 0), t);               // 重置 x,y 轴滤波器
             double m_yaw = position_transform.pnp_get_armor_angle(armor.pts, armor.tag_id);
             filter_yaw.reset(m_yaw, t);
             double height = TrajectoryCompensation(m_pw, robot_status.robot_speed_mps); // height: 弹道下坠高度
             Pos3D s_pw{m_pw(0, 0), m_pw(1, 0), m_pw(2, 0) - height};                    // 抬枪后预测点
             Pos3D s_pc = position_transform.pw_to_pc(s_pw);                             // point camera: 目标在相机坐标系下的坐标
-            aim_pc = s_pc;
             double s_yaw = atan(s_pc(0, 0) / s_pc(2, 0)) / M_PI * 180.;
             double s_pitch = atan(s_pc(1, 0) / s_pc(2, 0)) / M_PI * 180.;
 
@@ -207,47 +202,5 @@ namespace predict
         last_track = true;
         last_bbox = armor;
         last_pw = position_transform.pnp_get_pw(armor.pts, armor.tag_id);
-
-
-        // 预测器可视化
-        if (true)
-            {
-                static const cv::Scalar colors[4] = {{255, 0, 0}, {0, 0, 255}, {255, 255, 255}, {0, 255, 0}};
-                cv::Mat im2show = data->frame.clone();
-                cv::line(im2show, armor.pts[0], armor.pts[1], colors[2], 2);
-                cv::line(im2show, armor.pts[1], armor.pts[2], colors[2], 2);
-                cv::line(im2show, armor.pts[2], armor.pts[3], colors[2], 2);
-                cv::line(im2show, armor.pts[3], armor.pts[0], colors[2], 2);
-
-                // 使用行列式方法求解对角线交点
-                float a0 = armor.pts[2].y - armor.pts[0].y;
-                float b0 = armor.pts[0].x - armor.pts[2].x;
-                float c0 = armor.pts[2].x * armor.pts[0].y - armor.pts[0].x * armor.pts[2].y;
-
-                float a1 = armor.pts[3].y - armor.pts[1].y;
-                float b1 = armor.pts[1].x - armor.pts[3].x;
-                float c1 = armor.pts[3].x * armor.pts[1].y - armor.pts[1].x * armor.pts[3].y;
-
-                float D = a0 * b1 - a1 * b0;
-
-                cv::Point2f center;
-                if (std::abs(D) < 1e-6) {
-                    // 如果对角线近乎平行，返回四个点的均值
-                    center = (armor.pts[0] + armor.pts[1] + armor.pts[2] + armor.pts[3]) / 4.0f;
-                } else {
-                    center.x = (b0 * c1 - b1 * c0) / D;
-                    center.y = (c0 * a1 - c1 * a0) / D;
-                }
-
-                cv::Point2f speed_vec = position_transform.projectPoint(speed_pc);
-                cv::Point2f aim_vec = position_transform.projectPoint(aim_pc);
-                
-                cv::line(im2show, center, speed_vec, colors[1], 2);
-                //cv::line(im2show, speed_vec, aim_vec, colors[3], 2);
-
-                cv::putText(im2show, std::to_string(armor.tag_id), armor.pts[0], cv::FONT_HERSHEY_SIMPLEX, 1, colors[armor.color_id]);
-                cv::imshow("predictor_debug", im2show);
-                cv::waitKey(1);
-            }
     }
 }

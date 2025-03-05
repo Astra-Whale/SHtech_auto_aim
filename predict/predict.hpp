@@ -7,9 +7,8 @@
 
 // submodules
 #include "tools.hpp"
+#include "StaticPredictor.hpp"
 #include "LinearPredictor.hpp"
-#include "OutPostPredictor.hpp"
-#include "SingleArmorModelPredictor.hpp"
 
 // modules
 #include "common.hpp"

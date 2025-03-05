@@ -27,15 +27,6 @@ namespace predict
 
     using Pos3D = Eigen::Vector3d;
 
-    struct OutPostFilterMember
-    {
-        Pos3D OutPostCenterWP;
-        double ArmorAngle;
-
-        OutPostFilterMember(const Pos3D& center, double angle)
-            : OutPostCenterWP(center), ArmorAngle(angle) {}
-    };
-
     class PositionTransform
     {
     private:
@@ -43,17 +34,12 @@ namespace predict
         Eigen::Vector3d T_CI;          // 陀螺仪坐标系到相机坐标系平移向量EIGEN-Matrix
         Eigen::Matrix3d F;             // 相机内参矩阵EIGEN-Matrix
         Eigen::Matrix<double, 1, 5> C; // 相机畸变矩阵EIGEN-Matrix
-        // 陀螺仪坐标系到世界坐标系旋转矩阵EIGEN-Matrix
-        // 陀螺仪坐标系：右手系，车头向左为x，车头朝向为y，地面为z
-        // 世界坐标系：右手系，朝向与初始化时的陀螺仪坐标系相同，原点始终跟随底盘原点
-        // 即：世界坐标系是一个朝向固定，原点随车移动的伪世界坐标系
-        Eigen::Matrix3d R_IW;          
+        Eigen::Matrix3d R_IW;          // 陀螺仪坐标系到世界坐标系旋转矩阵EIGEN-Matrix
         cv::Mat R_CI_MAT;              // 陀螺仪坐标系到相机坐标系旋转矩阵CV-Mat
         cv::Mat T_CI_MAT;              // 陀螺仪坐标系到相机坐标系平移矩阵CV-Mat
         cv::Mat F_MAT;                 // 相机内参矩阵CV-Mat
         cv::Mat C_MAT;                 // 相机畸变矩阵CV-Mat
     public:
-        static constexpr double outpost_radius = 0.2765;
         explicit PositionTransform()
         {
             R_CI_MAT = cv::Mat::zeros(3, 3, CV_64FC1);
@@ -94,6 +80,7 @@ namespace predict
             std::vector<cv::Point2d> pu(p, p + 4);
             cv::Mat rvec, tvec;
 
+            auto t1 = std::chrono::steady_clock::now();
             if (armor_number == 0 || armor_number == 1 || armor_number == 8)
                 cv::solvePnP(pw_big, pu, F_MAT, C_MAT, rvec, tvec, false, cv::SOLVEPNP_IPPE);
             else
@@ -147,158 +134,7 @@ namespace predict
             double Theta = atan2(fabs(nml(0,0)),fabs(nml(2,0)))/3.1415926526*180;
             return Theta;
             
-	    }      
-        // pnp解算:获取世界坐标系内前哨站中心坐标和装甲板夹角
-        OutPostFilterMember pnp_get_outpost_member(const cv::Point2f p[4], int armor_number)
-        {
-            static const std::vector<cv::Point3d> pw_small = {// 单位：m
-                                                              {-0.066, 0.029, 0.},
-                                                              {-0.066, -0.029, 0.},
-                                                              {0.066, -0.029, 0.},
-                                                              {0.066, 0.029, 0.} };
-            std::vector<cv::Point2d> pu(p, p + 4);
-
-
-            cv::Mat rvec, tvec, mat_R;
-
-            Eigen::Matrix3d R;
-
-            Pos3D c_p[4], w_p[4], T;
-
-            cv::solvePnP(pw_small, pu, F_MAT, C_MAT, rvec, tvec);
-
-            cv::Rodrigues(rvec, mat_R);
-            cv::cv2eigen(mat_R, R);
-            cv::cv2eigen(tvec, T);
-
-            // 装甲板中心坐标
-            Pos3D armor_pc, armor_pw;
-            cv::cv2eigen(tvec, armor_pc);
-            armor_pc += T_CI;
-            armor_pw = pc_to_pw(armor_pc);
-
-            // 装甲板法向量
-            for (int i = 0; i < 4; ++i)
-            {
-                Pos3D temp(pw_small[i].x, pw_small[i].y, pw_small[i].z);
-                c_p[i] = R * temp + T + T_CI;
-            }
-
-            w_p[0] = pc_to_pw(c_p[0]);
-            w_p[1] = pc_to_pw(c_p[1]);
-            w_p[2] = pc_to_pw(c_p[2]);
-            w_p[3] = pc_to_pw(c_p[3]);
-
-            Pos3D w_nml = (w_p[1] - w_p[0]).cross(w_p[2] - w_p[1]);
-
-            // 统一方向
-            Pos3D c_cam_axis = Pos3D(0, 0, 1);
-            Pos3D p_cam_axis = pc_to_pw(c_cam_axis);
-            // 计算世界坐标系下前哨站旋转中心的距离
-            if (w_nml.dot(p_cam_axis) < 0) w_nml = -w_nml;
-
-            // 投影至xy平面并归一化
-            w_nml(2, 0) = 0;
-            w_nml.normalize();
-
-            // 旋转中心
-            Pos3D outpost_center = w_nml * outpost_radius + armor_pw;
-
-            // 装甲板夹角
-            // 以旋转中心与原点连线为0基准，从上向下看顺时针为正
-            Pos3D outpost_center_nml(outpost_center(0, 0), outpost_center(1, 0), 0);
-            outpost_center_nml.normalize();
-            // 为了保持符号，注意到xy平面上的两单位向量的叉乘的z分量是其正弦，asin值域是-pi/2~+pi/2
-            double theta = asin(outpost_center_nml.cross(w_nml)(2, 0)) / 3.1415926536 * 180;
-
-            OutPostFilterMember outpost(outpost_center, theta);
-            return outpost;
-
-        }
-
-        // pnp解算:获取世界坐标系内装甲板的坐标和角度 
-        // 装甲板法向量被保证朝着远离相机的方向
-        ArmorPlacementPW pnp_get_ArmorPlacementPW(const cv::Point2f p[4], int armor_number)
-        {
-            static const std::vector<cv::Point3d> pw_small = {// 单位：m
-                                                              {-0.066, 0.029, 0.},
-                                                              {-0.066, -0.029, 0.},
-                                                              {0.066, -0.029, 0.},
-                                                              {0.066, 0.029, 0.} };
-            static const std::vector<cv::Point3d> pw_big = {// 单位：m
-                                                            {-0.115, 0.03, 0.},
-                                                            {-0.115, -0.03, 0.},
-                                                            {0.115, -0.03, 0.},
-                                                            {0.115, 0.03, 0.}};
-            std::vector<cv::Point3d> pw_cur;
-            std::vector<cv::Point2d> pu(p, p + 4);
-
-
-            cv::Mat rvec, tvec, mat_R;
-
-            Eigen::Matrix3d R;
-
-            Pos3D c_p[4], w_p[4], T;
-            if (armor_number == 0 || armor_number == 1 || armor_number == 8)
-                pw_cur = pw_big;
-            else
-                pw_cur = pw_small;
-
-            cv::solvePnP(pw_cur, pu, F_MAT, C_MAT, rvec, tvec);
-
-            cv::Rodrigues(rvec, mat_R);
-            cv::cv2eigen(mat_R, R);
-            cv::cv2eigen(tvec, T);
-
-            // 装甲板中心坐标
-            Pos3D armor_pc, armor_pw;
-            cv::cv2eigen(tvec, armor_pc);
-            armor_pc += T_CI;
-            armor_pw = pc_to_pw(armor_pc);
-
-            // 装甲板法向量
-            for (int i = 0; i < 4; ++i)
-            {
-                Pos3D temp(pw_cur[i].x, pw_cur[i].y, pw_cur[i].z);
-                c_p[i] = R * temp + T + T_CI;
-            }
-
-            w_p[0] = pc_to_pw(c_p[0]);
-            w_p[1] = pc_to_pw(c_p[1]);
-            w_p[2] = pc_to_pw(c_p[2]);
-            w_p[3] = pc_to_pw(c_p[3]);
-
-            Pos3D w_nml = (w_p[1] - w_p[0]).cross(w_p[2] - w_p[1]);
-
-            // 统一方向
-            Pos3D c_cam_axis = Pos3D(0, 0, 1);
-            Pos3D p_cam_axis = pc_to_pw(c_cam_axis);
-            // 计算世界坐标系下前哨站旋转中心的距离 
-            // xy：这里疑似只是在确保法向量方向朝着对方车中心？
-            if (w_nml.dot(p_cam_axis) < 0) w_nml = -w_nml;
-
-            //归一化
-            w_nml.normalize();
-
-            ArmorPlacementPW armor{armor_pw,w_nml,armor_number};
-            return armor;
-        }
-
-        /**
-         * @brief 将相机坐标系下的3D点投影到图像平面
-         * @param point_3d 相机坐标系下的3D点
-         * @return 投影后的2D点
-         */
-        cv::Point2f projectPoint(const Eigen::Vector3d& point_3d) {
-            cv::Point3f pt3d(point_3d[0], point_3d[1], point_3d[2]);
-            cv::Mat rvec = cv::Mat::zeros(3, 1, CV_64F);
-            cv::Mat tvec = cv::Mat::zeros(3, 1, CV_64F);
-            
-            std::vector<cv::Point2f> pts_2d(1);
-            cv::projectPoints(std::vector<cv::Point3f>{pt3d}, rvec, tvec, F_MAT, C_MAT, pts_2d);
-            
-            return pts_2d[0];
-        }
+	}
 
         // 相机坐标系内坐标--->世界坐标系内坐标
         inline Pos3D pc_to_pw(const Pos3D &pc)
@@ -365,21 +201,6 @@ namespace predict
         double fly_time = sqrt(t_2); // 子弹飞行时间（单位:s）
         return fly_time;
     }
-
-    // 前哨站弹丸飞行时间预测
-    static inline double FlightTimePredictOutPost(const Pos3D& pw, double shoot_speed = 15.)
-    {
-        double distance = distance_2D(pw) - 0.2765;
-        double pitch_angle = pw_to_pitch(pw);
-        double a = 9.8 * 9.8 * 0.25;
-        double b = -shoot_speed * shoot_speed -
-            distance * 9.8 * cos(M_PI_2 + pitch_angle);
-        double c = distance * distance;
-        double t_2 = (-sqrt(b * b - 4 * a * c) - b) / (2 * a);
-        double fly_time = sqrt(t_2); // 子弹飞行时间（单位:s）
-        return fly_time;
-    }
-
 
     //弹道补偿
     static inline double TrajectoryCompensation(const Pos3D &pw, double shoot_speed = 15.)
