@@ -132,7 +132,7 @@ bool HikCamWrapper::init(bool debug)
         close(debug);
         return false;
     }
-
+    fail_cnt = 0;
     return true;
 }
 
@@ -184,6 +184,14 @@ HikCamWrapper::~HikCamWrapper()
 
 bool HikCamWrapper::read(cv::Mat &src, bool debug)
 {
+    if (fail_cnt > 10) {
+        close(debug);
+        if (!init(debug))
+        {
+            return false;
+        }
+    }
+
     int nRet = MV_CC_GetImageBuffer(cam_handle, &stOutFrame, 1000);
     //int nRet = MV_CC_GetOneFrameTimeout(cam_handle, pData, nDataSize, &stImageInfo, 20);
 
@@ -191,6 +199,7 @@ bool HikCamWrapper::read(cv::Mat &src, bool debug)
     {
         if (debug)
             std::cout << "MV_CC_GetImageBuffer fail! nRet" << nRet << std::endl;
+        fail_cnt ++;
         return false;
     }
 
@@ -209,10 +218,11 @@ bool HikCamWrapper::read(cv::Mat &src, bool debug)
         {
             if (debug)
                 std::cout << "Free Image Buffer fail! nRet " << std::hex << nRet << std::endl;
+            fail_cnt ++;
             return false;
         }
     }
-
+    fail_cnt = 0;
     return true;
 }
 
