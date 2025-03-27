@@ -96,7 +96,7 @@ namespace sensor
             {
                 video = new VideoWrapper(VideoSource);
             }
-            if (!video->init())
+            while (!video->init())
             {
                 LOGE_S("[sensor]Error: Initialize video stream failed");
             }

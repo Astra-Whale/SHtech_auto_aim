@@ -27,6 +27,7 @@ private:
     double gain;
     void *cam_handle;
     unsigned int dev_num;
+    unsigned int fail_cnt;
 
     unsigned char *pData;
     unsigned char *pDataForBGR;
