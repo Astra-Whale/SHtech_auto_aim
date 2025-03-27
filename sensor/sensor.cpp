@@ -188,7 +188,7 @@ namespace sensor
             }
             auto t2 = std::chrono::steady_clock::now();
 
-            if (imu != nullptr && imu->is_open() && obj->robotcommand.distance > 0)
+            if (imu != nullptr && imu->is_open())
             {
                 auto &send = obj->robotcommand;
                 auto &_attitude = obj->attitude;
