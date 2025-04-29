@@ -1,10 +1,6 @@
 # Auto-aim
 
-TODO: 实装预测功能 实装串口通信 替换Log实现 替换cmd_praser实现
-
-
-
-项目依赖: 
+## Dependence: 
 * gcc/g++-9: ubuntu18.04 设备均需手动升级
 * OpenCV4: 计算机视觉库，安装方式: `apt install libopencv-dev libopencv-contrib-dev` 或 [编译安装](https://github.com/opencv/opencv.git)
 * RMCVSerial: 串口库, 安装方式: [编译安装](https://gitlab.rmshtech.com/computer-vision/tools/rmcv_serial)
@@ -15,16 +11,8 @@ TODO: 实装预测功能 实装串口通信 替换Log实现 替换cmd_praser实�
 * [配置脚本参考](http://gitlab.rmshtech.tk/computer-vision/nvidianx-environment-config)
 ---
 
-更新记录: 
-
-* 2021-10-02: 代码框架初步搭建完成
-* 2021-11-20: 封装坐标转换相关代码，实现静态目标预测全部功能
-* 2021-12-10: 调整坐标转换封装结构，实现动态目标二阶线性预测
-* 2025-02-14: 合并推理后端, 更新构建脚本
-
-<br>
-
-一键构建指南:
+## 如何使用:
+### 第一步 编译（必做）:
 ```bash
 mkdir build
 cd build
@@ -33,13 +21,48 @@ cmake -DINFERENCE_BACKEND=TRT ..#取值可以为TRT ONNX 或 AXCL, 代表对应�
 # 当不希望包含MVS编译仅从视频读取的测试版本时
 cmake -DUSE_HIKCAM=OFF -DINFERENCE_BACKEND=TRT ..#取值可以为TRT ONNX 或 AXCL, 代表对应平台
 ```
+### 第二步 安装服务（当需要自启动时）:
+#### install
+Perform one time only
+```bash
+sudo python3 install_service.py
+source ~/.bashrc
+```
+#### Enable
+Enable start with system.
+```bash
+auto-aim-enable
+```
+#### Disable
+Disable start with system.
+```bash
+auto-aim-disable
+```
+#### Start
+Start auto-aim service in background.
+```bash
+auto-aim-start
+```
+#### Stop
+Stop all auto-aim service.
+```bash
+auto-aim-stop
+```
 
-排坑指南: 
+
+## FAQ:
 
 -   MVS安装完成后需在`~/.bashrc`中设置`MVS_PATH`指向`libMvControl.so`所在文件夹。
 -   gcc/g++-9: 本项目中如果 gcc/g++ 版本不对，那么会出现以下几个错误
     -   `autoaim/detector/TensorRT/TRTModule.hpp:83` 中 filesystem 报错
     -   `autoaim/detector/TensorRT/TRTModule.hpp:17-18` 中 default 定义错误
+
+## Change Log: 
+
+* 2021-10-02: 代码框架初步搭建完成
+* 2021-11-20: 封装坐标转换相关代码，实现静态目标预测全部功能
+* 2021-12-10: 调整坐标转换封装结构，实现动态目标二阶线性预测
+* 2025-02-14: 合并推理后端, 更新构建脚本
 
 
 
