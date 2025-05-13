@@ -133,45 +133,45 @@ void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
     det.clear();
     cv::Mat x;
     cv::Mat preprocessedImage;
-    float fx = (float)src.cols / 640.f, fy = (float)src.rows / 384.f;
+    float fx = (float)src.cols / 640.f, fy = (float)src.rows / 512.f;
     cv::cvtColor(src, x, cv::COLOR_BGR2RGB);
-    x = src;
-    if (src.cols != 640 || src.rows != 384)
+    if (src.cols != 640 || src.rows != 512)
     {
-        cv::resize(x, x, {640, 384});
+        cv::resize(x, x, {640, 512});
     }
     x.convertTo(x, CV_32F, 1.0 / 255);
 
     // step 8: Convert the image to CHW RGB float format.
     // HWC to CHW
     cv::dnn::blobFromImage(x, preprocessedImage);
-
     inputTensorValues.assign(preprocessedImage.begin<float>(), preprocessedImage.end<float>());
 
+    
     migraphx::program_parameters prog_params;
     auto param_shapes = net.get_parameter_shapes();
     auto input        = param_shapes.names().front();
     // create argument for the parameter
     prog_params.add(input, migraphx::argument(param_shapes[input], inputTensorValues.data()));
-
     // run inference
     auto outputs = net.eval(prog_params);
 
     std::vector<bbox_t> candidates;
     float* out = reinterpret_cast<float*>(outputs[0].data());
-    for (size_t i = 0; i < 15120; i++)
+    for (size_t i = 0; i < 6720; i++)
     {
-        const float* box_buffer = out+20*i;
-        if (box_buffer[8] < inv_sigmoid(KEEP_THRES))
+        const float* box_buffer = out+21*i;
+        if (box_buffer[8] < KEEP_THRES)
             continue;
         candidates.emplace_back();
         auto &box = candidates.back();
         memcpy(&box.pts, box_buffer, 8 * sizeof(float));
+        std::swap(box.pts[2],box.pts[3]);   // 2025、04、10系列的新模型具有和旧模型不同的角点顺序：模型输出为：左上，左下，右上，右下。现将其调整为与旧的一致：左上，左下，右下，右上
         for (auto &pt : box.pts)
             pt.x *= fx, pt.y *= fy;
-        box.confidence = sigmoid(box_buffer[8]);
-        box.color_id = argmax(box_buffer + 9, 4);
-        box.tag_id = argmax(box_buffer + 13, 7);
+        box.confidence = box_buffer[8];
+        box.tag_id = argmax(box_buffer + 9, 8);
+        box.color_id = argmax(box_buffer + 17, 2);
+        int armor_size = argmax(box_buffer + 19, 2);
     }
     std::sort(candidates.begin(), candidates.end(), std::greater<bbox_t>());
     // post-process [nms]
