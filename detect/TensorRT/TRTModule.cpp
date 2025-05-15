@@ -148,10 +148,10 @@ void TRTModule::build_engine_from_onnx(const std::string &onnx_file)
     TRT_ASSERT(parser != nullptr);
     parser->parseFromFile(onnx_file.c_str(), static_cast<int>(ILogger::Severity::kINFO));
     auto yolov5_output = network->getOutput(0);
-    auto slice_layer = network->addSlice(*yolov5_output, Dims3{0, 0, 8}, Dims3{1, 15120, 1}, Dims3{1, 1, 1});
+    auto slice_layer = network->addSlice(*yolov5_output, Dims3{0, 0, 8}, Dims3{1, 6720, 1}, Dims3{1, 1, 1});
     auto yolov5_conf = slice_layer->getOutput(0);
     auto shuffle_layer = network->addShuffle(*yolov5_conf);
-    shuffle_layer->setReshapeDimensions(Dims2{1, 15120});
+    shuffle_layer->setReshapeDimensions(Dims2{1, 6720});
     yolov5_conf = shuffle_layer->getOutput(0);
     auto topk_layer = network->addTopK(*yolov5_conf, TopKOperation::kMAX, TOPK_NUM, 1 << 1);
     auto topk_idx = topk_layer->getOutput(1);
@@ -219,49 +219,60 @@ void TRTModule::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
     // pre-process [bgr2rgb & resize]
     det.clear();
     cv::Mat x;
-    float fx = (float)src.cols / 640.f, fy = (float)src.rows / 384.f;
-    //cv::cvtColor(src, x, cv::COLOR_BGR2RGB);
-    x = src;
-    if (src.cols != 640 || src.rows != 384)
+    cv::Mat preprocessedImage;
+    float fx = (float)src.cols / 640.f, fy = (float)src.rows / 512.f;
+    cv::cvtColor(src, x, cv::COLOR_BGR2RGB);
+    if (src.cols != 640 || src.rows != 512)
     {
-        cv::resize(x, x, {640, 384});
+        cv::resize(x, x, {640, 512});
     }
-    x.convertTo(x, CV_32F);
+    x.convertTo(x, CV_32F, 1.0 / 255);
+
+    // step 8: Convert the image to CHW RGB float format.
+    // HWC to CHW
+    cv::dnn::blobFromImage(x, preprocessedImage);
 
     // run model
-    cudaMemcpyAsync(device_buffer[input_idx], x.data, input_sz * sizeof(float), cudaMemcpyHostToDevice, stream);
+    cudaMemcpyAsync(device_buffer[input_idx], preprocessedImage.data, input_sz * sizeof(float), cudaMemcpyHostToDevice, stream);
     context->enqueue(1, device_buffer, stream, nullptr);
     cudaMemcpyAsync(output_buffer, device_buffer[output_idx], output_sz * sizeof(float), cudaMemcpyDeviceToHost,
                     stream);
     cudaStreamSynchronize(stream);
-
+    
+    std::vector<bbox_t> candidates;
+    for (int i = 0; i < TOPK_NUM; i++)
+    {
+        auto *box_buffer = output_buffer + i * 21; // 20->23
+        if (box_buffer[8] < KEEP_THRES)
+            break;
+        candidates.emplace_back();
+        auto &box = candidates.back();
+        memcpy(&box.pts, box_buffer, 8 * sizeof(float));
+        std::swap(box.pts[2],box.pts[3]);   // 2025、04、10系列的新模型具有和旧模型不同的角点顺序：模型输出为：左上，左下，右上，右下。现将其调整为与旧的一致：左上，左下，右下，右上
+        for (auto &pt : box.pts)
+            pt.x *= fx, pt.y *= fy;
+        box.confidence = box_buffer[8];
+        box.tag_id = argmax(box_buffer + 9, 8);
+        box.color_id = argmax(box_buffer + 17, 2);
+        int armor_size = argmax(box_buffer + 19, 2);
+    }
+    std::sort(candidates.begin(), candidates.end(), std::greater<bbox_t>());
     // post-process [nms]
     det.reserve(TOPK_NUM);
     std::vector<uint8_t> removed(TOPK_NUM);
-    for (int i = 0; i < TOPK_NUM; i++)
+    for (int i = 0; i < TOPK_NUM && i < candidates.size(); i++)
     {
-        auto *box_buffer = output_buffer + i * 20; // 20->23
-        if (box_buffer[8] < inv_sigmoid(KEEP_THRES))
-            break;
         if (removed[i])
             continue;
-        det.emplace_back();
-        auto &box = det.back();
-        memcpy(&box.pts, box_buffer, 8 * sizeof(float));
-        for (auto &pt : box.pts)
-            pt.x *= fx, pt.y *= fy;
-        box.confidence = sigmoid(box_buffer[8]);
-        box.color_id = argmax(box_buffer + 9, 4);
-        box.tag_id = argmax(box_buffer + 13, 7);
-        for (int j = i + 1; j < TOPK_NUM; j++)
+    	auto& box1 = candidates.at(i);
+        for (int j = i + 1; j < TOPK_NUM && j < candidates.size(); j++)
         {
-            auto *box2_buffer = output_buffer + j * 20;
-            if (box2_buffer[8] < inv_sigmoid(KEEP_THRES))
-                break;
+            auto& box2 = candidates.at(j);
             if (removed[j])
                 continue;
-            if (is_overlap(box_buffer, box2_buffer))
+            if (is_overlap(box1, box2))
                 removed[j] = true;
         }
+        det.push_back(box1);
     }
 }
