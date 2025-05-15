@@ -216,8 +216,19 @@ constexpr float sigmoid(float x)
     return 1 / (1 + std::exp(-x));
 }
 
-AXCL::AXCL(const std::string &AXCL_file) : BackEnd(), inputTensorValues(3*384*640, 0)
+AXCL::AXCL(const std::string &model_file) : BackEnd(), inputTensorValues(3*512*640, 0)
 {
+    const std::string oldExt = ".onnx";
+    const std::string newExt = ".axmodel";
+
+    std::string axcl_file = model_file;
+
+    if (model_file.size() >= oldExt.size() &&
+        model_file.compare(model_file.size() - oldExt.size(), oldExt.size(), oldExt) == 0) {
+        axcl_file = model_file.substr(0, model_file.size() - oldExt.size()) + newExt;
+        LOGE_S( "Read Run-Joint model(%s).\n", axcl_file.c_str());
+    }
+
     AX_SYS_Init();
     AX_ENGINE_NPU_ATTR_T npu_attr;
     memset(&npu_attr, 0, sizeof(npu_attr));
@@ -231,9 +242,9 @@ AXCL::AXCL(const std::string &AXCL_file) : BackEnd(), inputTensorValues(3*384*64
     }
 
     // 2. load model
-    if (!read_file(AXCL_file, model_buffer))
+    if (!read_file(axcl_file, model_buffer))
     {
-        LOGE_S( "Read Run-Joint model(%s) file failed.\n", AXCL_file.c_str());
+        LOGE_S( "Read Run-Joint model(%s) file failed.\n", axcl_file.c_str());
         return;
     }
 
@@ -276,12 +287,12 @@ void AXCL::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
 {
     // pre-process [bgr2rgb & resize]
     det.clear();
-    cv::Mat img_new(384, 640, CV_8UC3, inputTensorValues.data());
-    float fx = (float)src.cols / 640.f, fy = (float)src.rows / 384.f;
+    cv::Mat img_new(512, 640, CV_8UC3, inputTensorValues.data());
+    float fx = (float)src.cols / 640.f, fy = (float)src.rows / 512.f;
     
-    if (src.cols != 640 || src.rows != 384)
+    if (src.cols != 640 || src.rows != 512)
     {
-        cv::resize(src, img_new, {640, 384});
+        cv::resize(src, img_new, {640, 512});
         cv::cvtColor(img_new, img_new, cv::COLOR_BGR2RGB);
     }
     cv::cvtColor(src, img_new, cv::COLOR_BGR2RGB);
@@ -293,19 +304,20 @@ void AXCL::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
 
     std::vector<bbox_t> candidates;
     float* out = (float*)io_data.pOutputs[0].pVirAddr;
-    for (size_t i = 0; i < 15120; i++)
+    for (size_t i = 0; i < 6720; i++)
     {
-        const float* box_buffer = out+20*i;
-        if (box_buffer[8] < inv_sigmoid(KEEP_THRES))
+        const float* box_buffer = out+21*i;
+        if (box_buffer[8] < KEEP_THRES)
             continue;
         candidates.emplace_back();
         auto &box = candidates.back();
         memcpy(&box.pts, box_buffer, 8 * sizeof(float));
         for (auto &pt : box.pts)
             pt.x *= fx, pt.y *= fy;
-        box.confidence = sigmoid(box_buffer[8]);
-        box.color_id = argmax(box_buffer + 9, 4);
-        box.tag_id = argmax(box_buffer + 13, 7);
+        box.confidence = box_buffer[8];
+        box.tag_id = argmax(box_buffer + 9, 8);
+        box.color_id = argmax(box_buffer + 17, 2);
+        int armor_size = argmax(box_buffer + 19, 2);
     }
     std::sort(candidates.begin(), candidates.end(), std::greater<bbox_t>());
     // post-process [nms]
