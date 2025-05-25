@@ -21,6 +21,7 @@ void UartIMU::on_receive_imu(drivers::packet_data_t* packet_ptr, drivers::packet
     if (_tmp_ptr->shoot_speed < 10.0f) {
         m_robotstatus.robot_speed_mps = 10.0f;
     }
+    m_robotstatus.program_mode = (ProgramMode)_tmp_ptr->autoaim_mode;
 }
 
 void UartIMU::on_receive_sts(drivers::packet_data_t* packet_ptr, drivers::packet_length_t len)
@@ -58,7 +59,7 @@ void UartIMU::on_receive_sts(drivers::packet_data_t* packet_ptr, drivers::packet
     }
 }
 
-void UartIMU::transmit_cmd(float yaw, float yaw_spd, float pitch, float pitch_spd, float dist, uint8_t shoot)
+void UartIMU::transmit_cmd(float yaw, float yaw_spd, float pitch, float pitch_spd, float dist, uint8_t shoot, uint8_t target_id)
 {
     advv_detection_t data_to_send;
     data_to_send.yaw = yaw;
@@ -67,6 +68,7 @@ void UartIMU::transmit_cmd(float yaw, float yaw_spd, float pitch, float pitch_sp
     data_to_send.pitch_spd = pitch_spd;
     data_to_send.dist = dist;
     data_to_send.shoot = shoot;
+    data_to_send.target_id = target_id;
     m_serial.send(GIMAdvv_CMD_ID, (drivers::packet_data_t*)&data_to_send, sizeof(data_to_send));
     // LOGM_S(
     //     "Serial Send %.2lfms Break %.2lfms", 

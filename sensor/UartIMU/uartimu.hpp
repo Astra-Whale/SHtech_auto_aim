@@ -35,7 +35,7 @@ public:
     }
     void on_receive_imu(drivers::packet_data_t *packet_ptr, drivers::packet_length_t len);
     void on_receive_sts(drivers::packet_data_t *packet_ptr, drivers::packet_length_t len);
-    void transmit_cmd(float yaw, float yaw_spd, float pitch, float pitch_spd, float dist, uint8_t shoot = 1);
+    void transmit_cmd(float yaw, float yaw_spd, float pitch, float pitch_spd, float dist, uint8_t shoot = 1, uint8_t target_id = 0);
     void get_attitude(Attitude &attitude)
     {
         attitude = m_attitude;

@@ -129,6 +129,8 @@ namespace predict
             same_id = false;
             need_init = true;
         }
+
+        send.target_id = armor.tag_id;
         
         if (same_armor)
         {
