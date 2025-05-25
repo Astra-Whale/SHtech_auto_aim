@@ -15,6 +15,7 @@ typedef struct __attribute__((packed))
     float pitch_spd;
     float dist;
     uint8_t shoot;
+    uint8_t target_id; // 1-7: robot, 8: outpost, 9: base, 0: none
 } advv_detection_t;
 
 
@@ -39,6 +40,7 @@ typedef struct __attribute__((packed))
     float curr_yaw;   //绝对量 yaw顺时针为正
     float curr_pitch; // pit水平为0 向上为负
     float shoot_speed;
+    uint8_t autoaim_mode; // 1 if robot enter auto aim mode, 0 otherwise
 } pc_mcu_data_t;
 
 /**
