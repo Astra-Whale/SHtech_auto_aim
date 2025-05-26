@@ -308,8 +308,8 @@ void AXCL::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
     for (size_t i = 0; i < 6720; i++)
     {
         const float* box_buffer = out+21*i;
+        if (box_buffer[8] >= KEEP_THRES)
         {
-            if (box_buffer[8] >= KEEP_THRES)
             candidates.emplace_back();
             auto &box = candidates.back();
             memcpy(&box.pts, box_buffer, 8 * sizeof(float));
@@ -325,6 +325,11 @@ void AXCL::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
             box.color_id = argmax(box_buffer + 17, 2);
             int armor_size = argmax(box_buffer + 19, 2);
         }
+        x_center += stride;
+        x_center = (x_center == 640)?0:x_center;
+        y_center += x_center == 0 ? stride:0;
+        y_center = (y_center == 512)?0:y_center;
+        stride *= x_center ==0 && y_center == 0? 2 : 1;
     }
     std::sort(candidates.begin(), candidates.end(), std::greater<bbox_t>());
     // post-process [nms]
