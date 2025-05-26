@@ -304,20 +304,27 @@ void AXCL::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
 
     std::vector<bbox_t> candidates;
     float* out = (float*)io_data.pOutputs[0].pVirAddr;
+    int stride = 8, x_center = 0, y_center = 0;
     for (size_t i = 0; i < 6720; i++)
     {
         const float* box_buffer = out+21*i;
-        if (box_buffer[8] < KEEP_THRES)
-            continue;
-        candidates.emplace_back();
-        auto &box = candidates.back();
-        memcpy(&box.pts, box_buffer, 8 * sizeof(float));
-        for (auto &pt : box.pts)
-            pt.x *= fx, pt.y *= fy;
-        box.confidence = box_buffer[8];
-        box.tag_id = argmax(box_buffer + 9, 8);
-        box.color_id = argmax(box_buffer + 17, 2);
-        int armor_size = argmax(box_buffer + 19, 2);
+        {
+            if (box_buffer[8] >= KEEP_THRES)
+            candidates.emplace_back();
+            auto &box = candidates.back();
+            memcpy(&box.pts, box_buffer, 8 * sizeof(float));
+            for (auto &pt : box.pts)
+            {
+                pt.x = pt.x * 2 * stride + x_center;
+                pt.y = pt.y * 2 * stride + y_center;
+                pt.x *= fx;
+                pt.y *= fy;
+            }
+            box.confidence = box_buffer[8];
+            box.tag_id = argmax(box_buffer + 9, 8);
+            box.color_id = argmax(box_buffer + 17, 2);
+            int armor_size = argmax(box_buffer + 19, 2);
+        }
     }
     std::sort(candidates.begin(), candidates.end(), std::greater<bbox_t>());
     // post-process [nms]
