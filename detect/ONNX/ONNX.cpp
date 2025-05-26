@@ -157,21 +157,33 @@ void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
 
     std::vector<bbox_t> candidates;
     float* out = reinterpret_cast<float*>(outputs[0].data());
+    int stride = 8, x_center = 0, y_center = 0;
     for (size_t i = 0; i < 6720; i++)
     {
         const float* box_buffer = out+21*i;
-        if (box_buffer[8] < KEEP_THRES)
-            continue;
-        candidates.emplace_back();
-        auto &box = candidates.back();
-        memcpy(&box.pts, box_buffer, 8 * sizeof(float));
-        std::swap(box.pts[2],box.pts[3]);   // 2025、04、10系列的新模型具有和旧模型不同的角点顺序：模型输出为：左上，左下，右上，右下。现将其调整为与旧的一致：左上，左下，右下，右上
-        for (auto &pt : box.pts)
-            pt.x *= fx, pt.y *= fy;
-        box.confidence = box_buffer[8];
-        box.tag_id = argmax(box_buffer + 9, 8);
-        box.color_id = argmax(box_buffer + 17, 2);
-        int armor_size = argmax(box_buffer + 19, 2);
+        if (box_buffer[8] >= KEEP_THRES)
+        {    
+            candidates.emplace_back();
+            auto &box = candidates.back();
+            memcpy(&box.pts, box_buffer, 8 * sizeof(float));
+            std::swap(box.pts[2],box.pts[3]);   // 2025、04、10系列的新模型具有和旧模型不同的角点顺序：模型输出为：左上，左下，右上，右下。现将其调整为与旧的一致：左上，左下，右下，右上
+            for (auto &pt : box.pts)
+            {
+                pt.x = pt.x * 2 * stride + x_center;
+                pt.y = pt.y * 2 * stride + y_center;
+                pt.x *= fx;
+                pt.y *= fy;
+            }
+            box.confidence = box_buffer[8];
+            box.tag_id = argmax(box_buffer + 9, 8);
+            box.color_id = argmax(box_buffer + 17, 2);
+            int armor_size = argmax(box_buffer + 19, 2);
+        }
+        x_center += stride;
+        x_center = (x_center == 640)?0:x_center;
+        y_center += x_center == 0 ? stride:0;
+        y_center = (y_center == 512)?0:y_center;
+        stride *= x_center ==0 && y_center == 0? 2 : 1;
     }
     std::sort(candidates.begin(), candidates.end(), std::greater<bbox_t>());
     // post-process [nms]

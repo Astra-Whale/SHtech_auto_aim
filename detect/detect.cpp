@@ -102,7 +102,8 @@ namespace detect
                     std::vector<cv::Point2f> yolo_corners;
                     yolo_corners.resize(4);
 
-                    for(int i = 0; i<4;i++){
+                    for (int i = 0; i < 4; i++)
+                    {
                         yolo_corners[i] = bbox.pts[i];
                     }
 
@@ -111,7 +112,8 @@ namespace detect
                         corner_optimizer.optimizeCorners(obj->frame, bbox.pts, _show);
 
                     // Update corners with optimized ones
-                    for(int i = 0; i<4;i++){
+                    for (int i = 0; i < 4; i++)
+                    {
                         bbox.pts[i] = optimized_corners[i];
                     }
                 }
@@ -141,24 +143,25 @@ namespace detect
                     cv::line(im2show, b.pts[2], b.pts[3], colors[2], 2);
                     cv::line(im2show, b.pts[3], b.pts[0], colors[2], 2);
                     cv::putText(im2show, std::to_string(b.tag_id), b.pts[0], cv::FONT_HERSHEY_SIMPLEX, 1, colors[b.color_id]);
-                    if (center)
-                        cv::putText(im2show, "center", b.pts[2], cv::FONT_HERSHEY_SIMPLEX, 1, colors[b.color_id]);
-                    else
-                        cv::putText(im2show, "all", b.pts[2], cv::FONT_HERSHEY_SIMPLEX, 1, colors[b.color_id]);
+                    // if (center)
+                    //     cv::putText(im2show, "center", b.pts[2], cv::FONT_HERSHEY_SIMPLEX, 1, colors[b.color_id]);
+                    // else
+                    //     cv::putText(im2show, "all", b.pts[2], cv::FONT_HERSHEY_SIMPLEX, 1, colors[b.color_id]);
                 }
 
-                                    // 创建目录（只需执行一次）
-                                    static bool dir_created = false;
-                                    if (!dir_created) {
-                                        system(("mkdir -p " + output_dir).c_str()); // Linux/macOS
-                                        // 如果是Windows系统改用：
-                                        // system(("mkdir " + output_dir).c_str());
-                                        dir_created = true;
-                                    }
-                
-                                    // 保存当前帧（按顺序编号）
-                                    std::string filename = output_dir + "frame_" + std::to_string(frame_counter++) + ".png";
-                                    cv::imwrite(filename, im2show);
+                // 创建目录（只需执行一次）
+                static bool dir_created = false;
+                if (!dir_created)
+                {
+                    system(("mkdir -p " + output_dir).c_str()); // Linux/macOS
+                    // 如果是Windows系统改用：
+                    // system(("mkdir " + output_dir).c_str());
+                    dir_created = true;
+                }
+
+                // 保存当前帧（按顺序编号）
+                std::string filename = output_dir + "frame_" + std::to_string(frame_counter++) + ".png";
+                cv::imwrite(filename, im2show);
                 cv::imshow("detect", im2show);
                 cv::waitKey(1);
             }
