@@ -12,6 +12,7 @@
 
 //modules
 #include "common.hpp"
+#include "armor_corner_optimizer.hpp"
 
 //packages
 #include <iostream>
@@ -30,6 +31,11 @@ namespace detect
      */
     class Detect : public pipeline::BasicTask
     {
+
+    private:
+        bool center = false;
+        SafeUniquePtr<BackEnd> model; /*!< unique_ptr 智能指针 指向一个用于 推理的 BackEnd 对象 在 init 期间完成初始化 */
+        ArmorCornerOptimizer corner_optimizer;
     public:
         /**
          * @brief   装甲板检测初始化
@@ -51,9 +57,21 @@ namespace detect
          */
         void operator()(autoaim_pipeline &pipebefore, autoaim_pipeline &pipeafter);
 
-    private:
-        SafeUniquePtr<BackEnd> model; /*!< unique_ptr 智能指针 指向一个用于 推理的 BackEnd 对象 在 init 期间完成初始化 */
+                /**
+         * @brief 设置角点优化器的二值化阈值
+         * @param[in] threshold 二值化阈值
+         */
+        void setOptimizerThreshold(int threshold) { corner_optimizer.setBinaryThreshold(threshold); }
+        
+        /**
+         * @brief 设置角点优化器的灯条参数
+         * @param[in] params 灯条参数
+         */
+        void setOptimizerLightParams(const LightParams& params) { 
+            corner_optimizer.setLightParams(params); 
+
     };
+};
 }
 
 #endif //DETECT_DETECT_H
