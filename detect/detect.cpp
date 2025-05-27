@@ -162,8 +162,8 @@ namespace detect
                 // 保存当前帧（按顺序编号）
                 std::string filename = output_dir + "frame_" + std::to_string(frame_counter++) + ".png";
                 cv::imwrite(filename, im2show);
-                cv::imshow("detect", im2show);
-                cv::waitKey(1);
+                //cv::imshow("detect", im2show);
+                //cv::waitKey(1);
             }
 
             /**
