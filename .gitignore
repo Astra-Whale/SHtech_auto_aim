@@ -5,3 +5,4 @@ data/
 log/
 *.cache
 bash/auto-aim-start.sh
+frames/
