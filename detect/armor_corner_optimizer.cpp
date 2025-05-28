@@ -88,6 +88,11 @@ namespace detect
       left_roi = validateRect(left_roi, input.cols, input.rows);
       right_roi = validateRect(right_roi, input.cols, input.rows);
 
+      if (left_roi.x < 0 || left_roi.y < 0 || left_roi.width < 0 || left_roi.height < 0 || right_roi.x < 0 || right_roi.y < 0 || right_roi.width < 0 || right_roi.height < 0) {
+        optimized_corners.clear();
+        return optimized_corners;
+      }
+
       // Rest of the processing remains the same
       cv::Mat left_binary = preprocessImage(input, left_roi,left_length);
       cv::Mat right_binary = preprocessImage(input, right_roi,right_length);
@@ -213,42 +218,75 @@ namespace detect
       return best_idx;
   }
     
-cv::Mat ArmorCornerOptimizer::preprocessImage(const cv::Mat &rgb_img, const cv::Rect &roi, float light_length)
-{
+  cv::Mat ArmorCornerOptimizer::preprocessImage(const cv::Mat &rgb_img, const cv::Rect &roi, float light_length)
+  {
+    std::cout << roi << std::endl; 
+
     // Extract ROI from the image
     cv::Mat roi_img = rgb_img(roi);
     
-    // Split RGB channels
-    std::vector<cv::Mat> channels;
-    cv::split(roi_img, channels);
-    
-    cv::Mat red_channel = channels[0];    // R channel
-    cv::Mat green_channel = channels[1];  // G channel  
-    cv::Mat blue_channel = channels[2];   // B channel
-    
-    // Process green channel with fixed threshold 160
-    cv::Mat green_binary;
-    cv::threshold(green_channel, green_binary, 160, 255, cv::THRESH_BINARY);
-    
-    // Calculate absolute difference between red and blue channels
-    cv::Mat rb_diff;
-    cv::absdiff(red_channel, blue_channel, rb_diff);
-    
-    // Apply fixed threshold 40 to the R-B difference
-    cv::Mat rb_binary;
-    cv::threshold(rb_diff, rb_binary, 40, 255, cv::THRESH_BINARY);
-    
-    // Find intersection of the two binary images (AND operation)
-    cv::Mat result;
-    cv::bitwise_and(green_binary, rb_binary, result);
-    
-    if (roi.width > 10 && roi.height > 10) {
-        cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
-        cv::morphologyEx(result, result, cv::MORPH_CLOSE, element);
+    // Fast green channel extraction
+    cv::Mat green_channel(roi_img.rows, roi_img.cols, CV_8UC1);
+    for (int i = 0; i < roi_img.rows; i++) {
+      const uchar* src = roi_img.ptr<uchar>(i);
+      uchar* dst = green_channel.ptr<uchar>(i);
+      for (int j = 0; j < roi_img.cols; j++) {
+        *dst++ = src[1]; // Green channel in BGR
+        src += 3;        // Move to next pixel
+      }
     }
     
-    return result;
-}
+    // cv::Mat green_channel;
+    // cv::cvtColor(roi_img, green_channel, cv::COLOR_RGB2GRAY);
+
+    // Calculate the light bar area: length × (length/4) considering 4:1 ratio
+    float light_area = light_length * (light_length / 4.0f);
+    
+    // Calculate fraction of pixels that should be bright
+    float bright_pixel_ratio = light_area / (roi.width * roi.height);
+
+    bright_pixel_ratio *= 0.6;
+    
+    // Add tolerance and clamp to reasonable range
+    bright_pixel_ratio = std::min(0.3f, std::max(0.05f, bright_pixel_ratio * 1.2f));
+    
+    // Fast histogram calculation
+    int histogram[256] = {0};
+    for (int i = 0; i < green_channel.rows; i++) {
+      const uchar* row = green_channel.ptr<uchar>(i);
+      for (int j = 0; j < green_channel.cols; j++) {
+        histogram[row[j]]++;
+      }
+    }
+    
+    // Determine threshold to keep exactly the calculated ratio of bright pixels
+    int total_pixels = green_channel.rows * green_channel.cols;
+    int pixels_to_keep = static_cast<int>(total_pixels * bright_pixel_ratio);
+    int cumulative_count = 0;
+    int threshold = 0;
+    
+    for (int i = 255; i >= 0; i--) {
+      cumulative_count += histogram[i];
+      if (cumulative_count >= pixels_to_keep) {
+        threshold = i;
+        break;
+      }
+    }
+
+    threshold = 150;
+    // std::cout<<"thre"<<threshold<<std::endl;
+    
+    // Apply threshold
+    cv::Mat binary_img;
+    cv::threshold(green_channel, binary_img, threshold, 255, cv::THRESH_BINARY);
+    
+    // Morphological operation for noise removal
+    if (roi.width > 10 && roi.height > 10) {
+      cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+      cv::morphologyEx(binary_img, binary_img, cv::MORPH_CLOSE, element);
+    }
+    
+    return binary_img;
   }
 
   std::vector<LightBar> ArmorCornerOptimizer::findLightBars(

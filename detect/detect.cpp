@@ -111,6 +111,10 @@ namespace detect
                     std::vector<cv::Point2f> optimized_corners =
                         corner_optimizer.optimizeCorners(obj->frame, bbox.pts, _show);
 
+                    if (optimized_corners.empty()) {
+                        continue;
+                    }
+                    
                     // Update corners with optimized ones
                     for (int i = 0; i < 4; i++)
                     {
@@ -162,8 +166,8 @@ namespace detect
                 // 保存当前帧（按顺序编号）
                 std::string filename = output_dir + "frame_" + std::to_string(frame_counter++) + ".png";
                 cv::imwrite(filename, im2show);
-                //cv::imshow("detect", im2show);
-                //cv::waitKey(1);
+                cv::imshow("detect", im2show);
+                cv::waitKey(1);
             }
 
             /**
