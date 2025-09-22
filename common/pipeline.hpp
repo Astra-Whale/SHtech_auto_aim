@@ -17,6 +17,7 @@
 #include <mutex>
 #include <atomic>
 #include <condition_variable>
+#include <memory>
 /**
  * @brief   用于安全释放指针的函数类
  */
@@ -40,9 +41,83 @@ using SafeUniquePtr = std::unique_ptr<T, SafeDeleter>;
  * @details 实现了线程间通信类
  *          定义了任务基类并实现了基本管理函数
  *          定义了线程间通信报文
+ * ================================================================================================
+ * 
+ * 【架构层次】
+ * 
+ * BasicTask (基础层)
+ *    ├── 职责：流水级管理，线程生命周期控制
+ *    ├── 地位：独立的处理单元，可单独存在
+ *    └── 关系：与其他 BasicTask 形成并列的流水线段
+ * 
+ * CompositeTask (组合层) 
+ *    ├── 继承：BasicTask (IS-A 关系)
+ *    ├── 职责：多submodule的协调管理
+ *    └── 关系：在流水线中等价于 BasicTask
+ * 
+ * SubModule (功能层)
+ *    ├── 职责：具体功能实现，无线程管理
+ *    └── 关系：被 CompositeTask 组合、拥有和管理
+ * 
+ * 【流水线中存在形式】
+ * BasicTask_A → BasicTask_B → CompositeTask_C → BasicTask_D
+ *                              ├── owns → SubModule_1
+ *                              ├── owns → SubModule_2  
+ *                              └── owns → SubModule_3
+ * 
+ * ================================================================================================
  */
 namespace pipeline
 {
+        /**
+     * @brief   子模块基类
+     * @details 提供与 BasicTask 类似的接口，但更轻量化
+     */
+    class SubModule
+    {
+    public:
+        SubModule() : _init(false), _debug(false), _show(false) {}
+        virtual ~SubModule() = default;
+
+        // 禁用复制，只允许移动
+        SubModule(const SubModule&) = delete;
+        SubModule& operator=(const SubModule&) = delete;
+        SubModule(SubModule&&) = default;
+        SubModule& operator=(SubModule&&) = default;
+
+        /**
+         * @brief   子模块初始化
+         */
+        virtual void init() { _init = true; }
+
+        /**
+         * @brief   设置是否显示调试信息
+         */
+        virtual void setdebug(bool debug) { _debug = debug; }
+
+        /**
+         * @brief   设置是否展示运行结果
+         */
+        virtual void setshow(bool show) { _show = show; }
+
+        /**
+         * @brief   子模块处理函数
+         * @param[in] pipebefore 输入管道
+         * @param[in] pipeafter  输出管道
+         * @param[in] parent     父任务指针，用于生命周期检查
+         */
+        virtual void operator()(autoaim_pipeline &pipebefore, 
+                               autoaim_pipeline &pipeafter, 
+                               BasicTask* parent) = 0;
+
+        bool is_initialized() const { return _init; }
+
+    protected:
+        bool _init;   /*!<标记是否完成初始化*/
+        bool _debug;  /*!<标记是否显示调试信息*/
+        bool _show;   /*!<标记是否展示运行结果*/
+    };
+
     class BasicTask;
 
     /**
@@ -219,6 +294,170 @@ namespace pipeline
         bool _run;   /*!<任务线程是否运行运行*/
     };
     
+     /**
+     * @brief   复合任务类
+     * @details 管理多个子模块的执行
+     */
+    class CompositeTask : public BasicTask
+    {
+    public:
+        /**
+         * @brief   注册子模块
+         * @param[in] submodule 子模块的独占所有权，调用后 submodule 将被移动
+         */
+        void register_submodule(std::unique_ptr<SubModule> submodule)
+        {
+            submodules.emplace_back(std::move(submodule));
+        }
+
+        /**
+         * @brief   使用初始化列表批量注册子模块
+         * @param[in] submodule_list 子模块初始化列表
+         */
+        template<typename... Args>
+        void register_submodules(Args&&... args)
+        {
+            static_assert(sizeof...(args) > 0, "At least one submodule must be provided");
+            (register_submodule(std::forward<Args>(args)), ...);
+        }
+
+        /**
+         * @brief   初始化所有子模块
+         */
+        void init() override
+        {
+            for (auto& submodule : submodules)
+            {
+                submodule->init();
+            }
+            BasicTask::init();
+        }
+
+        /**
+         * @brief   设置调试信息显示（级联到所有子模块）
+         */
+        void setdebug(bool debug) override
+        {
+            BasicTask::setdebug(debug);
+            for (auto& submodule : submodules)
+            {
+                submodule->setdebug(debug);
+            }
+        }
+
+        /**
+         * @brief   设置结果展示（级联到所有子模块）
+         */
+        void setshow(bool show) override
+        {
+            BasicTask::setshow(show);
+            for (auto& submodule : submodules)
+            {
+                submodule->setshow(show);
+            }
+        }
+
+        /**
+         * @brief   获取子模块数量
+         */
+        size_t get_submodule_count() const
+        {
+            return submodules.size();
+        }
+
+        /**
+         * @brief   检查所有子模块是否已初始化
+         */
+        bool all_submodules_initialized() const
+        {
+            for (const auto& submodule : submodules)
+            {
+                if (!submodule->is_initialized())
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /**
+         * @brief   获取子模块的初始化状态
+         * @param[in] index 子模块索引
+         * @return 初始化状态，索引无效时返回 false
+         */
+        bool get_submodule_init_status(size_t index) const
+        {
+            if (index >= submodules.size())
+                return false;
+            return submodules[index]->is_initialized();
+        }
+
+        /**
+         * @brief   执行所有子模块
+         */
+        void operator()(autoaim_pipeline &pipebefore, autoaim_pipeline &pipeafter) override
+        {
+            if (submodules.empty())
+            {
+                // 如果没有子模块，直接传递数据
+                while (isalive())
+                {
+                    auto data = pipebefore.get(this);
+                    if (data)
+                    {
+                        pipeafter.put(data, this);
+                    }
+                }
+                return;
+            }
+
+            if (submodules.size() == 1)
+            {
+                // 单个子模块，直接执行
+                (*submodules[0])(pipebefore, pipeafter, this);
+            }
+            else
+            {
+                // 多个子模块，串行执行
+                while (isalive())
+                {
+                    // 从输入管道获取数据
+                    auto current_data = pipebefore.get(this);
+                    if (!current_data)
+                        break;
+
+                    // 串行执行所有子模块
+                    for (size_t i = 0; i < submodules.size(); ++i)
+                    {
+                        // 创建临时管道用于子模块间的数据传递
+                        autoaim_pipeline temp_input(1);
+                        autoaim_pipeline temp_output(1);
+                        
+                        // 将当前数据放入临时输入管道
+                        temp_input.put(current_data, this);
+                        
+                        // 执行当前子模块
+                        (*submodules[i])(temp_input, temp_output, this);
+                        
+                        // 获取子模块的输出作为下一个子模块的输入
+                        current_data = temp_output.get(this);
+                        if (!current_data)
+                            break;
+                    }
+                    
+                    // 将最终结果放入输出管道
+                    if (current_data)
+                    {
+                        pipeafter.put(current_data, this);
+                    }
+                }
+            }
+        }
+
+    private:
+        std::vector<std::unique_ptr<SubModule>> submodules;
+    };
+
     template<typename T>
     inline bool pipeline_queue_t<T>::wait_for_put(BasicTask* employee)
     {
