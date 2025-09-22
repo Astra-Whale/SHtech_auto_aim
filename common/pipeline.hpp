@@ -102,13 +102,11 @@ namespace pipeline
 
         /**
          * @brief   子模块处理函数
-         * @param[in] pipebefore 输入管道
-         * @param[in] pipeafter  输出管道
+         * @param[in,out] data   输入输出数据包，直接在原数据上修改
          * @param[in] parent     父任务指针，用于生命周期检查
          */
-        virtual void operator()(autoaim_pipeline &pipebefore, 
-                               autoaim_pipeline &pipeafter, 
-                               BasicTask* parent) = 0;
+        virtual void process(std::shared_ptr<ThreadDataPack>& data, 
+                           BasicTask* parent) = 0;
 
         bool is_initialized() const { return _init; }
 
@@ -411,46 +409,22 @@ namespace pipeline
                 return;
             }
 
-            if (submodules.size() == 1)
+            // 主处理循环
+            while (isalive())
             {
-                // 单个子模块，直接执行
-                (*submodules[0])(pipebefore, pipeafter, this);
-            }
-            else
-            {
-                // 多个子模块，串行执行
-                while (isalive())
-                {
-                    // 从输入管道获取数据
-                    auto current_data = pipebefore.get(this);
-                    if (!current_data)
-                        break;
+                // 从输入管道获取数据
+                auto data = pipebefore.get(this);
+                if (!data)
+                    break;
 
-                    // 串行执行所有子模块
-                    for (size_t i = 0; i < submodules.size(); ++i)
-                    {
-                        // 创建临时管道用于子模块间的数据传递
-                        autoaim_pipeline temp_input(1);
-                        autoaim_pipeline temp_output(1);
-                        
-                        // 将当前数据放入临时输入管道
-                        temp_input.put(current_data, this);
-                        
-                        // 执行当前子模块
-                        (*submodules[i])(temp_input, temp_output, this);
-                        
-                        // 获取子模块的输出作为下一个子模块的输入
-                        current_data = temp_output.get(this);
-                        if (!current_data)
-                            break;
-                    }
-                    
-                    // 将最终结果放入输出管道
-                    if (current_data)
-                    {
-                        pipeafter.put(current_data, this);
-                    }
+                // 串行执行所有子模块，直接处理数据
+                for (size_t i = 0; i < submodules.size(); ++i)
+                {
+                    submodules[i]->process(data, this);
                 }
+                
+                // 将处理结果输出到下一阶段
+                pipeafter.put(data, this);
             }
         }
 
