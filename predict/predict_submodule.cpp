@@ -14,10 +14,6 @@ namespace predict
         position_transform = PositionTransform(camera_param);
         comm_latency = latency / 1e3;
         
-        // 创建预测器实例
-        predictor = std::make_unique<LinearPredictor>(comm_latency);
-        
-        LOGM_S("[predict_submodule] ready");
         SubModule::init();
     }
 
@@ -31,6 +27,11 @@ namespace predict
         }
 
         auto t1 = std::chrono::steady_clock::now();
+
+        // 创建预测器实例
+        std::unique_ptr<LinearPredictor> predictor = std::make_unique<LinearPredictor>(comm_latency);
+        
+        LOGM_S("[predict_submodule] ready");
         
         // 执行预测
         predictor->predict(data, position_transform);

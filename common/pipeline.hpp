@@ -269,12 +269,12 @@ namespace pipeline
         /**
          * @brief   设置是否显示调试信息
          */
-        virtual void setdebug(bool debug) { _debug = debug; }
+        virtual void setdebug(const bool &debug) { _debug = debug; }
 
         /**
          * @brief   设置是否展示运行结果
          */
-        virtual void setshow(bool show) { _show = show; }
+        virtual void setshow(const bool &show) { _show = show; }
 
         /**
          * @brief   子模块处理函数
@@ -335,7 +335,7 @@ namespace pipeline
         /**
          * @brief   设置调试信息显示（级联到所有子模块）
          */
-        void setdebug(bool debug) override
+        void setdebug(const bool &debug) override
         {
             BasicTask::setdebug(debug);
             for (auto& submodule : submodules)
@@ -347,7 +347,7 @@ namespace pipeline
         /**
          * @brief   设置结果展示（级联到所有子模块）
          */
-        void setshow(bool show) override
+        void setshow(const bool &show) override
         {
             BasicTask::setshow(show);
             for (auto& submodule : submodules)
