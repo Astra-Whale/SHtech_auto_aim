@@ -57,7 +57,6 @@ namespace predict
     private:
         PositionTransform position_transform;   /*!< 位置变换器 */
         double comm_latency;                    /*!< 通信延迟（秒） */
-        std::unique_ptr<LinearPredictor> predictor; /*!< 预测器 */
     };
 }
 
