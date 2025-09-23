@@ -69,54 +69,6 @@ using SafeUniquePtr = std::unique_ptr<T, SafeDeleter>;
  */
 namespace pipeline
 {
-        /**
-     * @brief   子模块基类
-     * @details 提供与 BasicTask 类似的接口，但更轻量化
-     */
-    class SubModule
-    {
-    public:
-        SubModule() : _init(false), _debug(false), _show(false) {}
-        virtual ~SubModule() = default;
-
-        // 禁用复制，只允许移动
-        SubModule(const SubModule&) = delete;
-        SubModule& operator=(const SubModule&) = delete;
-        SubModule(SubModule&&) = default;
-        SubModule& operator=(SubModule&&) = default;
-
-        /**
-         * @brief   子模块初始化
-         */
-        virtual void init() { _init = true; }
-
-        /**
-         * @brief   设置是否显示调试信息
-         */
-        virtual void setdebug(bool debug) { _debug = debug; }
-
-        /**
-         * @brief   设置是否展示运行结果
-         */
-        virtual void setshow(bool show) { _show = show; }
-
-        /**
-         * @brief   子模块处理函数
-         * @param[in,out] data   输入输出数据包，直接在原数据上修改
-         * @param[in] parent     父任务指针，用于生命周期检查
-         * @return  bool         返回 true 表示数据应该传递到下游，false 表示丢弃数据
-         */
-        virtual bool process(std::shared_ptr<ThreadDataPack>& data, 
-                           BasicTask* parent) = 0;
-
-        bool is_initialized() const { return _init; }
-
-    protected:
-        bool _init;   /*!<标记是否完成初始化*/
-        bool _debug;  /*!<标记是否显示调试信息*/
-        bool _show;   /*!<标记是否展示运行结果*/
-    };
-
     class BasicTask;
 
     /**
@@ -243,7 +195,7 @@ namespace pipeline
          *          必须先进行初始化
          * @see     detect/detect.cpp\hpp detect::Detect::operator()
          */
-        void operator()(autoaim_pipeline &pipebefore, autoaim_pipeline &pipeafter)
+        virtual void operator()(autoaim_pipeline &pipebefore, autoaim_pipeline &pipeafter)
         {
         }
 
@@ -252,7 +204,7 @@ namespace pipeline
          * @note    子类重载时初始化完成后应调用此函数
          * @see     detect/detect.hpp detect::Detect::init
          */
-        void init()
+        virtual void init()
         {
             _init = true;
         }
@@ -268,7 +220,7 @@ namespace pipeline
         /**
          * @brief   设置是否展示运行结果
          */
-        void setshow(const bool &show)
+        virtual void setshow(const bool &show)
         {
             _show = show;
         }
@@ -276,7 +228,7 @@ namespace pipeline
         /**
          * @brief   设置是否显示调试信息
          */
-        void setdebug(const bool &debug)
+        virtual void setdebug(const bool &debug)
         {
             _debug = debug;
         }
@@ -293,6 +245,54 @@ namespace pipeline
         bool _run;   /*!<任务线程是否运行运行*/
     };
     
+    /**
+     * @brief   子模块基类
+     * @details 提供与 BasicTask 类似的接口，但更轻量化
+     */
+    class SubModule
+    {
+    public:
+        SubModule() : _init(false), _debug(false), _show(false) {}
+        virtual ~SubModule() = default;
+
+        // 禁用复制，只允许移动
+        SubModule(const SubModule&) = delete;
+        SubModule& operator=(const SubModule&) = delete;
+        SubModule(SubModule&&) = default;
+        SubModule& operator=(SubModule&&) = default;
+
+        /**
+         * @brief   子模块初始化
+         */
+        virtual void init() { _init = true; }
+
+        /**
+         * @brief   设置是否显示调试信息
+         */
+        virtual void setdebug(bool debug) { _debug = debug; }
+
+        /**
+         * @brief   设置是否展示运行结果
+         */
+        virtual void setshow(bool show) { _show = show; }
+
+        /**
+         * @brief   子模块处理函数
+         * @param[in,out] data   输入输出数据包，直接在原数据上修改
+         * @param[in] parent     父任务指针，用于生命周期检查
+         * @return  bool         返回 true 表示数据应该传递到下游，false 表示丢弃数据
+         */
+        virtual bool process(std::shared_ptr<ThreadDataPack>& data, 
+                           BasicTask* parent) = 0;
+
+        bool is_initialized() const { return _init; }
+
+    protected:
+        bool _init;   /*!<标记是否完成初始化*/
+        bool _debug;  /*!<标记是否显示调试信息*/
+        bool _show;   /*!<标记是否展示运行结果*/
+    };
+
      /**
      * @brief   复合任务类
      * @details 管理多个子模块的执行
