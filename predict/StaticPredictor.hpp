@@ -6,7 +6,7 @@
 #define PREDICT_STATIC_PREDICTOR_H
 
 // modules
-#include "predict.hpp"
+#include "predict_submodule.hpp"
 #include "common.hpp"
 
 // packages

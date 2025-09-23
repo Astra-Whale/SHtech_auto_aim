@@ -93,8 +93,8 @@ namespace sensor
 
     private:
         // 传感器相关成员变量
-        Wrapper_Head *video = nullptr;          /*!< 视频输入接口指针 */
-        IMU_Head *imu = nullptr;                /*!< IMU 输入接口指针 */
+        WrapperHead *video = nullptr;          /*!< 视频输入接口指针 */
+        UartIMU *imu = nullptr;                /*!< IMU 输入接口指针 */
         bool is_image_input_flipped = false;    /*!< 标记输入图像是否需要翻转 */
         
         // 状态跟踪
