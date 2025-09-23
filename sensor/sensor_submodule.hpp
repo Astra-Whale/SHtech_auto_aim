@@ -69,18 +69,22 @@ namespace sensor
     class SensorSubModule : public pipeline::SubModule
     {
     public:
-        SensorSubModule() : SubModule() {}
-        virtual ~SensorSubModule();
-
         /**
-         * @brief   子模块初始化
+         * @brief   构造函数
          * @param[in] VideoSource 视频源路径
          * @param[in] ImuSource IMU源类型
          * @param[in] port 通信端口
          * @param[in] flip_image 是否翻转图像
          */
-        void init(const std::string VideoSource, const std::string ImuSource, 
-                  const std::string port, const std::string flip_image);
+        SensorSubModule(const std::string& VideoSource, const std::string& ImuSource, 
+                        const std::string& port, const std::string& flip_image);
+        virtual ~SensorSubModule();
+
+        /**
+         * @brief   子模块初始化
+         * @details 只负责启动设备和设置初始化标志，所有实际初始化工作在构造函数中完成
+         */
+        void init();
 
         /**
          * @brief   子模块处理函数

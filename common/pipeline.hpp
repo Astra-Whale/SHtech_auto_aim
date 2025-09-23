@@ -323,7 +323,7 @@ namespace pipeline
         /**
          * @brief   初始化所有子模块
          */
-        void init() override
+        virtual void init() override
         {
             for (auto& submodule : submodules)
             {
@@ -335,7 +335,7 @@ namespace pipeline
         /**
          * @brief   设置调试信息显示（级联到所有子模块）
          */
-        void setdebug(const bool &debug) override
+        virtual void setdebug(const bool &debug) override
         {
             BasicTask::setdebug(debug);
             for (auto& submodule : submodules)
@@ -347,7 +347,7 @@ namespace pipeline
         /**
          * @brief   设置结果展示（级联到所有子模块）
          */
-        void setshow(const bool &show) override
+        virtual void setshow(const bool &show) override
         {
             BasicTask::setshow(show);
             for (auto& submodule : submodules)

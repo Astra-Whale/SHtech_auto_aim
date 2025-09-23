@@ -6,8 +6,8 @@
 #define PREDICT_TOOLS_H
 
 // modules
-#include "predict_submodule.hpp"
 #include "common.hpp"
+#include "LinearPredictorSubModule.hpp"
 
 // packages
 #include <ctime>

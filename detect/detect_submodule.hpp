@@ -27,14 +27,18 @@ namespace detect
     class DetectSubModule : public pipeline::SubModule
     {
     public:
-        DetectSubModule() : SubModule() {}
+        /**
+         * @brief   构造函数
+         * @param[in] OnnxFileName 用于推理的 Onnx 文件路径
+         */
+        DetectSubModule(const std::string& OnnxFileName);
         virtual ~DetectSubModule() = default;
 
         /**
          * @brief   子模块初始化
-         * @param[in] OnnxFileName 用于推理的 Onnx 文件路径
+         * @details 只负责设置初始化标志，所有实际初始化工作在构造函数中完成
          */
-        void init(const std::string OnnxFileName);
+        void init();
 
         /**
          * @brief   子模块处理函数

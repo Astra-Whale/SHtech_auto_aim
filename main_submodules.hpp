@@ -9,7 +9,7 @@
 // 包含所有子模块
 #include "sensor/sensor_submodule.hpp"
 #include "detect/detect_submodule.hpp"
-#include "predict/predict_submodule.hpp"
+#include "predict/LinearPredictorSubModule.hpp"
 
 // 包含通用头文件
 #include "main.hpp"
@@ -30,9 +30,9 @@ namespace pipeline_test
         void init(const std::string VideoSource, const std::string ImuSource, 
                   const std::string port, const std::string flip_image)
         {
-            // 创建并注册 SensorSubModule
-            auto sensor_module = std::make_unique<sensor::SensorSubModule>();
-            sensor_module->init(VideoSource, ImuSource, port, flip_image);
+            // 创建并注册 SensorSubModule（在构造时初始化设备）
+            auto sensor_module = std::make_unique<sensor::SensorSubModule>(VideoSource, ImuSource, port, flip_image);
+            sensor_module->init();  // 只启动设备和设置初始化标志
             register_submodule(std::move(sensor_module));
             
             CompositeTask::init();
@@ -50,9 +50,9 @@ namespace pipeline_test
         
         void init(const std::string OnnxFileName)
         {
-            // 创建并注册 DetectSubModule
-            auto detect_module = std::make_unique<detect::DetectSubModule>();
-            detect_module->init(OnnxFileName);
+            // 创建并注册 DetectSubModule（在构造时初始化模型）
+            auto detect_module = std::make_unique<detect::DetectSubModule>(OnnxFileName);
+            detect_module->init();  // 只设置初始化标志
             register_submodule(std::move(detect_module));
             
             CompositeTask::init();
@@ -61,7 +61,7 @@ namespace pipeline_test
     
     /**
      * @brief   预测复合任务
-     * @details 包装 PredictSubModule 的 CompositeTask
+     * @details 包装 LinearPredictorSubModule 的 CompositeTask
      */
     class PredictCompositeTask : public CompositeTask
     {
@@ -70,9 +70,9 @@ namespace pipeline_test
         
         void init(const std::string camera_param, int latency = 20)
         {
-            // 创建并注册 PredictSubModule
-            auto predict_module = std::make_unique<predict::PredictSubModule>();
-            predict_module->init(camera_param, latency);
+            // 创建并注册 LinearPredictorSubModule（在构造时初始化）
+            auto predict_module = std::make_unique<predict::LinearPredictorSubModule>(camera_param, latency);
+            predict_module->init();  // 只设置初始化标志
             register_submodule(std::move(predict_module));
             
             CompositeTask::init();
