@@ -1,24 +1,26 @@
 #include "main.hpp"
+#include "main_submodules.hpp"
 
 bool enemy;
 bool run = false;
 
 int totalFrameCounter = 0;
 
-sensor::Sensor sensor_reader;
-detect::Detect detector;
-predict::Predict predictor;
+// 使用新的 CompositeTask 架构
+pipeline_test::SensorCompositeTask sensor_composite;
+pipeline_test::DetectCompositeTask detect_composite;
+pipeline_test::PredictCompositeTask predict_composite;
 
 void stop(int signal)
 {
-    sensor_reader.stop();
-    detector.stop();
-    predictor.stop();
+    sensor_composite.stop();
+    detect_composite.stop();
+    predict_composite.stop();
     LOGM_S("Quit");
     if (
-        !sensor_reader.isalive()
-        && !detector.isalive()
-        && !predictor.isalive()
+        !sensor_composite.isalive()
+        && !detect_composite.isalive()
+        && !predict_composite.isalive()
     )
         exit(0);
 }
@@ -44,15 +46,15 @@ bool init(void)
     LOGM_F("open log file success!");
     LOGM_S("open log file success!");
 
-    sensor_reader.init(info["source"], info["imu"], info["port"], info["flip"]);
-    detector.init(info["model"]);
-    predictor.init(info["camera_para"], atoi(info["latency"].c_str()));
-    sensor_reader.setdebug(display["sensor_debug"]);
-    detector.setdebug(display["detect_debug"]);
-    predictor.setdebug(display["predic_debug"]);
-    sensor_reader.setshow(display["sensor_show"]);
-    detector.setshow(display["detect_show"]);
-    predictor.setshow(display["predic_show"]);
+    sensor_composite.init(info["source"], info["imu"], info["port"], info["flip"]);
+    detect_composite.init(info["model"]);
+    predict_composite.init(info["camera_para"], atoi(info["latency"].c_str()));
+    sensor_composite.setdebug(display["sensor_debug"]);
+    detect_composite.setdebug(display["detect_debug"]);
+    predict_composite.setdebug(display["predic_debug"]);
+    sensor_composite.setshow(display["sensor_show"]);
+    detect_composite.setshow(display["detect_show"]);
+    predict_composite.setshow(display["predic_show"]);
 
     return true;
 }
@@ -83,13 +85,13 @@ int main(void)
     pthread_sigmask(SIG_BLOCK, &mask, &oldmask);
 
     t_sensor = std::thread([&]()
-                           { sensor_reader(pre2cap, cap2det); });
+                           { sensor_composite(pre2cap, cap2det); });
 
     t_detect = std::thread([&]()
-                           { detector(cap2det, det2pre); });
+                           { detect_composite(cap2det, det2pre); });
 
     t_predict = std::thread([&]()
-                            { predictor(det2pre, pre2cap); });
+                            { predict_composite(det2pre, pre2cap); });
 
     pthread_sigmask(SIG_SETMASK, &oldmask, NULL);
 

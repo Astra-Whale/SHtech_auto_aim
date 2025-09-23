@@ -104,8 +104,9 @@ namespace pipeline
          * @brief   子模块处理函数
          * @param[in,out] data   输入输出数据包，直接在原数据上修改
          * @param[in] parent     父任务指针，用于生命周期检查
+         * @return  bool         返回 true 表示数据应该传递到下游，false 表示丢弃数据
          */
-        virtual void process(std::shared_ptr<ThreadDataPack>& data, 
+        virtual bool process(std::shared_ptr<ThreadDataPack>& data, 
                            BasicTask* parent) = 0;
 
         bool is_initialized() const { return _init; }
@@ -418,13 +419,22 @@ namespace pipeline
                     break;
 
                 // 串行执行所有子模块，直接处理数据
-                for (size_t i = 0; i < submodules.size(); ++i)
+                bool should_continue = true;
+                for (size_t i = 0; i < submodules.size() && should_continue; ++i)
                 {
-                    submodules[i]->process(data, this);
+                    should_continue = submodules[i]->process(data, this);
                 }
                 
-                // 将处理结果输出到下一阶段
-                pipeafter.put(data, this);
+                // 只有当所有子模块都成功处理时才传递到下一阶段
+                if (should_continue)
+                {
+                    pipeafter.put(data, this);
+                }
+                else
+                {
+                    // 如果处理失败，将数据包重新放回输入队列
+                    pipebefore.put(data, this);
+                }
             }
         }
 
