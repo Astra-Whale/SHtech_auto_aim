@@ -1,13 +1,13 @@
 //
-// Created by Haoran-Jiang on 2021/11/25.
+// LinearPredictorSubModule - Merged PredictSubModule and LinearPredictor
+// Combines pipeline integration and prediction algorithm in one class
 //
 
-#include "LinearPredictor.hpp"
+#include "LinearPredictorSubModule.hpp"
 #include <iostream>
 
 namespace predict
 {
-
     /// 选择高度限制
     constexpr double height_thres = -20.;
     /// 识别双阈值
@@ -15,8 +15,104 @@ namespace predict
     /// 远距离弹量控制
     constexpr double distant_threshold = 6.;
 
-    void LinearPredictor::predict(std::shared_ptr<ThreadDataPack> &data, PositionTransform &position_transform)
+    LinearPredictorSubModule::LinearPredictorSubModule(const std::string& camera_param, int latency) : SubModule()
     {
+        LOGM_S("[LinearPredictorSubModule] constructing with camera_param: %s, latency: %d", 
+               camera_param.c_str(), latency);
+        
+        // 初始化位置变换器和通信延迟（原 PredictSubModule 的功能）
+        position_transform = PositionTransform(camera_param);
+        comm_latency = latency / 1e3;
+        
+        // 初始化预测器状态（原 LinearPredictor 的功能）
+        last_track = false;
+        
+        // 初始化卡尔曼滤波器
+        initFilters();
+        
+        LOGM_S("[LinearPredictorSubModule] construction completed");
+    }
+
+    void LinearPredictorSubModule::init()
+    {
+        LOGM_S("[LinearPredictorSubModule] init");
+        SubModule::init();
+        LOGM_S("[LinearPredictorSubModule] ready");
+    }
+
+    void LinearPredictorSubModule::initFilters()
+    {
+        // 初始化滤波器参数（来自原 LinearPredictor 构造函数）
+        Matxx A = Matxx::Identity();    // 转移矩阵
+        Matzx H;                        // 观测矩阵
+        Matxx R;                        // 过程噪声矩阵
+        Matzz Q{0.05};                  // 测量噪声矩阵
+        Matx1 init{0, 0};               // 初始值
+        
+        // 初始化观测矩阵
+        H(0, 0) = 1;
+        
+        // 初始化过程方差
+        R(0, 0) = 10;
+        R(1, 1) = 10;
+        
+        // 初始化 x, y 轴滤波器
+        auto now = std::chrono::high_resolution_clock::now();
+        filter_x = _filter(A, H, R, Q, init, now);
+        filter_y = _filter(A, H, R, Q, init, now);
+        
+        // yaw 滤波器使用不同的测量噪声矩阵
+        Q(0, 0) = 0.075;
+        filter_yaw = _filter(A, H, R, Q, init, now);
+    }
+
+    bool LinearPredictorSubModule::process(std::shared_ptr<ThreadDataPack>& data, 
+                                           pipeline::BasicTask* parent)
+    {
+        if (!_init)
+        {
+            LOGE_S("[LinearPredictorSubModule] Error: process before init.");
+            return false;
+        }
+
+        auto t1 = std::chrono::steady_clock::now();
+
+        LOGM_S("[LinearPredictorSubModule] ready");
+        
+        // 执行预测算法
+        predict(data);
+        
+        auto t2 = std::chrono::steady_clock::now();
+
+        // 调试信息
+        if (_debug)
+        {
+            auto &send = data->robotcommand;
+            LOGM_S("[LinearPredictorSubModule] pitch %6.2f, yaw %6.2f, dist %4.1f",
+                   send.pitch_angle, send.yaw_angle,
+                   (float)send.distance / 10);
+        }
+        
+        // 显示结果（如果需要）
+        if (_show)
+        {
+            // 预测模块的显示逻辑（如果需要的话）
+        }
+
+        auto t3 = std::chrono::steady_clock::now();
+        // LOGM_S(
+        //     "LinearPredictorSubModule Predict %.2lfms Show %.2lfms", 
+        //     std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count()*1000,
+        //     std::chrono::duration_cast<std::chrono::duration<double>>(t3 - t2).count()*1000
+        // );
+        
+        // 预测总是成功的，返回 true
+        return true;
+    }
+
+    void LinearPredictorSubModule::predict(std::shared_ptr<ThreadDataPack>& data)
+    {
+        // 以下代码来自原 LinearPredictor::predict 方法
         auto &detections = data->bboxes;
         auto q_raw = data->attitude.toQuaternion();
         auto &img = data->frame;
@@ -62,7 +158,7 @@ namespace predict
         }
         if (new_detections.empty())
         {
-	    LOGM_S("No target");
+            LOGM_S("No target");
             send.distance = -1.f;
             send.yaw_speed = 0.f;
             last_track = false;
@@ -161,7 +257,7 @@ namespace predict
 
             double ft = FlightTimePredict(m_pw, robot_status.robot_speed_mps);                        // ft: 预测弹丸飞行时间
             auto now_t = std::chrono::high_resolution_clock::now();                                   //
-            double process_latency = duration_cast<microseconds>(now_t - t).count() / 1e6;            //
+            double process_latency = duration_cast<std::chrono::microseconds>(now_t - t).count() / 1e6;            //
             double t_delay = ft + comm_latency + process_latency;                                     //
             Pos3D s_pw{p_x(0, 0) + t_delay * p_x(1, 0), p_y(0, 0) + t_delay * p_y(1, 0), m_pw(2, 0)}; // s_pw: ft后预测点
             Eigen::Vector2d r_vec(p_x(0, 0), p_y(0, 0));                                              // 目标装甲板位矢

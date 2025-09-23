@@ -17,9 +17,9 @@
 
 namespace detect
 {
-    void DetectSubModule::init(const std::string OnnxFileName)
+    DetectSubModule::DetectSubModule(const std::string& OnnxFileName) : SubModule()
     {
-        LOGM_S("[detect_submodule] init");
+        LOGM_S("[detect_submodule] constructing with model: %s", OnnxFileName.c_str());
         #if INFERENCE_BACKEND_TYPE == 1
             model.reset(new ONNX(OnnxFileName));
         #elif INFERENCE_BACKEND_TYPE == 2
@@ -30,8 +30,14 @@ namespace detect
             #error "Invalid INFERENCE_BACKEND_TYPE"
         #endif
         
-        LOGM_S("[detect_submodule] ready");
+        LOGM_S("[detect_submodule] model loaded");
+    }
+
+    void DetectSubModule::init()
+    {
+        LOGM_S("[detect_submodule] init");
         SubModule::init();
+        LOGM_S("[detect_submodule] ready");
     }
 
     bool DetectSubModule::process(std::shared_ptr<ThreadDataPack>& data, 

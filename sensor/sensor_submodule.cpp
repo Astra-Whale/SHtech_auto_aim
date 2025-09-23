@@ -56,6 +56,64 @@ namespace sensor
     }
 
     // SensorSubModule 实现
+    SensorSubModule::SensorSubModule(const std::string& VideoSource, const std::string& ImuSource, 
+                                     const std::string& port, const std::string& flip_image) : SubModule()
+    {
+        LOGM_S("[sensor_submodule] constructing with video: %s, IMU: %s, port: %s", 
+               VideoSource.c_str(), ImuSource.c_str(), port.c_str());
+        
+        // 初始化视频源
+        if (VideoSource == "0")
+        {
+            #ifdef ENABLE_HIKCAM
+                video = new HikCamWrapper();
+            #else
+                LOGE_S("[sensor_submodule] hikcam not enabled!");
+            #endif
+        }
+        else
+        {
+            video = new VideoWrapper(VideoSource);
+        }
+        
+        // 初始化视频设备
+        while (!video->init())
+        {
+            LOGE_S("[sensor_submodule]Error: Initialize video stream failed");
+        }
+        LOGM_S("[sensor_submodule] video initialized");
+        
+        // 初始化IMU
+        LOGM_S("[sensor_submodule] IMU input from %s", ImuSource.c_str());
+        imu = nullptr;
+        if (ImuSource == "UART")
+        {
+            imu = new UartIMU(port);
+        }
+        if (imu == nullptr || !imu->init())
+        {
+            LOGE_S("[sensor_submodule]Error: IMU init failed");
+        }
+        else
+        {
+            LOGM_S("[sensor_submodule] IMU initialized");
+        }
+        
+        // 设置图像翻转标志
+        if (flip_image == "1")
+        {
+            is_image_input_flipped = true;
+            LOGW_S("[sensor_submodule] Input image will be flipped");
+        }
+        else 
+        {
+            is_image_input_flipped = false;
+            LOGW_S("[sensor_submodule] Input image will not be flipped");
+        }
+        
+        LOGM_S("[sensor_submodule] construction completed");
+    }
+
     SensorSubModule::~SensorSubModule()
     {
         if (video)
@@ -70,61 +128,19 @@ namespace sensor
         }
     }
 
-    void SensorSubModule::init(const std::string VideoSource, const std::string ImuSource, 
-                               const std::string port, const std::string flip_image)
+    void SensorSubModule::init()
     {
-        LOGM_S("[sensor_submodule] comm I/O on %s", port.c_str());
-        LOGM_S("[sensor_submodule] video input from %s", VideoSource.c_str());
-        
-        if (VideoSource == "0")
-        {
-            #ifdef ENABLE_HIKCAM
-                video = new HikCamWrapper();
-            #else
-                LOGE_S("[sensor_submodule] hikcam not enabled!");
-            #endif
-        }
-        else
-        {
-            video = new VideoWrapper(VideoSource);
-        }
-        
-        while (!video->init())
-        {
-            LOGE_S("[sensor_submodule]Error: Initialize video stream failed");
-        }
-        LOGM_S("[sensor_submodule] video ready");
-        
-        LOGM_S("[sensor_submodule] IMU input from %s", ImuSource.c_str());
-        imu = nullptr;
-        if (ImuSource == "UART")
-        {
-            imu = new UartIMU(port);
-        }
-        if (imu == nullptr || !imu->init())
-        {
-            LOGE_S("[sensor_submodule]Error: IMU init failed");
-        }
-        
-        if (flip_image == "1")
-        {
-            is_image_input_flipped = true;
-            LOGW_S("[sensor_submodule] Input image will be flipped");
-        }
-        else 
-        {
-            is_image_input_flipped = false;
-            LOGW_S("[sensor_submodule] Input image will not be flipped");
-        }
-        
-        LOGM_S("[sensor_submodule] IMU ready");
-        LOGM_S("[sensor_submodule] ready");
+        LOGM_S("[sensor_submodule] init - starting devices");
         
         // 启动 IMU
         if (imu != nullptr)
+        {
             imu->start();
+            LOGM_S("[sensor_submodule] IMU started");
+        }
         
         SubModule::init();
+        LOGM_S("[sensor_submodule] ready");
     }
 
     bool SensorSubModule::process(std::shared_ptr<ThreadDataPack>& data, 
