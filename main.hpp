@@ -21,10 +21,10 @@
 #include <atomic>
 #include <condition_variable>
 
-//Task
-#include "detect.hpp"
-#include "sensor.hpp"
-#include "predict.hpp"
+//Task - 移除原有模块，现在只需要通用的流水线架构
+// #include "detect.hpp"     // 移除原有的 BasicTask
+// #include "sensor.hpp"     // 移除原有的 BasicTask  
+// #include "predict.hpp"    // 移除原有的 BasicTask
 
 //Common
 #include "common.hpp"
