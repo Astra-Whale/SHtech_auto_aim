@@ -33,12 +33,7 @@ namespace predict
         LOGM_S("[LinearPredictorSubModule] construction completed");
     }
 
-    void LinearPredictorSubModule::init()
-    {
-        LOGM_S("[LinearPredictorSubModule] init");
-        SubModule::init();
-        LOGM_S("[LinearPredictorSubModule] ready");
-    }
+
 
     void LinearPredictorSubModule::initFilters()
     {
@@ -69,12 +64,6 @@ namespace predict
     bool LinearPredictorSubModule::process(std::shared_ptr<ThreadDataPack>& data, 
                                            pipeline::BasicTask* parent)
     {
-        if (!_init)
-        {
-            LOGE_S("[LinearPredictorSubModule] Error: process before init.");
-            return false;
-        }
-
         auto t1 = std::chrono::steady_clock::now();
 
         LOGM_S("[LinearPredictorSubModule] ready");

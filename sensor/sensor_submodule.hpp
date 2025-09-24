@@ -80,11 +80,7 @@ namespace sensor
                         const std::string& port, const std::string& flip_image);
         virtual ~SensorSubModule();
 
-        /**
-         * @brief   子模块初始化
-         * @details 只负责启动设备和设置初始化标志，所有实际初始化工作在构造函数中完成
-         */
-        void init();
+
 
         /**
          * @brief   子模块处理函数

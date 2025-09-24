@@ -33,22 +33,11 @@ namespace detect
         LOGM_S("[detect_submodule] model loaded");
     }
 
-    void DetectSubModule::init()
-    {
-        LOGM_S("[detect_submodule] init");
-        SubModule::init();
-        LOGM_S("[detect_submodule] ready");
-    }
+
 
     bool DetectSubModule::process(std::shared_ptr<ThreadDataPack>& data, 
                                   pipeline::BasicTask* parent)
     {
-        if (!_init)
-        {
-            LOGE_S("[detect_submodule]Error: process before init.");
-            return false;
-        }
-
         auto t1 = std::chrono::steady_clock::now();
 
         // 执行推理

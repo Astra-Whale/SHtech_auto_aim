@@ -111,6 +111,13 @@ namespace sensor
             LOGW_S("[sensor_submodule] Input image will not be flipped");
         }
         
+        // 启动 IMU
+        if (imu != nullptr)
+        {
+            imu->start();
+            LOGM_S("[sensor_submodule] IMU started");
+        }
+        
         LOGM_S("[sensor_submodule] construction completed");
     }
 
@@ -128,30 +135,11 @@ namespace sensor
         }
     }
 
-    void SensorSubModule::init()
-    {
-        LOGM_S("[sensor_submodule] init - starting devices");
-        
-        // 启动 IMU
-        if (imu != nullptr)
-        {
-            imu->start();
-            LOGM_S("[sensor_submodule] IMU started");
-        }
-        
-        SubModule::init();
-        LOGM_S("[sensor_submodule] ready");
-    }
+
 
     bool SensorSubModule::process(std::shared_ptr<ThreadDataPack>& data, 
                                   pipeline::BasicTask* parent)
     {
-        if (!_init)
-        {
-            LOGE_S("[sensor_submodule]Error: process before init.");
-            return false;
-        }
-
         auto t1 = std::chrono::steady_clock::now();
         
         // 读取图像

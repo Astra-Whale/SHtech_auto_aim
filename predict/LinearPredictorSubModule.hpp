@@ -41,11 +41,7 @@ namespace predict
         LinearPredictorSubModule(const std::string& camera_param, int latency = 20);
         virtual ~LinearPredictorSubModule() = default;
 
-        /**
-         * @brief   子模块初始化
-         * @details 只负责设置初始化标志，所有实际初始化工作在构造函数中完成
-         */
-        void init();
+
 
         /**
          * @brief   子模块处理函数
