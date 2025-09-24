@@ -1,15 +1,18 @@
 #include "main.hpp"
-#include "main_submodules.hpp"
+#include "common/pipeline.hpp"
+#include "sensor/sensor_submodule.hpp"
+#include "detect/detect_submodule.hpp"
+#include "predict/LinearPredictorSubModule.hpp"
 
 bool enemy;
 bool run = false;
 
 int totalFrameCounter = 0;
 
-// 使用新的 CompositeTask 架构
-pipeline_test::SensorCompositeTask sensor_composite;
-pipeline_test::DetectCompositeTask detect_composite;
-pipeline_test::PredictCompositeTask predict_composite;
+// 使用通用的 CompositeTask 架构
+pipeline::CompositeTask sensor_composite;
+pipeline::CompositeTask detect_composite;
+pipeline::CompositeTask predict_composite;
 
 void stop(int signal)
 {
@@ -46,15 +49,32 @@ bool init(void)
     LOGM_F("open log file success!");
     LOGM_S("open log file success!");
 
-    sensor_composite.init(info["source"], info["imu"], info["port"], info["flip"]);
-    detect_composite.init(info["model"]);
-    predict_composite.init(info["camera_para"], atoi(info["latency"].c_str()));
-    sensor_composite.setdebug(display["sensor_debug"]);
-    detect_composite.setdebug(display["detect_debug"]);
-    predict_composite.setdebug(display["predic_debug"]);
-    sensor_composite.setshow(display["sensor_show"]);
-    detect_composite.setshow(display["detect_show"]);
-    predict_composite.setshow(display["predic_show"]);
+    // 创建传感器子模块
+    auto sensor_module = std::make_unique<sensor::SensorSubModule>(
+        info["source"], info["imu"], info["port"], info["flip"]);
+    sensor_module->setdebug(display["sensor_debug"]);
+    sensor_module->setshow(display["sensor_show"]);
+
+    // 创建检测子模块
+    auto detect_module = std::make_unique<detect::DetectSubModule>(info["model"]);
+    detect_module->setdebug(display["detect_debug"]);
+    detect_module->setshow(display["detect_show"]);
+
+    // 创建预测子模块
+    auto predict_module = std::make_unique<predict::LinearPredictorSubModule>(
+        info["camera_para"], atoi(info["latency"].c_str()));
+    predict_module->setdebug(display["predic_debug"]);
+    predict_module->setshow(display["predic_show"]);
+
+    // 注册并初始化各个子模块到对应的复合任务中
+    sensor_composite.register_submodule(std::move(sensor_module));
+    sensor_composite.init();
+    
+    detect_composite.register_submodule(std::move(detect_module));
+    detect_composite.init();
+
+    predict_composite.register_submodule(std::move(predict_module));
+    predict_composite.init();
 
     return true;
 }
