@@ -49,33 +49,86 @@ bool init(void)
     LOGM_F("open log file success!");
     LOGM_S("open log file success!");
 
+    LOGM_S("[init] Starting submodule construction...");
+
     // 创建传感器子模块
-    auto sensor_module = std::make_unique<sensor::SensorSubModule>(
-        info["source"], info["imu"], info["port"], info["flip"]);
-    sensor_module->setdebug(display["sensor_debug"]);
-    sensor_module->setshow(display["sensor_show"]);
+    std::unique_ptr<sensor::SensorSubModule> sensor_module;
+    try {
+        sensor_module = std::make_unique<sensor::SensorSubModule>(
+            info["source"], info["imu"], info["port"], info["flip"]);
+        sensor_module->setdebug(display["sensor_debug"]);
+        sensor_module->setshow(display["sensor_show"]);
+        LOGM_S("[init] Sensor submodule created successfully");
+    }
+    catch (const std::exception& e) {
+        LOGE_S("[init] Failed to create sensor submodule: %s", e.what());
+        sensor_module = nullptr;
+    }
+    catch (...) {
+        LOGE_S("[init] Failed to create sensor submodule: unknown error");
+        sensor_module = nullptr;
+    }
 
     // 创建检测子模块
-    auto detect_module = std::make_unique<detect::DetectSubModule>(info["model"]);
-    detect_module->setdebug(display["detect_debug"]);
-    detect_module->setshow(display["detect_show"]);
+    std::unique_ptr<detect::DetectSubModule> detect_module;
+    try {
+        detect_module = std::make_unique<detect::DetectSubModule>(info["model"]);
+        detect_module->setdebug(display["detect_debug"]);
+        detect_module->setshow(display["detect_show"]);
+        LOGM_S("[init] Detect submodule created successfully");
+    }
+    catch (const std::exception& e) {
+        LOGE_S("[init] Failed to create detect submodule: %s", e.what());
+        detect_module = nullptr;
+    }
+    catch (...) {
+        LOGE_S("[init] Failed to create detect submodule: unknown error");
+        detect_module = nullptr;
+    }
 
     // 创建预测子模块
-    auto predict_module = std::make_unique<predict::LinearPredictorSubModule>(
-        info["camera_para"], atoi(info["latency"].c_str()));
-    predict_module->setdebug(display["predic_debug"]);
-    predict_module->setshow(display["predic_show"]);
+    std::unique_ptr<predict::LinearPredictorSubModule> predict_module;
+    try {
+        predict_module = std::make_unique<predict::LinearPredictorSubModule>(
+            info["camera_para"], atoi(info["latency"].c_str()));
+        predict_module->setdebug(display["predic_debug"]);
+        predict_module->setshow(display["predic_show"]);
+        LOGM_S("[init] Predict submodule created successfully");
+    }
+    catch (const std::exception& e) {
+        LOGE_S("[init] Failed to create predict submodule: %s", e.what());
+        predict_module = nullptr;
+    }
+    catch (...) {
+        LOGE_S("[init] Failed to create predict submodule: unknown error");
+        predict_module = nullptr;
+    }
 
-    // 注册并初始化各个子模块到对应的复合任务中
-    sensor_composite.register_submodule(std::move(sensor_module));
-    sensor_composite.init();
+    // 先组装复合任务（不管子模块是否成功）
     
+    sensor_composite.register_submodule(std::move(sensor_module));
     detect_composite.register_submodule(std::move(detect_module));
-    detect_composite.init();
-
     predict_composite.register_submodule(std::move(predict_module));
-    predict_composite.init();
 
+    // 验证复合任务状态
+    auto sensor_status = sensor_composite.get_status();
+    auto detect_status = detect_composite.get_status();
+    auto predict_status = predict_composite.get_status();
+
+    // 检查是否所有复合任务都准备就绪
+    bool sensor_ready = sensor_composite.validate();
+    bool detect_ready = detect_composite.validate();
+    bool predict_ready = predict_composite.validate();
+
+    if (!sensor_ready || !detect_ready || !predict_ready) {
+        LOGE_S("[init] Some composite tasks are not ready:");
+        LOGE_S("[init] - Sensor: %s", sensor_ready ? "READY" : "NOT READY");
+        LOGE_S("[init] - Detect: %s", detect_ready ? "READY" : "NOT READY");
+        LOGE_S("[init] - Predict: %s", predict_ready ? "READY" : "NOT READY");
+        return false;
+    }
+
+    LOGM_S("[init] All composite tasks are ready and validated");
     return true;
 }
 

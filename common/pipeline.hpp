@@ -170,7 +170,7 @@ namespace pipeline
     class BasicTask
     {
     public:
-        BasicTask() : _debug(false), _show(false), _init(false), _run(true) {}
+        BasicTask() : _debug(false), _show(false), _run(true) {}
         ~BasicTask()
         {
             stop();
@@ -192,22 +192,14 @@ namespace pipeline
          * @param[in] pipebefore 与装甲板检测的上一流程交互的 pipeline
          * @param[in] pipeafter  与装甲板检测的下一流程交互的 pipeline
          * @note    通过 stop() 控制启停
-         *          必须先进行初始化
+         *          对象创建后即可使用
          * @see     detect/detect.cpp\hpp detect::Detect::operator()
          */
         virtual void operator()(autoaim_pipeline &pipebefore, autoaim_pipeline &pipeafter)
         {
         }
 
-        /**
-         * @brief   任务类初始化
-         * @note    子类重载时初始化完成后应调用此函数
-         * @see     detect/detect.hpp detect::Detect::init
-         */
-        virtual void init()
-        {
-            _init = true;
-        }
+
 
         /**
          * @brief   停止任务线程
@@ -235,13 +227,12 @@ namespace pipeline
 
         bool isalive() const
         {
-            return _init && _run;
+            return _run;
         }
 
     protected:
         bool _debug; /*!<标记是否显示调试信息*/
         bool _show;  /*!<标记是否展示运行结果*/
-        bool _init;  /*!<标记是否完成初始化*/
         bool _run;   /*!<任务线程是否运行运行*/
     };
     
@@ -252,7 +243,7 @@ namespace pipeline
     class SubModule
     {
     public:
-        SubModule() : _init(false), _debug(false), _show(false) {}
+        SubModule() : _debug(false), _show(false) {}
         virtual ~SubModule() = default;
 
         // 禁用复制，只允许移动
@@ -261,10 +252,7 @@ namespace pipeline
         SubModule(SubModule&&) = default;
         SubModule& operator=(SubModule&&) = default;
 
-        /**
-         * @brief   子模块初始化
-         */
-        virtual void init() { _init = true; }
+
 
         /**
          * @brief   设置是否显示调试信息
@@ -285,10 +273,7 @@ namespace pipeline
         virtual bool process(std::shared_ptr<ThreadDataPack>& data, 
                            BasicTask* parent) = 0;
 
-        bool is_initialized() const { return _init; }
-
     protected:
-        bool _init;   /*!<标记是否完成初始化*/
         bool _debug;  /*!<标记是否显示调试信息*/
         bool _show;   /*!<标记是否展示运行结果*/
     };
@@ -320,17 +305,7 @@ namespace pipeline
             (register_submodule(std::forward<Args>(args)), ...);
         }
 
-        /**
-         * @brief   初始化所有子模块
-         */
-        virtual void init() override
-        {
-            for (auto& submodule : submodules)
-            {
-                submodule->init();
-            }
-            BasicTask::init();
-        }
+
 
         /**
          * @brief   设置调试信息显示（级联到所有子模块）
@@ -340,7 +315,10 @@ namespace pipeline
             BasicTask::setdebug(debug);
             for (auto& submodule : submodules)
             {
-                submodule->setdebug(debug);
+                if (submodule) // 只对有效子模块设置
+                {
+                    submodule->setdebug(debug);
+                }
             }
         }
 
@@ -352,7 +330,10 @@ namespace pipeline
             BasicTask::setshow(show);
             for (auto& submodule : submodules)
             {
-                submodule->setshow(show);
+                if (submodule) // 只对有效子模块设置
+                {
+                    submodule->setshow(show);
+                }
             }
         }
 
@@ -365,31 +346,42 @@ namespace pipeline
         }
 
         /**
-         * @brief   检查所有子模块是否已初始化
+         * @brief   验证复合任务是否准备就绪
+         * @return  bool 如果所有子模块都有效则返回 true
          */
-        bool all_submodules_initialized() const
+        bool validate() const
         {
             for (const auto& submodule : submodules)
             {
-                if (!submodule->is_initialized())
+                if (!submodule)
                 {
                     return false;
                 }
             }
-            return true;
+            return !submodules.empty(); // 至少要有一个子模块
         }
 
         /**
-         * @brief   获取子模块的初始化状态
-         * @param[in] index 子模块索引
-         * @return 初始化状态，索引无效时返回 false
+         * @brief   获取复合任务的详细状态信息
+         * @return  std::pair<int, int> 返回 {有效子模块数量, 总子模块数量}
          */
-        bool get_submodule_init_status(size_t index) const
+        std::pair<int, int> get_status() const
         {
-            if (index >= submodules.size())
-                return false;
-            return submodules[index]->is_initialized();
+            int valid_count = 0;
+            int total_count = submodules.size();
+            
+            for (const auto& submodule : submodules)
+            {
+                if (submodule)
+                {
+                    valid_count++;
+                }
+            }
+            
+            return {valid_count, total_count};
         }
+
+
 
         /**
          * @brief   执行所有子模块
@@ -418,11 +410,15 @@ namespace pipeline
                 if (!data)
                     break;
 
-                // 串行执行所有子模块，直接处理数据
+                // 串行执行所有有效子模块，直接处理数据
                 bool should_continue = true;
                 for (size_t i = 0; i < submodules.size() && should_continue; ++i)
                 {
-                    should_continue = submodules[i]->process(data, this);
+                    if (submodules[i]) // 只处理有效的子模块
+                    {
+                        should_continue = submodules[i]->process(data, this);
+                    }
+                    // nullptr 子模块被跳过，数据继续传递
                 }
                 
                 // 只有当所有子模块都成功处理时才传递到下一阶段
