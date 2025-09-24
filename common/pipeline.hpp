@@ -18,6 +18,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <memory>
+#include <stdexcept>
 /**
  * @brief   用于安全释放指针的函数类
  */
@@ -288,9 +289,14 @@ namespace pipeline
         /**
          * @brief   注册子模块
          * @param[in] submodule 子模块的独占所有权，调用后 submodule 将被移动
+         * @throws  std::invalid_argument 当 submodule 为 nullptr 时抛出异常
          */
         void register_submodule(std::unique_ptr<SubModule> submodule)
         {
+            if (!submodule)
+            {
+                throw std::invalid_argument("CompositeTask: Cannot register null submodule");
+            }
             submodules.emplace_back(std::move(submodule));
         }
 
@@ -315,10 +321,7 @@ namespace pipeline
             BasicTask::setdebug(debug);
             for (auto& submodule : submodules)
             {
-                if (submodule) // 只对有效子模块设置
-                {
-                    submodule->setdebug(debug);
-                }
+                submodule->setdebug(debug);
             }
         }
 
@@ -330,10 +333,7 @@ namespace pipeline
             BasicTask::setshow(show);
             for (auto& submodule : submodules)
             {
-                if (submodule) // 只对有效子模块设置
-                {
-                    submodule->setshow(show);
-                }
+                submodule->setshow(show);
             }
         }
 
@@ -346,62 +346,10 @@ namespace pipeline
         }
 
         /**
-         * @brief   验证复合任务是否准备就绪
-         * @return  bool 如果所有子模块都有效则返回 true
-         */
-        bool validate() const
-        {
-            for (const auto& submodule : submodules)
-            {
-                if (!submodule)
-                {
-                    return false;
-                }
-            }
-            return !submodules.empty(); // 至少要有一个子模块
-        }
-
-        /**
-         * @brief   获取复合任务的详细状态信息
-         * @return  std::pair<int, int> 返回 {有效子模块数量, 总子模块数量}
-         */
-        std::pair<int, int> get_status() const
-        {
-            int valid_count = 0;
-            int total_count = submodules.size();
-            
-            for (const auto& submodule : submodules)
-            {
-                if (submodule)
-                {
-                    valid_count++;
-                }
-            }
-            
-            return {valid_count, total_count};
-        }
-
-
-
-        /**
          * @brief   执行所有子模块
          */
         void operator()(autoaim_pipeline &pipebefore, autoaim_pipeline &pipeafter) override
         {
-            if (submodules.empty())
-            {
-                // 如果没有子模块，直接传递数据
-                while (isalive())
-                {
-                    auto data = pipebefore.get(this);
-                    if (data)
-                    {
-                        pipeafter.put(data, this);
-                    }
-                }
-                return;
-            }
-
             // 主处理循环
             while (isalive())
             {
@@ -410,27 +358,21 @@ namespace pipeline
                 if (!data)
                     break;
 
-                // 串行执行所有有效子模块，直接处理数据
-                bool should_continue = true;
-                for (size_t i = 0; i < submodules.size() && should_continue; ++i)
-                {
-                    if (submodules[i]) // 只处理有效的子模块
-                    {
-                        should_continue = submodules[i]->process(data, this);
-                    }
-                    // nullptr 子模块被跳过，数据继续传递
-                }
-                
-                // 只有当所有子模块都成功处理时才传递到下一阶段
-                if (should_continue)
+                // 如果没有子模块，直接传递数据（透传模式）
+                if (submodules.empty())
                 {
                     pipeafter.put(data, this);
+                    continue;
                 }
-                else
+
+                // 串行执行所有子模块，直接处理数据
+                // 由于注册时已保证所有子模块都有效，不需要再检查 nullptr
+                for (auto& submodule : submodules)
                 {
-                    // 如果处理失败，将数据包重新放回输入队列
-                    pipebefore.put(data, this);
+                    submodule->process(data, this);
                 }
+                
+                pipeafter.put(data, this);
             }
         }
 
