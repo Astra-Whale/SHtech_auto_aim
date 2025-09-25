@@ -172,10 +172,10 @@ namespace pipeline
     class BasicTask
     {
     public:
-        BasicTask() : _debug(false), _show(false), _run(true) {}
-        ~BasicTask()
+        BasicTask() : _debug(false), _show(false), _should_run(false), _should_terminate(false) {}
+        virtual ~BasicTask()
         {
-            stop();
+            terminate();
         }
 
         /**
@@ -201,14 +201,48 @@ namespace pipeline
         {
         }
 
-
+        /**
+         * @brief   启动任务（允许任务运行）并通知等待的线程
+         */
+        virtual void start(void)
+        {
+            {
+                std::lock_guard<std::mutex> lock(state_mutex);
+                _should_run = true;
+            }
+            state_cv.notify_all();  // 唤醒等待的线程进入工作循环
+        }
 
         /**
-         * @brief   停止任务线程
+         * @brief   停止任务（暂停运行，但不终止）
+         * @note    线程会自然退出到等待状态，无需通知
          */
-        void stop(void)
+        virtual void stop(void)
         {
-            _run = false;
+            std::lock_guard<std::mutex> lock(state_mutex);
+            _should_run = false;
+        }
+
+        /**
+         * @brief   终止任务（彻底结束任务）并通知等待的线程
+         */
+        virtual void terminate(void)
+        {
+            {
+                std::lock_guard<std::mutex> lock(state_mutex);
+                _should_run = false;
+                _should_terminate = true;
+            }
+            state_cv.notify_all();  // 唤醒等待的线程让其检查终止条件并退出
+        }
+
+        /**
+         * @brief   重置终止状态（允许重新启动）
+         */
+        void reset(void)
+        {
+            _should_terminate = false;
+            _should_run = true;
         }
 
         /**
@@ -227,15 +261,54 @@ namespace pipeline
             _debug = debug;
         }
 
+        /**
+         * @brief   任务是否应该保持活跃（既要运行且未被终止）
+         * @return  bool 当应该运行且未被终止时任务保持活跃
+         */
         bool isalive() const
         {
-            return _run;
+            return _should_run && !_should_terminate;
+        }
+
+        /**
+         * @brief   任务是否被终止
+         * @return  bool 任务是否已被终止
+         */
+        bool isterminated() const
+        {
+            return _should_terminate;
+        }
+
+        /**
+         * @brief   任务是否应该运行
+         * @return  bool 任务是否应该运行
+         */
+        bool should_run() const
+        {
+            return _should_run;
         }
 
     protected:
-        bool _debug; /*!<标记是否显示调试信息*/
-        bool _show;  /*!<标记是否展示运行结果*/
-        bool _run;   /*!<任务线程是否运行运行*/
+        /**
+         * @brief   等待任务状态变更的统一方法
+         * @details 等待 start() 或 terminate() 信号，通过返回值指示下一步行为
+         * @return  true - 应该开始/继续工作；false - 应该终止线程
+         */
+        bool wait_for_state_change()
+        {
+            std::unique_lock<std::mutex> lock(state_mutex);
+            state_cv.wait(lock, [this]() {
+                return _should_run || _should_terminate;
+            });
+            return _should_run && !_should_terminate;  // 只有在应该运行且未终止时返回true
+        }
+        bool _debug;            /*!< 标记是否显示调试信息 */
+        bool _show;             /*!< 标记是否展示运行结果 */
+        bool _should_run;       /*!< 外部控制：任务是否应该运行 */
+        bool _should_terminate; /*!< 外部控制：任务是否应该被彻底终止 */
+        
+        std::mutex state_mutex;                    /*!< 状态变更的互斥锁 */
+        std::condition_variable state_cv;          /*!< 状态变更的条件变量 */
     };
     
     /**
@@ -399,34 +472,48 @@ namespace pipeline
             return submodules.size();
         }
 
+
+
         /**
          * @brief   执行所有子模块
          */
         void operator()(autoaim_pipeline &pipebefore, autoaim_pipeline &pipeafter) override
         {
-            // 主处理循环
-            while (isalive())
+            // 统一的等待-工作循环
+            while (true)
             {
-                // 从输入管道获取数据
-                auto data = pipebefore.get(this);
-                if (!data)
-                    break;
-
-                // 如果没有子模块，直接传递数据（透传模式）
-                if (submodules.empty())
+                // 等待启动信号或终止信号
+                if (!wait_for_state_change())
                 {
-                    pipeafter.put(data, this);
-                    continue;
-                }
-
-                // 串行执行所有子模块，直接处理数据
-                // 由于注册时已保证所有子模块都有效，不需要再检查 nullptr
-                for (auto& submodule : submodules)
-                {
-                    submodule->process(data, this);
+                    break;  // 收到终止信号，退出线程
                 }
                 
-                pipeafter.put(data, this);
+                // 收到启动信号，开始工作循环
+                while (isalive())
+                {
+                    // 从输入管道获取数据
+                    auto data = pipebefore.get(this);
+                    if (!data)
+                        break;
+
+                    // 如果没有子模块，直接传递数据（透传模式）
+                    if (submodules.empty())
+                    {
+                        pipeafter.put(data, this);
+                        continue;
+                    }
+
+                    // 串行执行所有子模块，直接处理数据
+                    // 由于注册时已保证所有子模块都有效，不需要再检查 nullptr
+                    for (auto& submodule : submodules)
+                    {
+                        submodule->process(data, this);
+                    }
+                    
+                    pipeafter.put(data, this);
+                }
+                
+                // 工作循环结束（被stop），回到等待状态
             }
         }
 
