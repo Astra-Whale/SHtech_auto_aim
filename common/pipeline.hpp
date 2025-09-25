@@ -428,11 +428,11 @@ namespace pipeline
                 return true;
             } catch (const std::exception& e) {
                 // 构造失败，打印错误信息并返回false
-                LOGE_S("Failed to construct submodule: %s", e.what());
+                //LOGE_S("Failed to construct submodule: %s", e.what());
                 return false;
             } catch (...) {
                 // 其他异常，打印错误信息并返回false
-                LOGE_S("Failed to construct submodule with provided arguments");
+                //LOGE_S("Failed to construct submodule with provided arguments");
                 return false;
             }
         }
