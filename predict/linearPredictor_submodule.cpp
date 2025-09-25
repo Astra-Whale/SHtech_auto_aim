@@ -3,7 +3,7 @@
 // Combines pipeline integration and prediction algorithm in one class
 //
 
-#include "LinearPredictorSubModule.hpp"
+#include "linearPredictor_submodule.hpp"
 #include <iostream>
 
 namespace predict
