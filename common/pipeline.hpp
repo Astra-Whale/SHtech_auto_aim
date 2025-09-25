@@ -19,6 +19,7 @@
 #include <condition_variable>
 #include <memory>
 #include <stdexcept>
+#include <type_traits>
 /**
  * @brief   用于安全释放指针的函数类
  */
@@ -287,6 +288,26 @@ namespace pipeline
     {
     public:
         /**
+         * @brief   子模块注册器模板类
+         * @tparam T 子模块类型，必须继承自 SubModule
+         */
+        template<typename T>
+        class SubModuleRegistrar
+        {
+        public:
+            /**
+             * @brief   构造函数，注册并初始化子模块
+             * @tparam Args 构造函数参数类型
+             * @param task 复合任务引用
+             * @param args 构造函数参数
+             */
+            template<typename... Args>
+            SubModuleRegistrar(CompositeTask& task, Args&&... args)
+            {
+                task.register_submodule_with_params<T>(std::forward<Args>(args)...);
+            }
+        };
+        /**
          * @brief   注册子模块
          * @param[in] submodule 子模块的独占所有权，调用后 submodule 将被移动
          * @throws  std::invalid_argument 当 submodule 为 nullptr 时抛出异常
@@ -310,6 +331,39 @@ namespace pipeline
             static_assert(sizeof...(args) > 0, "At least one submodule must be provided");
             (register_submodule(std::forward<Args>(args)), ...);
         }
+
+        /**
+         * @brief   注册并初始化子模块（模板版本）
+         * @tparam T 子模块类型，必须继承自 SubModule
+         * @tparam Args 构造函数参数类型
+         * @param args 构造函数参数
+         * @return bool 注册是否成功
+         */
+        template<typename T, typename... Args>
+        bool register_submodule_with_params(Args&&... args)
+        {
+            // 检查 T 是否继承自 SubModule
+            static_assert(std::is_base_of<SubModule, T>::value, "T must be derived from SubModule");
+
+            // 检查是否可以用提供的参数构造 T
+            static_assert(std::is_constructible<T, Args...>::value, "Cannot construct T with provided arguments");
+
+            // 尝试构造子模块
+            try {
+                auto submodule = std::make_unique<T>(std::forward<Args>(args)...);
+                register_submodule(std::move(submodule));
+                return true;
+            } catch (const std::exception& e) {
+                // 构造失败，打印错误信息并返回false
+                LOGE_S("Failed to construct submodule: %s", e.what());
+                return false;
+            } catch (...) {
+                // 其他异常，打印错误信息并返回false
+                LOGE_S("Failed to construct submodule with provided arguments");
+                return false;
+            }
+        }
+
 
 
 

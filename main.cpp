@@ -49,88 +49,32 @@ bool init(void)
     LOGM_F("open log file success!");
     LOGM_S("open log file success!");
 
-    // 创建各个子模块
-    std::unique_ptr<sensor::SensorSubModule> sensor_module = nullptr;
-    std::unique_ptr<detect::DetectSubModule> detect_module = nullptr;
-    std::unique_ptr<predict::LinearPredictorSubModule> predict_module = nullptr;
-
-    // 创建传感器子模块
-    try {
-        sensor_module = std::make_unique<sensor::SensorSubModule>(
-            info["source"], info["imu"], info["port"], info["flip"]);
-        sensor_module->setdebug(display["sensor_debug"]);
-        sensor_module->setshow(display["sensor_show"]);
-    }
-    catch (const std::exception& e) {
-        LOGE_S("[init] Failed to create sensor submodule: %s", e.what());
-        sensor_module = nullptr;
-    }
-    catch (...) {
-        LOGE_S("[init] Failed to create sensor submodule: unknown error");
-        sensor_module = nullptr;
-    }
-
-    // 创建检测子模块
-    try {
-        detect_module = std::make_unique<detect::DetectSubModule>(info["model"]);
-        detect_module->setdebug(display["detect_debug"]);
-        detect_module->setshow(display["detect_show"]);
-    }
-    catch (const std::exception& e) {
-        LOGE_S("[init] Failed to create detect submodule: %s", e.what());
-        detect_module = nullptr;
-    }
-    catch (...) {
-        LOGE_S("[init] Failed to create detect submodule: unknown error");
-        detect_module = nullptr;
-    }
-
-    // 创建预测子模块
-    try {
-        predict_module = std::make_unique<predict::LinearPredictorSubModule>(
-            info["camera_para"], atoi(info["latency"].c_str()));
-        predict_module->setdebug(display["predic_debug"]);
-        predict_module->setshow(display["predic_show"]);
-    }
-    catch (const std::exception& e) {
-        LOGE_S("[init] Failed to create predict submodule: %s", e.what());
-        predict_module = nullptr;
-    }
-    catch (...) {
-        LOGE_S("[init] Failed to create predict submodule: unknown error");
-        predict_module = nullptr;
-    }
-
     // 注册复合任务（容错处理）
     bool sensor_registered = false;
     bool detect_registered = false;
     bool predict_registered = false;
 
     // 尝试注册传感器复合任务
-    try {
-        sensor_composite.register_submodule(std::move(sensor_module));
-        sensor_registered = true;
-    }
-    catch (const std::exception& e) {
-        LOGE_S("[init] Failed to register sensor composite task: %s", e.what());
+    sensor_registered = sensor_composite.register_submodule_with_params<sensor::SensorSubModule>(
+        info["source"], info["imu"], info["port"], info["flip"]);
+    if (sensor_registered) {
+        sensor_composite.setdebug(display["sensor_debug"]);
+        sensor_composite.setshow(display["sensor_show"]);
     }
 
     // 尝试注册检测复合任务
-    try {
-        detect_composite.register_submodule(std::move(detect_module));
-        detect_registered = true;
-    }
-    catch (const std::exception& e) {
-        LOGE_S("[init] Failed to register detect composite task: %s", e.what());
+    detect_registered = detect_composite.register_submodule_with_params<detect::DetectSubModule>(info["model"]);
+    if (detect_registered) {
+        detect_composite.setdebug(display["detect_debug"]);
+        detect_composite.setshow(display["detect_show"]);
     }
 
     // 尝试注册预测复合任务
-    try {
-        predict_composite.register_submodule(std::move(predict_module));
-        predict_registered = true;
-    }
-    catch (const std::exception& e) {
-        LOGE_S("[init] Failed to register predict composite task: %s", e.what());
+    predict_registered = predict_composite.register_submodule_with_params<predict::LinearPredictorSubModule>(
+        info["camera_para"], atoi(info["latency"].c_str()));
+    if (predict_registered) {
+        predict_composite.setdebug(display["predic_debug"]);
+        predict_composite.setshow(display["predic_show"]);
     }
 
     if (!sensor_registered || !detect_registered||!predict_registered) {
