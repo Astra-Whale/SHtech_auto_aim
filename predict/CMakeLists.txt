@@ -10,8 +10,7 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 
 # 只编译新的合并后的 LinearPredictorSubModule
 FILE(GLOB PREDICT_SRC_LIST 
-    LinearPredictorSubModule.cpp
-    StaticPredictor.cpp
+    linearPredictor_submodule.cpp
 )
 
 add_library(predict OBJECT ${PREDICT_SRC_LIST})

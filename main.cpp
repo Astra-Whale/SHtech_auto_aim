@@ -21,9 +21,9 @@ void terminate(int signal)
     
     LOGM_S("Quit");
     if (
-        !sensor_reader.isterminated()
-        && !detector.isterminated()
-        && !predictor.isterminated()
+        !sensor_composite.isterminated()
+        && !detect_composite.isterminated()
+        && !predict_composite.isterminated()
     )
         exit(0);
 }

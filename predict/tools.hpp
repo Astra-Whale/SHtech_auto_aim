@@ -7,7 +7,7 @@
 
 // modules
 #include "common.hpp"
-#include "LinearPredictorSubModule.hpp"
+#include "linearPredictor_submodule.hpp"
 
 // packages
 #include <ctime>
