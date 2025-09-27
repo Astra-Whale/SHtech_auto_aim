@@ -6,26 +6,29 @@ bool run = false;
 int totalFrameCounter = 0;
 
 // 使用通用的 CompositeTask 架构
-pipeline::CompositeTask sensor_composite;
-pipeline::CompositeTask detect_composite;
-pipeline::CompositeTask predict_composite;
+pipeline::CompositeTask* sensor_composite = nullptr;
+pipeline::CompositeTask* detect_composite = nullptr;
+pipeline::CompositeTask* predict_composite = nullptr;
 
 void terminate(int signal)
 {
     LOGM_S("Received termination signal, shutting down all tasks...");
     
     // 终止所有复合任务（这会唤醒等待的线程并让它们退出）
-    sensor_composite.terminate();
-    detect_composite.terminate();
-    predict_composite.terminate();
+    if (sensor_composite) sensor_composite->terminate();
+    if (detect_composite) detect_composite->terminate();
+    if (predict_composite) predict_composite->terminate();
     
     LOGM_S("Quit");
     if (
-        !sensor_composite.isterminated()
-        && !detect_composite.isterminated()
-        && !predict_composite.isterminated()
+        (sensor_composite && !sensor_composite->isterminated())
+        || (detect_composite && !detect_composite->isterminated())
+        || (predict_composite && !predict_composite->isterminated())
     )
+    {
+        LOGM_S("Quit failed!");
         exit(0);
+    }
 }
 
 bool init(void)
@@ -49,37 +52,42 @@ bool init(void)
     LOGM_F("open log file success!");
     LOGM_S("open log file success!");
 
+    // 初始化复合任务
+    sensor_composite = new pipeline::CompositeTask();
+    detect_composite = new pipeline::CompositeTask();
+    predict_composite = new pipeline::CompositeTask();
+
     // 注册复合任务
     bool sensor_registered = false;
     bool detect_registered = false;
     bool predict_registered = false;
 
-    sensor_registered = sensor_composite.register_submodule_with_params<sensor::SensorSubModule>(
+    sensor_registered = sensor_composite->register_submodule_with_params<sensor::SensorSubModule>(
         info["source"], info["imu"], info["port"], info["flip"]);
     if (sensor_registered) {
-        sensor_composite.setdebug(display["sensor_debug"]);
-        sensor_composite.setshow(display["sensor_show"]);
+        sensor_composite->setdebug(display["sensor_debug"]);
+        sensor_composite->setshow(display["sensor_show"]);
     }
 
-    detect_registered = detect_composite.register_submodule_with_params<detect::DetectSubModule>(info["model"]);
+    detect_registered = detect_composite->register_submodule_with_params<detect::DetectSubModule>(info["model"]);
     if (detect_registered) {
-        detect_composite.setdebug(display["detect_debug"]);
-        detect_composite.setshow(display["detect_show"]);
+        detect_composite->setdebug(display["detect_debug"]);
+        detect_composite->setshow(display["detect_show"]);
     }
 
-    predict_registered = predict_composite.register_submodule_with_params<predict::LinearPredictorSubModule>(
+    predict_registered = predict_composite->register_submodule_with_params<predict::LinearPredictorSubModule>(
         info["camera_para"], atoi(info["latency"].c_str()));
     if (predict_registered) {
-        predict_composite.setdebug(display["predic_debug"]);
-        predict_composite.setshow(display["predic_show"]);
+        predict_composite->setdebug(display["predic_debug"]);
+        predict_composite->setshow(display["predic_show"]);
     }
 
-    if (!sensor_registered || !detect_registered||!predict_registered) {
+    if (!sensor_registered || !detect_registered || !predict_registered) {
         LOGE_S("[init] Critical modules unavailable, system cannot start");
         return false;
     }
 
-    if(false){
+    if (false) {
         LOGE_S("[init] some composite tasks unavailable, system still can start");
     }
 
@@ -89,10 +97,12 @@ bool init(void)
 
 int main(void)
 {
-
     if (!init())
     {
         LOGE_S("Init Fail, Quit");
+        delete sensor_composite;
+        delete detect_composite;
+        delete predict_composite;
         return 0;
     }
 
@@ -114,22 +124,26 @@ int main(void)
 
     // 创建线程但初始状态为等待
     t_sensor = std::thread([&]()
-                           { sensor_composite(pre2cap, cap2det); });
+                           { (*sensor_composite)(pre2cap, cap2det); });
 
     t_detect = std::thread([&]()
-                           { detect_composite(cap2det, det2pre); });
+                           { (*detect_composite)(cap2det, det2pre); });
 
     t_predict = std::thread([&]()
-                            { predict_composite(det2pre, pre2cap); });
+                            { (*predict_composite)(det2pre, pre2cap); });
 
     pthread_sigmask(SIG_SETMASK, &oldmask, NULL);
 
     // 启动所有任务开始工作
     LOGM_S("Starting all composite tasks...");
-    sensor_composite.start();
-    detect_composite.start();
-    predict_composite.start();
+    sensor_composite->start();
+    detect_composite->start();
+    predict_composite->start();
     LOGM_S("All composite tasks started successfully!");
+
+
+std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+terminate(0);
 
     // 主线程等待所有工作线程结束
     t_sensor.join();
@@ -144,6 +158,11 @@ int main(void)
     std::cout << "finish join" << std::endl;
 
     LOGM(screen, "Successfully Quit!");
+
+    // 手动释放内存
+    delete sensor_composite;
+    delete detect_composite;
+    delete predict_composite;
 
     return 0;
 }
