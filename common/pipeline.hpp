@@ -167,7 +167,7 @@ namespace pipeline
     using autoaim_pipeline = pipeline_queue_t<ThreadDataPack>;
     
     /**
-     * @brief   任务类的基类
+     * @brief   任务类的基类，现在原则上不允许直接插入流水线
      */
     class BasicTask
     {
@@ -193,9 +193,7 @@ namespace pipeline
          * @details 未实例化
          * @param[in] pipebefore 与装甲板检测的上一流程交互的 pipeline
          * @param[in] pipeafter  与装甲板检测的下一流程交互的 pipeline
-         * @note    通过 stop() 控制启停
-         *          对象创建后即可使用
-         * @see     detect/detect.cpp\hpp detect::Detect::operator()
+         * @note    通过 start() stop() terminate() 控制运行，暂停，终止
          */
         virtual void operator()(autoaim_pipeline &pipebefore, autoaim_pipeline &pipeafter)
         {
@@ -246,7 +244,7 @@ namespace pipeline
         }
 
         /**
-         * @brief   设置是否展示运行结果
+         * @brief   设置是否展示调试画面
          */
         virtual void setshow(const bool &show)
         {
@@ -279,15 +277,6 @@ namespace pipeline
             return _should_terminate;
         }
 
-        /**
-         * @brief   任务是否应该运行
-         * @return  bool 任务是否应该运行
-         */
-        bool should_run() const
-        {
-            return _should_run;
-        }
-
     protected:
         /**
          * @brief   等待任务状态变更的统一方法
@@ -313,7 +302,8 @@ namespace pipeline
     
     /**
      * @brief   子模块基类
-     * @details 提供与 BasicTask 类似的接口，但更轻量化
+     * @details 提供与 BasicTask 类似的接口，但更轻量化，不管理线程
+     *          只能被 CompositeTask 类拥有和管理
      */
     class SubModule
     {
@@ -335,7 +325,7 @@ namespace pipeline
         virtual void setdebug(const bool &debug) { _debug = debug; }
 
         /**
-         * @brief   设置是否展示运行结果
+         * @brief   设置是否展示调试画面
          */
         virtual void setshow(const bool &show) { _show = show; }
 
@@ -448,7 +438,10 @@ namespace pipeline
             BasicTask::setdebug(debug);
             for (auto& submodule : submodules)
             {
-                submodule->setdebug(debug);
+                if(submodule)
+                {
+                    submodule->setdebug(debug);
+                }
             }
         }
 
@@ -460,7 +453,10 @@ namespace pipeline
             BasicTask::setshow(show);
             for (auto& submodule : submodules)
             {
-                submodule->setshow(show);
+                if(submodule)
+                {
+                    submodule->setshow(show);
+                }
             }
         }
 

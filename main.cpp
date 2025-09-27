@@ -57,32 +57,37 @@ bool init(void)
     detect_composite = new pipeline::CompositeTask();
     predict_composite = new pipeline::CompositeTask();
 
-    // 注册复合任务
-    bool sensor_registered = false;
-    bool detect_registered = false;
-    bool predict_registered = false;
+    // 注册各个子模块
+    bool sensor_submodule_registered = false;
+    bool cboard_submodule_registered = false;
+    bool detect_submodule_registered = false;
+    bool predict_submodule_registered = false;
 
-    sensor_registered = sensor_composite->register_submodule_with_params<sensor::SensorSubModule>(
-        info["source"], info["imu"], info["port"], info["flip"]);
-    if (sensor_registered) {
-        sensor_composite->setdebug(display["sensor_debug"]);
-        sensor_composite->setshow(display["sensor_show"]);
-    }
+    // 先注册sensor submodule（获取图像）
+    sensor_submodule_registered = sensor_composite->register_submodule_with_params<sensor::SensorSubModule>(
+        info["source"], info["flip"]);
+    
+    // 再注册cboard submodule（处理通讯）
+    cboard_submodule_registered = sensor_composite->register_submodule_with_params<cboard::CboardSubModule>(
+        info["port"]);
 
-    detect_registered = detect_composite->register_submodule_with_params<detect::DetectSubModule>(info["model"]);
-    if (detect_registered) {
-        detect_composite->setdebug(display["detect_debug"]);
-        detect_composite->setshow(display["detect_show"]);
-    }
+    sensor_composite->setdebug(display["sensor_debug"]);
+    sensor_composite->setshow(display["sensor_show"]);
 
-    predict_registered = predict_composite->register_submodule_with_params<predict::LinearPredictorSubModule>(
+
+    detect_submodule_registered = detect_composite->register_submodule_with_params<detect::DetectSubModule>(info["model"]);
+
+    detect_composite->setdebug(display["detect_debug"]);
+    detect_composite->setshow(display["detect_show"]);
+
+
+    predict_submodule_registered = predict_composite->register_submodule_with_params<predict::LinearPredictorSubModule>(
         info["camera_para"], atoi(info["latency"].c_str()));
-    if (predict_registered) {
-        predict_composite->setdebug(display["predic_debug"]);
-        predict_composite->setshow(display["predic_show"]);
-    }
 
-    if (!sensor_registered || !detect_registered || !predict_registered) {
+    predict_composite->setdebug(display["predic_debug"]);
+    predict_composite->setshow(display["predic_show"]);
+
+    if (!sensor_submodule_registered || !cboard_submodule_registered || !detect_submodule_registered || !predict_submodule_registered) {
         LOGE_S("[init] Critical modules unavailable, system cannot start");
         return false;
     }
