@@ -1,5 +1,5 @@
-#ifndef SENSOR_IMU_UARTIMU_H
-#define SENSOR_IMU_UARTIMU_H
+#ifndef CBOARD_UARTIMU_UARTIMU_H
+#define CBOARD_UARTIMU_UARTIMU_H
 // modules
 #include "common.hpp"
 
@@ -57,4 +57,4 @@ private:
     void read_handler();
 };
 
-#endif // SENOSR_IMU_UARTIMU_H
+#endif // CBOARD_UARTIMU_UARTIMU_H
