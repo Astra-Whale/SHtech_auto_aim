@@ -81,21 +81,6 @@ namespace cboard
         bool process(std::shared_ptr<ThreadDataPack>& data, 
                     pipeline::BasicTask* parent) override;
 
-        /**
-         * @brief   启动通讯
-         */
-        void start();
-
-        /**
-         * @brief   关闭通讯
-         */
-        void close();
-
-        /**
-         * @brief   检查通讯是否打开
-         */
-        bool is_open() const;
-
     private:
         // 通讯相关成员变量
         UartIMU *imu = nullptr;                 /*!< IMU 通讯接口指针 */

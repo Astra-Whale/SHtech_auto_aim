@@ -13,7 +13,7 @@ UartIMU::UartIMU(const std::string device_name) : m_device_name(device_name), m_
 void UartIMU::on_receive_imu(drivers::packet_data_t* packet_ptr, drivers::packet_length_t len)
 {
     if (len != sizeof(pc_mcu_data_t))
-        LOGM_S("[UART][ERROR] invalid data length");
+        LOGW_S("[UART][ERROR] invalid data length");
     pc_mcu_data_t* _tmp_ptr = (pc_mcu_data_t*)packet_ptr;
     m_attitude.yaw = _tmp_ptr->curr_yaw;
     m_attitude.pitch = _tmp_ptr->curr_pitch;
@@ -26,7 +26,7 @@ void UartIMU::on_receive_imu(drivers::packet_data_t* packet_ptr, drivers::packet
 void UartIMU::on_receive_sts(drivers::packet_data_t* packet_ptr, drivers::packet_length_t len)
 {
     if (len != sizeof(robot_data_t))
-        LOGM_S("[UART][ERROR] invalid data length");
+        LOGW_S("[UART][ERROR] invalid data length");
     robot_data_t robot_state = *((robot_data_t*)packet_ptr);
     if (m_robotstatus.robot_speed_mps < 10.0f)
     {

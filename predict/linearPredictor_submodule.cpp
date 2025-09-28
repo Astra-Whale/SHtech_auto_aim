@@ -281,7 +281,7 @@ namespace predict
             send.yaw_speed = 0.f;
             send.pitch_angle = (float)s_pitch;
 
-            LOGW_S("[Linear] New Filter");
+            LOGM_S("[Linear] New Filter");
         }
 
         last_track = true;
