@@ -62,7 +62,7 @@ namespace cboard
         {
             LOGM_S("[cboard_submodule] IMU communication initialized successfully");
             // 立即启动通讯
-            start();
+            imu->start();
         }
     }
 
@@ -75,29 +75,6 @@ namespace cboard
         }
     }
 
-    void CboardSubModule::start()
-    {
-        if (imu != nullptr)
-        {
-            imu->start();
-            LOGM_S("[cboard_submodule] Communication started");
-        }
-    }
-
-    void CboardSubModule::close()
-    {
-        if (imu != nullptr)
-        {
-            imu->close();
-            LOGM_S("[cboard_submodule] Communication closed");
-        }
-    }
-
-    bool CboardSubModule::is_open() const
-    {
-        return (imu != nullptr) && imu->is_open();
-    }
-
     bool CboardSubModule::process(std::shared_ptr<ThreadDataPack>& data, 
                                   pipeline::BasicTask* parent)
     {
@@ -106,7 +83,7 @@ namespace cboard
             pitch_angle_filter.reset();
             if (_debug)
             {
-                LOGW_S("[cboard_submodule] Communication not open, skipping processing");
+                LOGW_S("[cboard_submodule] Communication not open");
             }
             return true; // 即使通讯未开启，也允许数据传递到下游
         }
