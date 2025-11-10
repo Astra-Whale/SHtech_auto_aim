@@ -5,10 +5,10 @@ bool run = false;
 
 int totalFrameCounter = 0;
 
-// 使用通用的 CompositeTask 架构
-pipeline::CompositeTask* sensor_composite = nullptr;
-pipeline::CompositeTask* detect_composite = nullptr;
-pipeline::CompositeTask* predict_composite = nullptr;
+// 使用通用的 PipelineTask 架构
+pipeline::PipelineTask* sensor_composite = nullptr;
+pipeline::PipelineTask* detect_composite = nullptr;
+pipeline::PipelineTask* predict_composite = nullptr;
 
 void terminate(int signal)
 {
@@ -53,9 +53,9 @@ bool init(void)
     LOGM_S("open log file success!");
 
     // 初始化复合任务
-    sensor_composite = new pipeline::CompositeTask();
-    detect_composite = new pipeline::CompositeTask();
-    predict_composite = new pipeline::CompositeTask();
+    sensor_composite = new pipeline::PipelineTask();
+    detect_composite = new pipeline::PipelineTask();
+    predict_composite = new pipeline::PipelineTask();
 
     // 注册各个子模块
     bool sensor_submodule_registered = false;
@@ -68,7 +68,7 @@ bool init(void)
         info["source"], info["flip"]);
     
     // 再注册cboard submodule（处理通讯）
-    cboard_submodule_registered = sensor_composite->register_submodule_with_params<cboard::CboardSubModule>(
+    cboard_submodule_registered = sensor_composite->register_submodule_with_params<cboard::Cboard>(
         info["port"]);
 
     sensor_composite->setdebug(display["sensor_debug"]);

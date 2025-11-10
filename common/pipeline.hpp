@@ -48,25 +48,25 @@ using SafeUniquePtr = std::unique_ptr<T, SafeDeleter>;
  * 【架构层次】
  * 
  * BasicTask (基础层)
- *    ├── 职责：流水级管理，线程生命周期控制
- *    ├── 地位：独立的处理单元，可单独存在
- *    └── 关系：与其他 BasicTask 形成并列的流水线段
+ *    ├── 职责：线程生命周期控制、调试变量控制
+ *    ├── 地位：独立的处理单元，只可单独存在，没有流水线支持
+ *    └── 关系：独立运行的流水线外单元：如cboard
  * 
- * CompositeTask (组合层) 
+ * PipelineTask (组合层) 
  *    ├── 继承：BasicTask (IS-A 关系)
- *    ├── 职责：多submodule的协调管理
- *    └── 关系：在流水线中等价于 BasicTask
+ *    ├── 职责：提供流水线管线（Pipeline类）相关支持，submodule的协调管理
+ *    └── 关系：线程关系上的流水单元，拥有多个 SubModule
  * 
  * SubModule (功能层)
- *    ├── 职责：具体功能实现，无线程管理
- *    └── 关系：被 CompositeTask 组合、拥有和管理
+ *    ├── 职责：具体功能实现，无线程管理。只有调试变量和process函数
+ *    └── 关系：被 PipelineTask 组合、拥有和管理
  * 
  * 【流水线中存在形式】
- * BasicTask_A → BasicTask_B → CompositeTask_C → BasicTask_D
- *                              ├── owns → SubModule_1
- *                              ├── owns → SubModule_2  
- *                              └── owns → SubModule_3
- * 
+ * PipelineTask_A       →       PipelineTask_B       →       PipelineTask_C
+ *  ├── owns → SubModule_1       ├── owns → SubModule_4       ├── owns → SubModule_5
+ *  ├── owns → SubModule_2
+ *  └── owns → SubModule_3
+ *  （独立的） BasicTask_D
  * ================================================================================================
  */
 namespace pipeline
@@ -195,7 +195,7 @@ namespace pipeline
          * @param[in] pipeafter  与装甲板检测的下一流程交互的 pipeline
          * @note    通过 start() stop() terminate() 控制运行，暂停，终止
          */
-        virtual void operator()(autoaim_pipeline &pipebefore, autoaim_pipeline &pipeafter)
+        virtual void operator()()
         {
         }
 
@@ -303,7 +303,7 @@ namespace pipeline
     /**
      * @brief   子模块基类
      * @details 提供与 BasicTask 类似的接口，但更轻量化，不管理线程
-     *          只能被 CompositeTask 类拥有和管理
+     *          只能被 PipelineTask 类拥有和管理
      */
     class SubModule
     {
@@ -347,7 +347,7 @@ namespace pipeline
      * @brief   复合任务类
      * @details 管理多个子模块的执行
      */
-    class CompositeTask : public BasicTask
+    class PipelineTask : public BasicTask
     {
     public:
         /**
@@ -365,7 +365,7 @@ namespace pipeline
              * @param args 构造函数参数
              */
             template<typename... Args>
-            SubModuleRegistrar(CompositeTask& task, Args&&... args)
+            SubModuleRegistrar(PipelineTask& task, Args&&... args)
             {
                 task.register_submodule_with_params<T>(std::forward<Args>(args)...);
             }
@@ -379,7 +379,7 @@ namespace pipeline
         {
             if (!submodule)
             {
-                throw std::invalid_argument("CompositeTask: Cannot register null submodule");
+                throw std::invalid_argument("PipelineTask: Cannot register null submodule");
             }
             submodules.emplace_back(std::move(submodule));
         }
@@ -473,7 +473,7 @@ namespace pipeline
         /**
          * @brief   执行所有子模块
          */
-        void operator()(autoaim_pipeline &pipebefore, autoaim_pipeline &pipeafter) override
+        void operator()(autoaim_pipeline &pipebefore, autoaim_pipeline &pipeafter)
         {
             // 统一的等待-工作循环
             while (true)
@@ -518,7 +518,7 @@ namespace pipeline
     };
 
     template<typename T>
-    inline bool pipeline_queue_t<T>::wait_for_put(BasicTask* employee)
+    inline bool pipeline_queue_t<T>::wait_ for_put(BasicTask* employee)
     {
         std::unique_lock<std::mutex> lock(mtx);
         if (employee != nullptr)
