@@ -22,7 +22,7 @@ namespace detect
 {
     /**
      * @brief   检测子模块
-     * @details 包装原有 Detect 逻辑为 SubModule，用于 CompositeTask
+     * @details 包装原有 Detect 逻辑为 SubModule，用于 PipelineTask
      */
     class DetectSubModule : public pipeline::SubModule
     {
