@@ -92,16 +92,14 @@ namespace cboard
 
         bool read_latest_command_and_attitude_optimistic();
 
-        void set_robotcommand(const std::array<RobotCommand, commandArrayLength>& robotCommands, const Attitude& attitude, const std::chrono::milliseconds ctl_period)
+        void set_robotcommand(const std::array<RobotCommand, commandArrayLength>& robotCommands, const Attitude& attitude, const std::chrono::microseconds ctl_period)
         {
             assert(send_period == ctl_period && "Control period mismatch!");
             // 使用互斥锁保护所有共享数据的写入
             std::lock_guard<std::mutex> lock(dataMutex);
+            commandStartTime = std::chrono::steady_clock::now();
             robotCommandArray = robotCommands;
             attitudeAtLastFrame = attitude;
-            
-            // 关键：收到新数据，重置命令索引，消费者将自动从头开始
-            commandIndex = 0; 
         }
 
     private:
@@ -110,15 +108,14 @@ namespace cboard
         
         // 状态跟踪
         AngleFilter pitch_angle_filter;   /*!< 角度滤波器 */
-        static constexpr std::chrono::milliseconds send_period(2);
-        size_t commandIndex = 0; // 修复：现在 dataMutex 保护
+        static constexpr std::chrono::microseconds send_period(2000);
         static constexpr size_t commandArrayLength = 10;
         
         std::array<RobotCommand, commandArrayLength> robotCommandArray; // 会被跨线程访问，在没有锁保护的情况下，不要读取它，commandCache是安全的本地副本
         RobotCommand commandCache;
         Attitude attitudeAtLastFrame; // 会被跨线程访问，在没有锁保护的情况下，不要读取它，attitudeCache是安全的本地副本
         Attitude attitudeCache;
-        
+        std::chrono::steady_clock::time_point commandStartTime;
         std::mutex dataMutex;
     };
 }
