@@ -65,24 +65,28 @@ namespace cboard
             imu->start();
         }
     }
-
+    
+    // 在锁保护下读取最新命令和姿态，用高精时间实现了插值
     bool Cboard::read_latest_command_and_attitude_optimistic()
     {
-        // 修复：使用互斥锁保护所有共享数据的读取和 commandIndex 的修改
+        // 修复：使用互斥锁保护所有共享数据的读取
         std::lock_guard<std::mutex> lock(dataMutex);
 
-        // 如果上次已经读完所有命令，返回false，将索引重置到开头等待
-        if(commandIndex >= commandArrayLength)
-        {
-            return false; // 本周期没有新命令要发送
-        }
-        
-        // 修复：在锁内安全地读取数据
-        commandCache = robotCommandArray[commandIndex];
-        attitudeCache = attitudeAtLastFrame;
+        auto now = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(now - commandStartTime);
+        int64_t expectedIndexOne = static_cast<int64_t>(elapsed.count() / send_period.count());
 
-        // 修复：在锁内安全地推进索引
-        commandIndex++;
+        assert(expectedIndexOne >= 0 && "[cboard] Elapsed time calculation error!");
+        if(expectedIndexOne >= commandArrayLength-1) 
+        {
+            return false; // 超出范围-1，没有新命令要发送。范围-1是为了有后项可插值，我们认为最后一个命令在正常情况下不应该被用到，因此舍弃单独处理。
+        }
+    
+        int64_t k = static_cast<int64_t>(elapsed.count() % send_period.count());
+        commandCache = robotCommandArray[expectedIndexOne] * (1.0 - float(k) / float(send_period.count())) +
+                        robotCommandArray[expectedIndexOne + 1] * (float(k) / float(send_period.count()));
+        attitudeCache = attitudeAtLastFrame; // 直接使用最新姿态
+
         
         return true;
     }
