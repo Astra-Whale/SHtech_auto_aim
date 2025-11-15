@@ -11,7 +11,7 @@
 
 // modules
 #include "common.hpp"
-#include "cboard/cboard.hpp"
+#include "cboard.hpp"
 
 // packages
 #include <chrono>
@@ -35,7 +35,7 @@ namespace sensor
          * @param[in] VideoSource 视频源路径
          * @param[in] flip_image 是否翻转图像
          */
-        SensorSubModule(const std::string& VideoSource, const std::string& flip_image, const communicationBoard::Cboard_t& cboard); 
+        SensorSubModule(const std::string& VideoSource, const std::string& flip_image, communicationBoard::Cboard_t& cboard); 
         virtual ~SensorSubModule();
 
         bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
@@ -58,7 +58,7 @@ namespace sensor
         fps_counter total_fps{"sensor_fps"};    /*!< FPS计数器 */
 
         // 通讯子模块引用
-        const communicationBoard::Cboard_t& cboard;
+        communicationBoard::Cboard_t& cboard;
     };
 }
 

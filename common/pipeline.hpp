@@ -435,6 +435,22 @@ namespace pipeline
             }
         }
 
+        PipelineTask() : BasicTask() {};
+        virtual ~PipelineTask() {
+
+            if (!submodules.empty() && submodules[0] != nullptr) {
+        
+                std::cout<<static_cast<uint8_t>(submodules[0]->get_submodule_name()) << std::endl;
+        
+            }
+            else {
+        
+                std::cout<<"submodules empty"<<std::endl;
+        
+            }
+        
+        }
+
 
 
 

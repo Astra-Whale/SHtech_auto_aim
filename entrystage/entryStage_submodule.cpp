@@ -20,8 +20,6 @@ namespace entrystage
     SubModuleResult EntryStageSubModule::process(std::shared_ptr<ThreadDataPack> data, 
                                      const pipeline::BasicTask* parent)
     {
-        LOGM_S("[EntryStageSubModule] ready");
-
         // 入口阶段处理逻辑
         data->index = totalframecounter++;
         data->submodule_results.fill(SubModuleResult::NOTYET);

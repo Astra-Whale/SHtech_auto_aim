@@ -24,7 +24,7 @@
 //Submodules
 #include "entrystage/entryStage_submodule.hpp"
 #include "sensor/sensor_submodule.hpp"
-#include "cboard/cboard_submodule.hpp"
+#include "cboard/cboard.hpp"
 #include "detect/detect_submodule.hpp"
 #include "predict/linearPredictor_submodule.hpp"
 

@@ -98,9 +98,10 @@ struct RobotCommand
     ShootMode shoot_mode;
 };
 
+namespace {
 // 射击指令线性插值，对target_id和shoot_mode采纳时间上更接近的指令
 RobotCommand command_linear_interpolation(const RobotCommand& cmd1, const RobotCommand& cmd2, float cmdTwoWeight){
-    assert(cmdTwoWeight >= 0.0f && cmdTwoWeight <= 1.0f||"command_linear_interpolation: cmdTwoWeight out of range [0,1]");
+    assert(cmdTwoWeight >= 0.0f && cmdTwoWeight <= 1.0f&&"command_linear_interpolation: cmdTwoWeight out of range [0,1]");
     if(cmdTwoWeight < 0.5f)
         return RobotCommand{
             cmd1.distance * (1-cmdTwoWeight) + cmd2.distance * cmdTwoWeight,
@@ -120,6 +121,7 @@ RobotCommand command_linear_interpolation(const RobotCommand& cmd1, const RobotC
             cmd2.target_id,
             cmd2.shoot_mode
         };
+}
 }
 
 struct bbox_t

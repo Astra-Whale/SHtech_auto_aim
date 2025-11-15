@@ -18,7 +18,7 @@
 namespace sensor
 {
     // SensorSubModule 实现
-    SensorSubModule::SensorSubModule(const std::string& VideoSource, const std::string& flip_image, const communicationBoard::Cboard_t& cboard) : SubModule(SubModuleName::SENSOR), cboard(cboard)
+    SensorSubModule::SensorSubModule(const std::string& VideoSource, const std::string& flip_image, communicationBoard::Cboard_t& cboard) : SubModule(SubModuleName::SENSOR), cboard(cboard)
     {
         LOGM_S("[sensor_submodule] constructing with video: %s", VideoSource.c_str());
         // 初始化视频源
@@ -81,8 +81,8 @@ namespace sensor
         data->time = std::chrono::high_resolution_clock::now();
 
         // 读取imu
-        data->attitude = cboard.get_attitude();
-        data->robotstatus = cboard.get_robotstatus();
+        cboard.get_attitude(data->attitude);
+        cboard.get_robotstatus(data->robotstatus );
 
         if (!state)
         {
