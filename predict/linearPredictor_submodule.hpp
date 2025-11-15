@@ -10,6 +10,7 @@
 #include "common.hpp"
 #include "tools.hpp"
 #include "kalman.h"
+#include "cboard/cboard.hpp"
 
 // packages
 #include <ctime>
@@ -38,10 +39,10 @@ namespace predict
          * @param[in] camera_param 相机参数文件路径
          * @param[in] latency 通信延迟（毫秒）
          */
-        LinearPredictorSubModule(const std::string& camera_param, int latency = 20);
+        LinearPredictorSubModule(const std::string& camera_param,const communicationBoard::Cboard_t& cboard, int latency = 20);
         virtual ~LinearPredictorSubModule() = default;
 
-
+        bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
 
         /**
          * @brief   子模块处理函数
@@ -49,10 +50,11 @@ namespace predict
          * @param[in] parent     父任务指针，用于生命周期检查
          * @return  bool         返回 true 表示数据应该传递到下游，false 表示丢弃数据
          */
-        bool process(std::shared_ptr<ThreadDataPack>& data, 
-                    pipeline::BasicTask* parent) override;
+        SubModuleResult process(std::shared_ptr<ThreadDataPack> data, 
+                    const pipeline::BasicTask* parent) override;
 
     private:
+        communicationBoard::Cboard_t cboard; /*!< 通讯板接口 */
         // 来自原 PredictSubModule 的成员
         PositionTransform position_transform;   /*!< 位置变换器 */
         double comm_latency;                    /*!< 通信延迟（秒） */

@@ -1,6 +1,6 @@
 //
 // Created for pipeline refactor - SensorSubModule
-// Wraps original Sensor logic as SubModule (Camera only, communication moved to cboard)
+// Wraps original Sensor logic as SubModule (Camera only, communication moved to communicationBoard)
 //
 
 #include "sensor_submodule.hpp"
@@ -18,10 +18,9 @@
 namespace sensor
 {
     // SensorSubModule 实现
-    SensorSubModule::SensorSubModule(const std::string& VideoSource, const std::string& flip_image) : SubModule()
+    SensorSubModule::SensorSubModule(const std::string& VideoSource, const std::string& flip_image, const communicationBoard::Cboard_t& cboard) : SubModule(SubModuleName::SENSOR), cboard(cboard)
     {
         LOGM_S("[sensor_submodule] constructing with video: %s", VideoSource.c_str());
-        
         // 初始化视频源
         if (VideoSource == "0")
         {
@@ -67,37 +66,43 @@ namespace sensor
         }
     }
 
+    bool SensorSubModule::should_skip(std::shared_ptr<ThreadDataPack> data) const
+    {
+        return false;
+    }
 
-
-    bool SensorSubModule::process(std::shared_ptr<ThreadDataPack>& data, 
-                                  pipeline::BasicTask* parent)
+    SubModuleResult SensorSubModule::process(std::shared_ptr<ThreadDataPack> data, 
+                                  const pipeline::BasicTask* parent)
     {
         auto t1 = std::chrono::steady_clock::now();
         
         // 读取图像
         bool state = video->read(data->frame, _debug);
-        data->index = totalFrameCounter++;
         data->time = std::chrono::high_resolution_clock::now();
+
+        // 读取imu
+        data->attitude = cboard.get_attitude();
+        data->robotstatus = cboard.get_robotstatus();
 
         if (!state)
         {
             if (_debug)
             {
                 LOGE_S("[sensor_submodule]Error: read image fail!");
-                LOGM_S("[sensor_submodule] Total frames handled: %d", totalFrameCounter);
+                LOGM_S("[sensor_submodule] Total frames handled: %d", data->index);
                 LOGM_S("[sensor_submodule] ReOpen Camera");
             }
             video->close(_debug);
             video->init(_debug);
             // 在失败情况下，返回 false 表示不应该传递到下游
-            return false;
+            return SubModuleResult::FAILURE;
         }
 
         if (data->frame.empty())
         {
             LOGW_S("[sensor_submodule] empty image");
             // 在空图像情况下，也返回 false
-            return false;
+            return SubModuleResult::FAILURE;
         }
 
         if (is_image_input_flipped)
@@ -130,6 +135,6 @@ namespace sensor
         // );
         
         // 成功处理，返回 true 表示应该传递到下游
-        return true;
+        return SubModuleResult::SUCCESS;
     }
 }

@@ -308,7 +308,7 @@ namespace pipeline
     class SubModule
     {
     public:
-        SubModule() : _debug(false), _show(false) {}
+        SubModule(SubModuleName name) : _debug(false), _show(false), submodule_name(name) {}
         virtual ~SubModule() = default;
 
         // 禁用复制，只允许移动
@@ -330,17 +330,25 @@ namespace pipeline
         virtual void setshow(const bool &show) { _show = show; }
 
         /**
+         * @brief   获取子模块名称（枚举类型)
+         */
+        SubModuleName get_submodule_name() const { return submodule_name; }
+
+        virtual bool should_skip(std::shared_ptr<ThreadDataPack> data) const { return false; }
+
+        /**
          * @brief   子模块处理函数
          * @param[in,out] data   输入输出数据包，直接在原数据上修改
          * @param[in] parent     父任务指针，用于生命周期检查
-         * @return  bool         返回 true 表示数据应该传递到下游，false 表示丢弃数据
+         * @return  SubModuleResult         返回 SUCCESS 表示成功，FAILURE 表示失败，此处不应返回SKIP
          */
-        virtual bool process(std::shared_ptr<ThreadDataPack>& data, 
-                           BasicTask* parent) = 0;
+        virtual SubModuleResult process(std::shared_ptr<ThreadDataPack> data, 
+                           const BasicTask* parent) = 0;
 
     protected:
         bool _debug;  /*!<标记是否显示调试信息*/
         bool _show;   /*!<标记是否展示运行结果*/
+        SubModuleName submodule_name; /*!< 子模块名称 */
     };
 
      /**
@@ -488,7 +496,7 @@ namespace pipeline
                 while (isalive())
                 {
                     // 从输入管道获取数据
-                    auto data = pipebefore.get(this);
+                    const auto data = pipebefore.get(this);
                     if (!data)
                         break;
 
@@ -500,10 +508,18 @@ namespace pipeline
                     }
 
                     // 串行执行所有子模块，直接处理数据
-                    // 由于注册时已保证所有子模块都有效，不需要再检查 nullptr
+                    // 由于注册时已保证所有子模块都有效，不需要再检查 nullptr\
+                    // 先调用 should_skip 决定是否跳过子模块
+                    // 通过 process 执行子模块处理，返回值记录处理结果
                     for (auto& submodule : submodules)
                     {
-                        submodule->process(data, this);
+                        if(submodule->should_skip())
+                        {
+                            data->submodule_results[static_cast<uint8_t>(submodule->get_submodule_name())] = SubModuleResult::SKIP;
+                            continue;
+                        }
+                        auto result = submodule->process(data, this);
+                        data->submodule_results[static_cast<uint8_t>(submodule->get_submodule_name())] = result;
                     }
                     
                     pipeafter.put(data, this);
