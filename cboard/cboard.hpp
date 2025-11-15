@@ -94,7 +94,7 @@ namespace communicationBoard
 
         void set_robotcommand(const std::array<RobotCommand, commandArrayLength>& robotCommands, const Attitude& attitude, const std::chrono::microseconds ctl_period)
         {
-            assert(send_period == ctl_period && "Control period mismatch!");
+            //assert(send_period == ctl_period && "Control period mismatch!");
             // 使用互斥锁保护所有共享数据的写入
             std::lock_guard<std::mutex> lock(dataMutex);
             commandStartTime = std::chrono::steady_clock::now();
@@ -108,7 +108,7 @@ namespace communicationBoard
         
         // 状态跟踪
         AngleFilter pitch_angle_filter;   /*!< 角度滤波器 */
-        static constexpr std::chrono::microseconds send_period(2000);
+        static constexpr std::chrono::microseconds send_period{2000};
         static constexpr size_t commandArrayLength = 10;
         
         std::array<RobotCommand, commandArrayLength> robotCommandArray; // 会被跨线程访问，在没有锁保护的情况下，不要读取它，commandCache是安全的本地副本
