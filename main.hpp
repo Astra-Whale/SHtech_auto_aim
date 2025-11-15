@@ -22,6 +22,7 @@
 #include <condition_variable>
 
 //Submodules
+#include "entrystage/entryStage_submodule.hpp"
 #include "sensor/sensor_submodule.hpp"
 #include "cboard/cboard_submodule.hpp"
 #include "detect/detect_submodule.hpp"

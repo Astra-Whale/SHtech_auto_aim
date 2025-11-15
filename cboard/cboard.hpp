@@ -1,5 +1,5 @@
 //
-// Created for communication module separation - Cboard
+// Created for communication module separation - Cboard_t
 // Extracted communication functionality from UartIMU
 //
 
@@ -16,7 +16,7 @@
 #include <stdint.h>
 #include <string>
 
-namespace cboard
+namespace communicationBoard
 {
     /**
      * @brief 控制输入的最大范围
@@ -62,15 +62,15 @@ namespace cboard
      * @brief   通讯子模块
      * @details 处理与下位机的串口通讯，包括IMU数据接收和控制指令发送
      */
-    class Cboard : public pipeline::BasicTask
+    class Cboard_t : public pipeline::BasicTask
     {
     public:
         /**
          * @brief   构造函数
          * @param[in] device_name 串口设备名称
          */
-        Cboard(const std::string& device_name);
-        virtual ~Cboard();
+        Cboard_t(const std::string& device_name);
+        virtual ~Cboard_t();
 
         /**
          * @brief   子模块处理函数

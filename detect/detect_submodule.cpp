@@ -17,7 +17,7 @@
 
 namespace detect
 {
-    DetectSubModule::DetectSubModule(const std::string& OnnxFileName) : SubModule()
+    DetectSubModule::DetectSubModule(const std::string& OnnxFileName) : SubModule(SubModuleName::DETECT)
     {
         LOGM_S("[detect_submodule] constructing with model: %s", OnnxFileName.c_str());
         #if INFERENCE_BACKEND_TYPE == 1
@@ -33,10 +33,15 @@ namespace detect
         LOGM_S("[detect_submodule] model loaded");
     }
 
+    bool DetectSubModule::should_skip(std::shared_ptr<ThreadDataPack> data) const
+    {
+        if(data->submodule_results[static_cast<uint8_t>(SubModuleName::SENSOR)] != SubModuleResult::SUCCESS)
+            return true;
+        return false;
+    }
 
-
-    bool DetectSubModule::process(std::shared_ptr<ThreadDataPack>& data, 
-                                  pipeline::BasicTask* parent)
+    SubModuleResult DetectSubModule::process(std::shared_ptr<ThreadDataPack> data, 
+                                  const pipeline::BasicTask* parent)
     {
         auto t1 = std::chrono::steady_clock::now();
 
@@ -80,6 +85,6 @@ namespace detect
         // );
         
         // 检测总是成功的，返回 true
-        return true;
+        return SubModuleResult::SUCCESS;
     }
 }

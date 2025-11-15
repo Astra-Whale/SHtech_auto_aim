@@ -11,7 +11,7 @@
 #include "common.hpp"
 
 // packages
-#include <stdint.h>
+#include <cstdint>
 #include <array>
 #include <chrono>
 #include <Eigen/Dense>
@@ -54,13 +54,37 @@ enum class GameState : uint8_t
     COMMON = 255,        // 巡航
 };
 
+enum class SubModuleResult : uint8_t
+{
+    // 子模块处理结果
+    SUCCESS,    // 成功，数据有效
+    SKIP,       // 模块处理被跳过
+    FAILURE,    // 失败
+    NOTYET,     // 尚未处理
+};
+
+enum class SubModuleName : uint8_t
+{
+    // 子模块名称
+    ENTRYSTAGE,
+    SENSOR,
+    DETECT,
+    LINEARPREDICTOR,
+    PLANNING,
+
+    COUNT, // 仅用于计数子模块数量
+};
+
+// 根据 SubModuleName 自动生成子模块数量常量
+constexpr size_t SUBMODULE_COUNT = static_cast<size_t>(SubModuleName::COUNT);
+
 struct RobotStatus
 {
-    ProgramMode program_mode = ProgramMode::AUTO_AIM;
     float robot_speed_mps = 28.0f;
     uint16_t enemy[6];                        // 敌方哨兵0、英雄1、工程2、步兵3、步兵4、步兵5
     GameState game_state = GameState::COMMON; // 是否设计远处
     EnemyColor enemy_color = EnemyColor::RED;
+    ProgramMode program_mode = ProgramMode::AUTO_AIM;
 };
 
 struct RobotCommand
@@ -70,8 +94,8 @@ struct RobotCommand
     float yaw_speed;
     float pitch_angle;
     float pitch_speed;
-    ShootMode shoot_mode;
     int target_id;
+    ShootMode shoot_mode;
 };
 
 struct bbox_t
@@ -126,13 +150,16 @@ public:
  */
 struct ThreadDataPack
 {
-    int index;                  /*!< 报文序号 */
     cv::Mat frame;              /*!< 读取到的原始图像 */
     std::vector<bbox_t> bboxes; /*!< 检测到的bounding boxes */
+    std::chrono::high_resolution_clock::time_point time; /*!< 图像时间戳 */
+
+    std::array<SubModuleResult, SUBMODULE_COUNT> submodule_results; /*!< 各子模块处理结果 */
+
     RobotStatus robotstatus;    /*!< 上行机器人状态 */
     Attitude attitude;          /*!< 上行位姿数据 */
     RobotCommand robotcommand;
-    std::chrono::high_resolution_clock::time_point time;
+    int index;                  /*!< 报文序号 */
 };
 
 #endif // COMMON_ROBOT_H

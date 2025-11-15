@@ -15,7 +15,7 @@ namespace predict
     /// 远距离弹量控制
     constexpr double distant_threshold = 6.;
 
-    LinearPredictorSubModule::LinearPredictorSubModule(const std::string& camera_param, int latency) : SubModule()
+    LinearPredictorSubModule::LinearPredictorSubModule(const std::string& camera_param,const communicationBoard::Cboard_t& cboard, int latency) : SubModule(SubModuleName::LINEARPREDICTOR), cboard(cboard)
     {
         LOGM_S("[LinearPredictorSubModule] constructing with camera_param: %s, latency: %d", 
                camera_param.c_str(), latency);
@@ -33,7 +33,14 @@ namespace predict
         LOGM_S("[LinearPredictorSubModule] construction completed");
     }
 
-
+    bool LinearPredictorSubModule::should_skip(std::shared_ptr<ThreadDataPack> data) const
+    {
+        if(data->submodule_results[static_cast<uint8_t>(SubModuleName::DETECT)] != SubModuleResult::SUCCESS || 
+           data->submodule_results[static_cast<uint8_t>(SubModuleName::SENSOR)] != SubModuleResult::SUCCESS
+        )
+            return true;
+        return false;
+    }
 
     void LinearPredictorSubModule::initFilters()
     {
@@ -61,8 +68,8 @@ namespace predict
         filter_yaw = _filter(A, H, R, Q, init, now);
     }
 
-    bool LinearPredictorSubModule::process(std::shared_ptr<ThreadDataPack>& data, 
-                                           pipeline::BasicTask* parent)
+    SubModuleResult LinearPredictorSubModule::process(std::shared_ptr<ThreadDataPack> data, 
+                                           const pipeline::BasicTask* parent)
     {
         auto t1 = std::chrono::steady_clock::now();
 
@@ -70,6 +77,12 @@ namespace predict
         
         // 执行预测算法
         predict(data);
+
+        cboard.set_robotcommand(
+            std::array<RobotCommand,10>{data->robotcommand}, 
+            data->attitude, 
+            std::chrono::microseconds(2000)
+        );
         
         auto t2 = std::chrono::steady_clock::now();
 
@@ -96,10 +109,10 @@ namespace predict
         // );
         
         // 预测总是成功的，返回 true
-        return true;
+        return SubModuleResult::SUCCESS;
     }
 
-    void LinearPredictorSubModule::predict(std::shared_ptr<ThreadDataPack>& data)
+    void LinearPredictorSubModule::predict(std::shared_ptr<ThreadDataPack> data)
     {
         // 以下代码来自原 LinearPredictor::predict 方法
         auto &detections = data->bboxes;

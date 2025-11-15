@@ -9,6 +9,7 @@ int totalFrameCounter = 0;
 pipeline::PipelineTask* sensor_composite = nullptr;
 pipeline::PipelineTask* detect_composite = nullptr;
 pipeline::PipelineTask* predict_composite = nullptr;
+communicationBoard::Cboard_t* cboard = nullptr;
 
 void terminate(int signal)
 {
@@ -57,19 +58,26 @@ bool init(void)
     detect_composite = new pipeline::PipelineTask();
     predict_composite = new pipeline::PipelineTask();
 
+    // 初始化通讯板子模块
+    cboard = new communicationBoard::Cboard_t(info["port"]);
+
     // 注册各个子模块
+    bool entrystage_submodule_registered = false;
     bool sensor_submodule_registered = false;
     bool cboard_submodule_registered = false;
     bool detect_submodule_registered = false;
     bool predict_submodule_registered = false;
 
+    cboard_submodule_registered = true; // cboard is instantiated separately
+
+    entrystage_submodule_registered = sensor_composite->register_submodule_with_params<entrystage::EntryStageSubModule>();
+
     // 先注册sensor submodule（获取图像）
     sensor_submodule_registered = sensor_composite->register_submodule_with_params<sensor::SensorSubModule>(
-        info["source"], info["flip"]);
+        info["source"], info["flip"], *cboard);
     
     // 再注册cboard submodule（处理通讯）
-    cboard_submodule_registered = sensor_composite->register_submodule_with_params<cboard::Cboard>(
-        info["port"]);
+    // cboard_submodule_registered = sensor_composite->register_submodule_with_params<communicationBoard::Cboard>(info["port"]);
 
     sensor_composite->setdebug(display["sensor_debug"]);
     sensor_composite->setshow(display["sensor_show"]);
@@ -82,12 +90,12 @@ bool init(void)
 
 
     predict_submodule_registered = predict_composite->register_submodule_with_params<predict::LinearPredictorSubModule>(
-        info["camera_para"], atoi(info["latency"].c_str()));
+        info["camera_para"],*cboard, atoi(info["latency"].c_str()));
 
     predict_composite->setdebug(display["predic_debug"]);
     predict_composite->setshow(display["predic_show"]);
 
-    if (!sensor_submodule_registered || !cboard_submodule_registered || !detect_submodule_registered || !predict_submodule_registered) {
+    if (!entrystage_submodule_registered || !sensor_submodule_registered || !cboard_submodule_registered || !detect_submodule_registered || !predict_submodule_registered) {
         LOGE_S("[init] Critical modules unavailable, system cannot start");
         return false;
     }
@@ -168,6 +176,7 @@ terminate(0);
     delete sensor_composite;
     delete detect_composite;
     delete predict_composite;
+    delete cboard;
 
     return 0;
 }

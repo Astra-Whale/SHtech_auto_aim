@@ -1,5 +1,5 @@
 //
-// Created for communication module separation - Cboard
+// Created for communication module separation - Cboard_t
 // Extracted communication functionality from UartIMU
 //
 
@@ -7,7 +7,7 @@
 #include <functional>
 #include <chrono>
 
-namespace cboard
+namespace communicationBoard
 {
     /**
      * @brief 控制输入的最大范围
@@ -47,8 +47,8 @@ namespace cboard
         return angle;
     }
 
-    // Cboard 实现
-    Cboard::Cboard(const std::string& device_name) : BasicTask()
+    // Cboard_t 实现
+    Cboard_t::Cboard_t(const std::string& device_name) : BasicTask()
     {
         LOGM_S("[cboard_submodule] constructing with device: %s", device_name.c_str());
         
@@ -67,7 +67,7 @@ namespace cboard
     }
     
     // 在锁保护下读取最新命令和姿态，用高精时间实现了插值
-    bool Cboard::read_latest_command_and_attitude_optimistic()
+    bool Cboard_t::read_latest_command_and_attitude_optimistic()
     {
         // 修复：使用互斥锁保护所有共享数据的读取
         std::lock_guard<std::mutex> lock(dataMutex);
@@ -91,7 +91,7 @@ namespace cboard
         return true;
     }
 
-    Cboard::~Cboard()
+    Cboard_t::~Cboard_t()
     {
         if (imu)
         {
@@ -100,7 +100,7 @@ namespace cboard
         }
     }
 
-    void Cboard::operator()()
+    void Cboard_t::operator()()
     {
         // 统一的等待-工作循环
         while (true)

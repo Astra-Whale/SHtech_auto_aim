@@ -1,6 +1,6 @@
 //
 // Created for pipeline refactor - SensorSubModule
-// Wraps original Sensor logic as SubModule (Camera only, communication moved to cboard)
+// Wraps original Sensor logic as SubModule (Camera only, communication moved to communicationBoard)
 //
 
 #ifndef SENSOR_SENSOR_SUBMODULE_H
@@ -11,6 +11,7 @@
 
 // modules
 #include "common.hpp"
+#include "cboard/cboard.hpp"
 
 // packages
 #include <chrono>
@@ -24,7 +25,7 @@ namespace sensor
     /**
      * @brief   传感器子模块
      * @details 包装原有 Sensor 逻辑为 SubModule，专注于相机数据处理
-     *          通讯功能已移至 cboard 模块
+     *          通讯功能已移至 communicationBoard 模块
      */
     class SensorSubModule : public pipeline::SubModule
     {
@@ -34,10 +35,10 @@ namespace sensor
          * @param[in] VideoSource 视频源路径
          * @param[in] flip_image 是否翻转图像
          */
-        SensorSubModule(const std::string& VideoSource, const std::string& flip_image);
+        SensorSubModule(const std::string& VideoSource, const std::string& flip_image, const communicationBoard::Cboard_t& cboard); 
         virtual ~SensorSubModule();
 
-
+        bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
 
         /**
          * @brief   子模块处理函数
@@ -45,8 +46,8 @@ namespace sensor
          * @param[in] parent     父任务指针，用于生命周期检查
          * @return  bool         返回 true 表示数据应该传递到下游，false 表示丢弃数据
          */
-        bool process(std::shared_ptr<ThreadDataPack>& data, 
-                    pipeline::BasicTask* parent) override;
+        SubModuleResult process(std::shared_ptr<ThreadDataPack> data, 
+                    const pipeline::BasicTask* parent) override;
 
     private:
         // 传感器相关成员变量
@@ -54,8 +55,10 @@ namespace sensor
         bool is_image_input_flipped = false;    /*!< 标记输入图像是否需要翻转 */
         
         // 状态跟踪
-        int totalFrameCounter = 0;              /*!< 总帧数计数器 */
         fps_counter total_fps{"sensor_fps"};    /*!< FPS计数器 */
+
+        // 通讯子模块引用
+        const communicationBoard::Cboard_t& cboard;
     };
 }
 

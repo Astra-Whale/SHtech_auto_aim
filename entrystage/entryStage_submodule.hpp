@@ -1,38 +1,38 @@
 //
-// Created for pipeline refactor - DetectSubModule
-// Wraps original Detect logic as SubModule
+// EntryStageSubModule
 //
 
-#ifndef DETECT_DETECT_SUBMODULE_H
-#define DETECT_DETECT_SUBMODULE_H
-
-// submodules
-#include "backend.hpp"
+#ifndef ENTRY_STAGE_SUBMODULE_H
+#define ENTRY_STAGE_SUBMODULE_H
 
 // modules
 #include "common.hpp"
 
 // packages
-#include <iostream>
-#include <fstream>
+#include <ctime>
+#include <array>
 #include <string>
+#include <vector>
+#include <cmath>
+#include <thread>
+#include <chrono>
+#include <Eigen/Dense>
 #include <opencv2/opencv.hpp>
+#include <opencv2/core/eigen.hpp>
 
-namespace detect
+namespace entrystage
 {
     /**
-     * @brief   检测子模块
-     * @details 包装原有 Detect 逻辑为 SubModule，用于 PipelineTask
+     * @brief   入口阶段子模块
      */
-    class DetectSubModule : public pipeline::SubModule
+    class EntryStageSubModule : public pipeline::SubModule
     {
     public:
         /**
          * @brief   构造函数
-         * @param[in] OnnxFileName 用于推理的 Onnx 文件路径
          */
-        DetectSubModule(const std::string& OnnxFileName);
-        virtual ~DetectSubModule() = default;
+        EntryStageSubModule();
+        virtual ~EntryStageSubModule() = default;
 
         bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
 
@@ -46,8 +46,8 @@ namespace detect
                     const pipeline::BasicTask* parent) override;
 
     private:
-        std::unique_ptr<BackEnd> model; /*!< 推理模型指针 */
+        int totalframecounter = 0;              /*!< 总帧数计数器 */
     };
 }
 
-#endif // DETECT_DETECT_SUBMODULE_H
+#endif // ENTRY_STAGE_SUBMODULE_H
