@@ -96,6 +96,7 @@ namespace communicationBoard
             imu->close();
             delete imu;
         }
+        std::cout << "[cboard_submodule] destroyed" << std::endl;
     }
 
     void Cboard_t::operator()()

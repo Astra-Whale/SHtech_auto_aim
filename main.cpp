@@ -16,13 +16,14 @@ void terminate(int signal)
     LOGM_S("Received termination signal, shutting down all tasks...");
     
     // 终止所有复合任务（这会唤醒等待的线程并让它们退出）
+    if (cboard) cboard->terminate();
     if (sensor_composite) sensor_composite->terminate();
     if (detect_composite) detect_composite->terminate();
     if (predict_composite) predict_composite->terminate();
     
     LOGM_S("Quit");
-    if (
-        (sensor_composite && !sensor_composite->isterminated())
+    if ((cboard && !cboard->isterminated())
+        ||(sensor_composite && !sensor_composite->isterminated())
         || (detect_composite && !detect_composite->isterminated())
         || (predict_composite && !predict_composite->isterminated())
     )
@@ -69,6 +70,9 @@ bool init(void)
     bool predict_submodule_registered = false;
 
     cboard_submodule_registered = true; // cboard is instantiated separately
+
+    cboard->setdebug(display["cboard_debug"]);
+    cboard->setshow(display["cboard_show"]);
 
     entrystage_submodule_registered = sensor_composite->register_submodule_with_params<entrystage::EntryStageSubModule>();
 
@@ -126,7 +130,7 @@ int main(void)
         pre2cap.put(std::make_shared<ThreadDataPack>());
     }
 
-    std::thread t_sensor, t_detect, t_predict;
+    std::thread t_sensor, t_detect, t_predict, t_cboard;
 
     sigset_t oldmask;
     sigset_t mask;
@@ -144,21 +148,27 @@ int main(void)
 
     t_predict = std::thread([&]()
                             { (*predict_composite)(det2pre, pre2cap); });
+    t_cboard = std::thread([&]()
+                          { (*cboard)(); });
 
     pthread_sigmask(SIG_SETMASK, &oldmask, NULL);
 
     // 启动所有任务开始工作
     LOGM_S("Starting all composite tasks...");
+    cboard->start();
     sensor_composite->start();
     detect_composite->start();
     predict_composite->start();
     LOGM_S("All composite tasks started successfully!");
 
 
-std::this_thread::sleep_for(std::chrono::milliseconds(5000));
-terminate(0);
+// std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+// terminate(0);
 
     // 主线程等待所有工作线程结束
+    t_cboard.join();
+    LOGM_S("Cboard Thread Quit Success!");
+
     t_sensor.join();
     LOGM_S("Sensor Thread Quit Success!");
     

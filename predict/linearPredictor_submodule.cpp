@@ -15,7 +15,7 @@ namespace predict
     /// 远距离弹量控制
     constexpr double distant_threshold = 6.;
 
-    LinearPredictorSubModule::LinearPredictorSubModule(const std::string& camera_param,const communicationBoard::Cboard_t& cboard, int latency) : SubModule(SubModuleName::LINEARPREDICTOR), cboard(cboard)
+    LinearPredictorSubModule::LinearPredictorSubModule(const std::string& camera_param,communicationBoard::Cboard_t& cboard, int latency) : SubModule(SubModuleName::LINEARPREDICTOR), cboard(cboard)
     {
         LOGM_S("[LinearPredictorSubModule] constructing with camera_param: %s, latency: %d", 
                camera_param.c_str(), latency);
@@ -73,7 +73,7 @@ namespace predict
     {
         auto t1 = std::chrono::steady_clock::now();
 
-        LOGM_S("[LinearPredictorSubModule] ready");
+        //LOGM_S("[LinearPredictorSubModule] ready");
         
         // 执行预测算法
         predict(data);
@@ -133,7 +133,7 @@ namespace predict
         LOGM_S("enemy_color %d", int(robot_status.enemy_color));
         for (auto &d : detections)
         {
-            if ((int(robot_status.enemy_color) == d.color_id)) // 不能随意修改，否则会数组越界0-5
+            if (true||(int(robot_status.enemy_color) == d.color_id)) // 不能随意修改，否则会数组越界0-5
             {
                 /* 放行正确颜色的装甲板 */
                 Pos3D m_pc = position_transform.pnp_get_pc(d.pts, d.tag_id); // point camera: 目标在相机坐标系下的坐标
