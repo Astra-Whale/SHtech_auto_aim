@@ -45,7 +45,6 @@ add_subdirectory(entrystage)
 add_subdirectory(detect)
 add_subdirectory(predict)
 add_subdirectory(sensor)
-add_subdirectory(rmcv_serial)
 add_subdirectory(cboard)
 
 target_link_libraries(${exe_name} common)

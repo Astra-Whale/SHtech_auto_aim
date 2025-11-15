@@ -6,7 +6,7 @@ find_package(Threads REQUIRED)
 aux_source_directory(UartIMU uartimu_src)
 
 # 创建cboard库
-ADD_LIBRARY(cboard OBJECT cboard_submodule.cpp ${uartimu_src})
+ADD_LIBRARY(cboard OBJECT cboard.cpp ${uartimu_src})
 
 # 链接RMCVSerial库用于串口通信
 target_link_libraries(cboard RMCVSerial)
