@@ -98,6 +98,30 @@ struct RobotCommand
     ShootMode shoot_mode;
 };
 
+// 射击指令线性插值，对target_id和shoot_mode采纳时间上更接近的指令
+RobotCommand command_linear_interpolation(const RobotCommand& cmd1, const RobotCommand& cmd2, float cmdTwoWeight){
+    assert(cmdTwoWeight >= 0.0f && cmdTwoWeight <= 1.0f||"command_linear_interpolation: cmdTwoWeight out of range [0,1]");
+    if(cmdTwoWeight < 0.5f)
+        return RobotCommand{
+            cmd1.distance * (1-cmdTwoWeight) + cmd2.distance * cmdTwoWeight,
+            cmd1.yaw_angle * (1-cmdTwoWeight) + cmd2.yaw_angle * cmdTwoWeight,
+            cmd1.yaw_speed * (1-cmdTwoWeight) + cmd2.yaw_speed * cmdTwoWeight,
+            cmd1.pitch_angle * (1-cmdTwoWeight) + cmd2.pitch_angle * cmdTwoWeight,   
+            cmd1.pitch_speed * (1-cmdTwoWeight) + cmd2.pitch_speed * cmdTwoWeight,
+            cmd1.target_id,
+            cmd1.shoot_mode
+        };
+    return RobotCommand{
+            cmd1.distance * (1-cmdTwoWeight) + cmd2.distance * cmdTwoWeight,
+            cmd1.yaw_angle * (1-cmdTwoWeight) + cmd2.yaw_angle * cmdTwoWeight,
+            cmd1.yaw_speed * (1-cmdTwoWeight) + cmd2.yaw_speed * cmdTwoWeight,
+            cmd1.pitch_angle * (1-cmdTwoWeight) + cmd2.pitch_angle * cmdTwoWeight,   
+            cmd1.pitch_speed * (1-cmdTwoWeight) + cmd2.pitch_speed * cmdTwoWeight,
+            cmd2.target_id,
+            cmd2.shoot_mode
+        };
+}
+
 struct bbox_t
 {
     cv::Point2f pts[4]; // [pt0, pt1, pt2, pt3]

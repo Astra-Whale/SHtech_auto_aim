@@ -496,7 +496,7 @@ namespace pipeline
                 while (isalive())
                 {
                     // 从输入管道获取数据
-                    const auto data = pipebefore.get(this);
+                    auto data = pipebefore.get(this);
                     if (!data)
                         break;
 
@@ -508,12 +508,12 @@ namespace pipeline
                     }
 
                     // 串行执行所有子模块，直接处理数据
-                    // 由于注册时已保证所有子模块都有效，不需要再检查 nullptr\
+                    // 由于注册时已保证所有子模块都有效，不需要再检查 nullptr
                     // 先调用 should_skip 决定是否跳过子模块
                     // 通过 process 执行子模块处理，返回值记录处理结果
                     for (auto& submodule : submodules)
                     {
-                        if(submodule->should_skip())
+                        if(submodule->should_skip(data))
                         {
                             data->submodule_results[static_cast<uint8_t>(submodule->get_submodule_name())] = SubModuleResult::SKIP;
                             continue;
@@ -534,7 +534,7 @@ namespace pipeline
     };
 
     template<typename T>
-    inline bool pipeline_queue_t<T>::wait_ for_put(BasicTask* employee)
+    inline bool pipeline_queue_t<T>::wait_for_put(BasicTask* employee)
     {
         std::unique_lock<std::mutex> lock(mtx);
         if (employee != nullptr)

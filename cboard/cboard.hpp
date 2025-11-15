@@ -65,6 +65,7 @@ namespace communicationBoard
     class Cboard_t : public pipeline::BasicTask
     {
     public:
+        static constexpr size_t commandArrayLength = 10;
         /**
          * @brief   构造函数
          * @param[in] device_name 串口设备名称
@@ -78,7 +79,7 @@ namespace communicationBoard
          * @param[in] parent     父任务指针，用于生命周期检查
          * @return  bool         返回 true 表示数据应该传递到下游，false 表示丢弃数据
          */
-        bool operator()() override;
+        void operator()() override;
 
         void get_attitude(Attitude &attitude)
         {
@@ -109,7 +110,6 @@ namespace communicationBoard
         // 状态跟踪
         AngleFilter pitch_angle_filter;   /*!< 角度滤波器 */
         static constexpr std::chrono::microseconds send_period{2000};
-        static constexpr size_t commandArrayLength = 10;
         
         std::array<RobotCommand, commandArrayLength> robotCommandArray; // 会被跨线程访问，在没有锁保护的情况下，不要读取它，commandCache是安全的本地副本
         RobotCommand commandCache;

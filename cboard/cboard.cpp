@@ -82,11 +82,9 @@ namespace communicationBoard
             return false; // 超出范围-1，没有新命令要发送。范围-1是为了有后项可插值，我们认为最后一个命令在正常情况下不应该被用到，因此舍弃单独处理。
         }
     
-        int64_t k = static_cast<int64_t>(elapsed.count() % send_period.count());
-        commandCache = robotCommandArray[expectedIndexOne] * (1.0 - float(k) / float(send_period.count())) +
-                        robotCommandArray[expectedIndexOne + 1] * (float(k) / float(send_period.count()));
-        attitudeCache = attitudeAtLastFrame; // 直接使用最新姿态
-
+        std::chrono::microseconds offsetInPeriod = elapsed % send_period;
+        commandCache = command_linear_interpolation(robotCommandArray[expectedIndexOne], robotCommandArray[expectedIndexOne + 1], float(offsetInPeriod.count()) / float(send_period.count()));
+        attitudeCache = attitudeAtLastFrame;
         
         return true;
     }
@@ -116,7 +114,7 @@ namespace communicationBoard
             {
                 auto start_time = std::chrono::high_resolution_clock::now();
 
-                if (!is_open())
+                if (imu == nullptr || !imu->is_open())
                 {
                     pitch_angle_filter.reset();
                     if (_debug)
