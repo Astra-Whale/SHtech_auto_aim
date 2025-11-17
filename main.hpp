@@ -27,6 +27,7 @@
 #include "cboard/cboard.hpp"
 #include "detect/detect_submodule.hpp"
 #include "predict/linearPredictor_submodule.hpp"
+#include "foxglove/foxglove_server.hpp"
 
 //Common
 #include "common.hpp"
