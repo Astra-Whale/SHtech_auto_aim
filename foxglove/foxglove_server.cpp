@@ -20,7 +20,7 @@ namespace foxgloveSer
             std::cerr << "Failed to create server: " << foxglove::strerror(server_result.error()) << '\n';
             return;
         }
-        server = std::move(server_result.value());
+        server = std::make_unique<foxglove::WebSocketServer>(std::move(server_result.value()));
         std::cerr << "Server listening on port " << server->port() << '\n';
 
         // Create a SceneUpdateChannel for logging changes to a 3d scene
@@ -30,7 +30,7 @@ namespace foxgloveSer
             std::cerr << "Failed to create scene channel: " << foxglove::strerror(scene_channel_result.error()) << '\n';
             return;
         }
-        scene_channel = std::move(scene_channel_result.value());
+        scene_channel = std::make_unique<foxglove::schemas::SceneUpdateChannel>(std::move(scene_channel_result.value()));
     }
 
     FoxgloveServer_t::~FoxgloveServer_t()
@@ -41,8 +41,7 @@ namespace foxgloveSer
     void FoxgloveServer_t::log_enemy_robot(Eigen::Matrix<double, 6, 1> enemy_robot_pose)
     {
         foxglove::schemas::CubePrimitive cube;
-        cube.pose = foxglove::schemas::Pose{{enemy_robot_pose[0], enemy_robot_pose[2],
-                                             enemy_robot_pose[4]}};
+        cube.pose.position = foxglove::schemas::Vector3(enemy_robot_pose[0], enemy_robot_pose[2], enemy_robot_pose[4]);
         cube.size = foxglove::schemas::Vector3(0.23, 0.13, 0.1); // 设置立方体大小
         cube.color = foxglove::schemas::Color(1.0, 0.0, 0.0, 0.8); // 设置立方体颜色为半透明红色
         foxglove::schemas::SceneEntity entity;
@@ -53,7 +52,7 @@ namespace foxgloveSer
         scene_channel->log(update);
     }
 
-    void log_server_alive()
+    void FoxgloveServer_t::log_server_alive()
     {
         // 记录服务器存活状态的逻辑
         foxglove::schemas::Log msg;
@@ -87,7 +86,7 @@ namespace foxgloveSer
                 auto now = std::chrono::system_clock::now();
                 auto time_t_now = std::chrono::system_clock::to_time_t(now);
                 std::tm tm_now;
-                localtime_s(&tm_now, &time_t_now);
+                localtime_r(&time_t_now, &tm_now);
                 
                 std::ostringstream filename;
                 filename << "mcap/" << std::put_time(&tm_now, "%Y%m%d_%H%M%S") << ".mcap";
@@ -99,7 +98,7 @@ namespace foxgloveSer
                     std::cerr << "Failed to create writer: " << foxglove::strerror(writer_result.error()) << '\n';
                     return;
                 }
-                writer = std::move(writer_result.value());
+                writer = std::make_unique<foxglove::McapWriter>(std::move(writer_result.value()));
 
                 std::this_thread::sleep_for(std::chrono::seconds(60));
 
