@@ -40,7 +40,7 @@ namespace foxgloveSer
     private:
         std::unique_ptr<foxglove::McapWriter> writer;
         std::unique_ptr<foxglove::WebSocketServer> server;
-        std::unique_ptr<foxglove::schemas::LogChannel> channel;
+        std::unique_ptr<foxglove::schemas::LogChannel> log_channel;
         std::unique_ptr<foxglove::schemas::SceneUpdateChannel> scene_channel;
         std::mutex writer_mutex;
     };

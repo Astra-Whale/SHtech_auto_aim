@@ -39,7 +39,7 @@ void terminate(int signal)
 bool init(void)
 {
     signal(SIGINT, terminate);
-    signal(SIGSEGV, terminate);
+    // signal(SIGSEGV, terminate);
     cmd_parser parser;
     map<string, string> info;
     map<string, bool> display;
@@ -78,7 +78,7 @@ bool init(void)
     foxglove_server_submodule_registered = true; // foxglove_server is instantiated separately
 
 
-    entrystage_submodule_registered = sensor_composite->register_submodule_with_params<entrystage::EntryStageSubModule>();
+    entrystage_submodule_registered = sensor_composite->register_submodule_with_params<entrystage::EntryStageSubModule>(*foxglove_server);
 
     sensor_submodule_registered = sensor_composite->register_submodule_with_params<sensor::SensorSubModule>(
         info["source"], info["flip"], *cboard);
@@ -104,6 +104,10 @@ bool init(void)
     predict_composite->setdebug(display["predic_debug"]);
     predict_composite->setshow(display["predic_show"]);
 
+
+    foxglove_server->setdebug(display["foxglove_server_debug"]);
+    foxglove_server->setshow(display["foxglove_server_show"]);
+    
     // 检查所有关键子模块是否注册成功
     if (!entrystage_submodule_registered || !sensor_submodule_registered || !cboard_submodule_registered || !detect_submodule_registered || !predict_submodule_registered || !foxglove_server_submodule_registered) {
         LOGE_S("[init] Critical modules unavailable, system cannot start");

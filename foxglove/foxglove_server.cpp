@@ -31,6 +31,15 @@ namespace foxgloveSer
             return;
         }
         scene_channel = std::make_unique<foxglove::schemas::SceneUpdateChannel>(std::move(scene_channel_result.value()));
+
+
+        auto log_channel_result = foxglove::schemas::LogChannel::create("/alive");
+        if (!log_channel_result.has_value())
+        {
+            std::cerr << "Failed to create scene channel: " << foxglove::strerror(log_channel_result.error()) << '\n';
+            return;
+        }
+        log_channel = std::make_unique<foxglove::schemas::LogChannel>(std::move(log_channel_result.value()));
     }
 
     FoxgloveServer_t::~FoxgloveServer_t()
@@ -40,10 +49,22 @@ namespace foxgloveSer
     
     void FoxgloveServer_t::log_enemy_robot(Eigen::Matrix<double, 6, 1> enemy_robot_pose)
     {
+        foxglove::schemas::Pose pose;
+        pose.position = foxglove::schemas::Vector3(enemy_robot_pose[0], enemy_robot_pose[2], enemy_robot_pose[4]);
+
+
+
+
         foxglove::schemas::CubePrimitive cube;
-        cube.pose.position = foxglove::schemas::Vector3(enemy_robot_pose[0], enemy_robot_pose[2], enemy_robot_pose[4]);
+        cube.pose = pose;
         cube.size = foxglove::schemas::Vector3(0.23, 0.13, 0.1); // 设置立方体大小
         cube.color = foxglove::schemas::Color(1.0, 0.0, 0.0, 0.8); // 设置立方体颜色为半透明红色
+
+        if(_debug)
+        {
+            LOGM_S("[foxglove_server] State: x %.2f y %.2f z %.2f", enemy_robot_pose[0], enemy_robot_pose[2], enemy_robot_pose[4]);
+        }
+
         foxglove::schemas::SceneEntity entity;
         entity.id = "enemy_robot";
         entity.cubes.push_back(cube);
@@ -58,7 +79,7 @@ namespace foxgloveSer
         foxglove::schemas::Log msg;
         msg.level = foxglove::schemas::Log::LogLevel::INFO;
         msg.message = "Foxglove server is alive";
-        channel->log(msg);
+        log_channel->log(msg);
     }
 
     void FoxgloveServer_t::operator()()

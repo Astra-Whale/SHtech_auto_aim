@@ -273,7 +273,7 @@ namespace predict
             double s_pitch = atan(s_pc(1, 0) / s_pc(2, 0)) / M_PI * 180.;
 
             
-            target_state << p_x,p_y,p_yaw;
+            target_state << p_x,p_y,m_pw(2, 0), 0;
 
             send.distance = (float)distance_2D(s_pw);
             send.yaw_angle = (float)s_yaw;
@@ -295,7 +295,7 @@ namespace predict
             double s_pitch = atan(s_pc(1, 0) / s_pc(2, 0)) / M_PI * 180.;
 
             
-            target_state  << m_pw(0, 0), 0, m_pw(1, 0), 0, m_yaw, 0;
+            target_state  << m_pw(0, 0), 0, m_pw(1, 0), 0, m_pw(2,0), 0;
 
             send.distance = (float)distance_2D(s_pw);
             send.yaw_angle = (float)s_yaw;
@@ -305,6 +305,11 @@ namespace predict
             LOGM_S("[Linear] New Filter");
         }
 
+        if(_debug)
+        {
+            LOGM_S("[LinearPredictorSubModule] State: x %.2f y %.2f z %.2f", target_state[0], target_state[2], target_state[4]
+                   );
+        }
 
         last_track = true;
         last_bbox = armor;

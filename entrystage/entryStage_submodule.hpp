@@ -7,7 +7,7 @@
 
 // modules
 #include "common.hpp"
-#include "foxglove.hpp"
+#include "foxglove_server.hpp"
 
 // packages
 #include <ctime>
