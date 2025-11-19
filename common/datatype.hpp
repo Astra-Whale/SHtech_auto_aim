@@ -98,9 +98,9 @@ struct RobotCommand
     ShootMode shoot_mode;
 };
 
-namespace {
+
 // 射击指令线性插值，对target_id和shoot_mode采纳时间上更接近的指令
-RobotCommand command_linear_interpolation(const RobotCommand& cmd1, const RobotCommand& cmd2, float cmdTwoWeight){
+inline RobotCommand command_linear_interpolation(const RobotCommand& cmd1, const RobotCommand& cmd2, float cmdTwoWeight){
     assert(cmdTwoWeight >= 0.0f && cmdTwoWeight <= 1.0f&&"command_linear_interpolation: cmdTwoWeight out of range [0,1]");
     if(cmdTwoWeight < 0.5f)
         return RobotCommand{
@@ -122,7 +122,7 @@ RobotCommand command_linear_interpolation(const RobotCommand& cmd1, const RobotC
             cmd2.shoot_mode
         };
 }
-}
+
 
 struct bbox_t
 {
@@ -182,10 +182,15 @@ struct ThreadDataPack
 
     std::array<SubModuleResult, SUBMODULE_COUNT> submodule_results; /*!< 各子模块处理结果 */
 
+    Eigen::Matrix<double, 6, 1> target_state; /*!< 目标状态量 */
+
     RobotStatus robotstatus;    /*!< 上行机器人状态 */
     Attitude attitude;          /*!< 上行位姿数据 */
     RobotCommand robotcommand;
     int index;                  /*!< 报文序号 */
+
 };
+
+
 
 #endif // COMMON_ROBOT_H
