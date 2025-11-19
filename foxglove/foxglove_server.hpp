@@ -12,6 +12,11 @@
 #include <memory>
 #include <stdexcept>
 #include <thread>
+#include <chrono>
+#include <ctime>
+#include <iomanip>
+#include <sstream>
+#include <filesystem>
 
 // Foxglove headers
 #include <foxglove/server.hpp>
@@ -27,10 +32,16 @@ namespace foxgloveSer
 
         void operator()() override;
 
+        void log_enemy_robot(Eigen::Matrix<double, 6, 1> enemy_robot_state);
+
+        void log_server_alive();
+ 
     private:
-        foxglove::WebSocketServerOptions ws_options;
-        foxglove::WebSocketServer server;
-        foxglove::schemas::LogChannel channel;
+        std::unique_ptr<foxglove::McapWriter> writer;
+        std::unique_ptr<foxglove::WebSocketServer> server;
+        std::unique_ptr<foxglove::schemas::LogChannel> channel;
+        std::unique_ptr<foxglove::schemas::SceneUpdateChannel> scene_channel;
+        std::mutex writer_mutex;
     };
 }
 
