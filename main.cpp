@@ -10,6 +10,7 @@ pipeline::PipelineTask* sensor_composite = nullptr;
 pipeline::PipelineTask* detect_composite = nullptr;
 pipeline::PipelineTask* predict_composite = nullptr;
 communicationBoard::Cboard_t* cboard = nullptr;
+foxgloveSer::FoxgloveServer_t* foxglove_server = nullptr;
 
 void terminate(int signal)
 {
@@ -20,12 +21,14 @@ void terminate(int signal)
     if (sensor_composite) sensor_composite->terminate();
     if (detect_composite) detect_composite->terminate();
     if (predict_composite) predict_composite->terminate();
+    if (foxglove_server) foxglove_server->terminate();
     
     LOGM_S("Quit");
     if ((cboard && !cboard->isterminated())
         ||(sensor_composite && !sensor_composite->isterminated())
         || (detect_composite && !detect_composite->isterminated())
         || (predict_composite && !predict_composite->isterminated())
+        || (foxglove_server && !foxglove_server->isterminated())
     )
     {
         LOGM_S("Quit failed!");
@@ -59,8 +62,9 @@ bool init(void)
     detect_composite = new pipeline::PipelineTask();
     predict_composite = new pipeline::PipelineTask();
 
-    // 初始化通讯板子模块
+    // 初始化独立任务
     cboard = new communicationBoard::Cboard_t(info["port"]);
+    foxglove_server = new foxgloveSer::FoxgloveServer_t();
 
     // 注册各个子模块
     bool entrystage_submodule_registered = false;
@@ -68,38 +72,40 @@ bool init(void)
     bool cboard_submodule_registered = false;
     bool detect_submodule_registered = false;
     bool predict_submodule_registered = false;
+    bool foxglove_server_submodule_registered = false;
 
     cboard_submodule_registered = true; // cboard is instantiated separately
+    foxglove_server_submodule_registered = true; // foxglove_server is instantiated separately
 
-    cboard->setdebug(display["cboard_debug"]);
-    cboard->setshow(display["cboard_show"]);
 
     entrystage_submodule_registered = sensor_composite->register_submodule_with_params<entrystage::EntryStageSubModule>();
 
-    // 先注册sensor submodule（获取图像）
     sensor_submodule_registered = sensor_composite->register_submodule_with_params<sensor::SensorSubModule>(
         info["source"], info["flip"], *cboard);
-    
-    // 再注册cboard submodule（处理通讯）
-    // cboard_submodule_registered = sensor_composite->register_submodule_with_params<communicationBoard::Cboard>(info["port"]);
-
-    sensor_composite->setdebug(display["sensor_debug"]);
-    sensor_composite->setshow(display["sensor_show"]);
-
 
     detect_submodule_registered = detect_composite->register_submodule_with_params<detect::DetectSubModule>(info["model"]);
-
-    detect_composite->setdebug(display["detect_debug"]);
-    detect_composite->setshow(display["detect_show"]);
-
 
     predict_submodule_registered = predict_composite->register_submodule_with_params<predict::LinearPredictorSubModule>(
         info["camera_para"],*cboard, atoi(info["latency"].c_str()));
 
+    // 设置各个任务的调试和显示选项
+    cboard->setdebug(display["cboard_debug"]);
+    cboard->setshow(display["cboard_show"]);
+
+    sensor_composite->setdebug(display["sensor_debug"]);
+    sensor_composite->setshow(display["sensor_show"]);
+
+    detect_composite->setdebug(display["detect_debug"]);
+    detect_composite->setshow(display["detect_show"]);
+
+    foxglove_server->setdebug(display["foxglove_server_debug"]);
+    foxglove_server->setshow(display["foxglove_server_show"]);
+
     predict_composite->setdebug(display["predic_debug"]);
     predict_composite->setshow(display["predic_show"]);
 
-    if (!entrystage_submodule_registered || !sensor_submodule_registered || !cboard_submodule_registered || !detect_submodule_registered || !predict_submodule_registered) {
+    // 检查所有关键子模块是否注册成功
+    if (!entrystage_submodule_registered || !sensor_submodule_registered || !cboard_submodule_registered || !detect_submodule_registered || !predict_submodule_registered || !foxglove_server_submodule_registered) {
         LOGE_S("[init] Critical modules unavailable, system cannot start");
         return false;
     }
@@ -120,6 +126,8 @@ int main(void)
         delete sensor_composite;
         delete detect_composite;
         delete predict_composite;
+        delete cboard;
+        delete foxglove_server;
         return 0;
     }
 
@@ -130,7 +138,7 @@ int main(void)
         pre2cap.put(std::make_shared<ThreadDataPack>());
     }
 
-    std::thread t_sensor, t_detect, t_predict, t_cboard;
+    std::thread t_sensor, t_detect, t_predict, t_cboard, t_foxglove_server;
 
     sigset_t oldmask;
     sigset_t mask;
@@ -148,8 +156,12 @@ int main(void)
 
     t_predict = std::thread([&]()
                             { (*predict_composite)(det2pre, pre2cap); });
+                            
     t_cboard = std::thread([&]()
                           { (*cboard)(); });
+
+    t_foxglove_server = std::thread([&]()
+                          { (*foxglove_server)(); });
 
     pthread_sigmask(SIG_SETMASK, &oldmask, NULL);
 
@@ -159,6 +171,7 @@ int main(void)
     sensor_composite->start();
     detect_composite->start();
     predict_composite->start();
+    foxglove_server->start();
     LOGM_S("All composite tasks started successfully!");
 
 
@@ -178,6 +191,9 @@ int main(void)
     t_predict.join();
     LOGM_S("Predict Thread Quit Success!");
 
+    t_foxglove_server.join();
+    LOGM_S("Foxglove Server Thread Quit Success!");
+
     std::cout << "finish join" << std::endl;
 
     LOGM(screen, "Successfully Quit!");
@@ -187,6 +203,7 @@ int main(void)
     delete detect_composite;
     delete predict_composite;
     delete cboard;
+    delete foxglove_server;
 
     return 0;
 }
