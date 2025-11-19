@@ -16,6 +16,7 @@
 #include <ctime>
 #include <array>
 #include <string>
+#include <iostream>
 #include <vector>
 #include <cmath>
 #include <thread>

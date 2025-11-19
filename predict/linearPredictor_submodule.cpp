@@ -4,7 +4,6 @@
 //
 
 #include "linearPredictor_submodule.hpp"
-#include <iostream>
 
 namespace predict
 {
@@ -121,6 +120,7 @@ namespace predict
         auto t = data->time;
         auto &send = data->robotcommand;
         auto robot_status = data->robotstatus;
+        auto target_state = data->target_state;
 
         Eigen::Quaternionf q(q_raw.matrix().transpose()); // 重建四元数
         Eigen::Matrix3d R_IW = q.matrix().cast<double>(); // 生成旋转矩阵
@@ -227,7 +227,7 @@ namespace predict
             same_id = false;
             need_init = true;
         }
-        
+
         if (same_armor)
         {
             Pos3D m_pw = position_transform.pnp_get_pw(armor.pts, armor.tag_id);                      // point world: 目标在世界坐标系下的坐标
@@ -240,6 +240,8 @@ namespace predict
             auto p_x = filter_x.update(z_k_x, t);                                                     // p_x: x轴滤波器状态量
             auto p_y = filter_y.update(z_k_y, t);                                                     // p_y: y轴滤波器状态量
             auto p_yaw = filter_yaw.update(z_k_yaw, t);
+
+            
 
             // Switching strategy
             double armor_yaw_angle = p_yaw(0, 0);
@@ -270,6 +272,9 @@ namespace predict
             double s_yaw = atan(s_pc(0, 0) / s_pc(2, 0)) / M_PI * 180.;
             double s_pitch = atan(s_pc(1, 0) / s_pc(2, 0)) / M_PI * 180.;
 
+            
+            target_state << p_x,p_y,p_yaw;
+
             send.distance = (float)distance_2D(s_pw);
             send.yaw_angle = (float)s_yaw;
             send.yaw_speed = (float)s_yaw_spd;
@@ -289,6 +294,9 @@ namespace predict
             double s_yaw = atan(s_pc(0, 0) / s_pc(2, 0)) / M_PI * 180.;
             double s_pitch = atan(s_pc(1, 0) / s_pc(2, 0)) / M_PI * 180.;
 
+            
+            target_state  << m_pw(0, 0), 0, m_pw(1, 0), 0, m_yaw, 0;
+
             send.distance = (float)distance_2D(s_pw);
             send.yaw_angle = (float)s_yaw;
             send.yaw_speed = 0.f;
@@ -296,6 +304,7 @@ namespace predict
 
             LOGM_S("[Linear] New Filter");
         }
+
 
         last_track = true;
         last_bbox = armor;
