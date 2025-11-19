@@ -20,6 +20,7 @@
 
 // Foxglove headers
 #include <foxglove/server.hpp>
+#include <foxglove/mcap.hpp>
 #include <foxglove/schemas.hpp>
 
 namespace foxgloveSer

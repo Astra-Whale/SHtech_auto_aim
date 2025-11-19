@@ -41,8 +41,8 @@ namespace foxgloveSer
     void FoxgloveServer_t::log_enemy_robot(Eigen::Matrix<double, 6, 1> enemy_robot_pose)
     {
         foxglove::schemas::CubePrimitive cube;
-        cube.pose = foxglove::schemas::Pose(enemy_robot_pose[0], enemy_robot_pose[2],
-                                             enemy_robot_pose[4]);
+        cube.pose = foxglove::schemas::Pose{{enemy_robot_pose[0], enemy_robot_pose[2],
+                                             enemy_robot_pose[4]}};
         cube.size = foxglove::schemas::Vector3(0.23, 0.13, 0.1); // 设置立方体大小
         cube.color = foxglove::schemas::Color(1.0, 0.0, 0.0, 0.8); // 设置立方体颜色为半透明红色
         foxglove::schemas::SceneEntity entity;
@@ -56,8 +56,8 @@ namespace foxgloveSer
     void log_server_alive()
     {
         // 记录服务器存活状态的逻辑
-        foxglove::schemas::LogMessage msg;
-        msg.level = foxglove::schemas::LogLevel::INFO;
+        foxglove::schemas::Log msg;
+        msg.level = foxglove::schemas::Log::LogLevel::INFO;
         msg.message = "Foxglove server is alive";
         channel->log(msg);
     }
@@ -109,6 +109,7 @@ namespace foxgloveSer
                     writer.reset();
                 }
             }
+            
         }
     }
 }
