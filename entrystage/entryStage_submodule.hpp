@@ -7,7 +7,7 @@
 
 // modules
 #include "common.hpp"
-#include "json.hpp" 
+#include "foxglove.hpp"
 
 // packages
 #include <ctime>
@@ -32,7 +32,7 @@ namespace entrystage
         /**
          * @brief   构造函数
          */
-        EntryStageSubModule();
+        EntryStageSubModule(foxgloveSer::FoxgloveServer_t& foxglove_server);
         virtual ~EntryStageSubModule() = default;
 
         bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
@@ -48,6 +48,7 @@ namespace entrystage
 
     private:
         int totalframecounter = 0;              /*!< 总帧数计数器 */
+        foxgloveSer::FoxgloveServer_t& foxglove_server; /*!< Foxglove 服务器引用 */
     };
 }
 
