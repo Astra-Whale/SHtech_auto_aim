@@ -149,7 +149,8 @@ namespace communicationBoard
                 }
                 else
                 {
-                    LOGM_S("[cboard_submodule] No new command to send");
+                    if(_debug)
+                        LOGM_S("[cboard_submodule] No new command to send");
                 }
                 auto end_time = std::chrono::high_resolution_clock::now();
                 auto sleep_duration = send_period - (end_time - start_time);
