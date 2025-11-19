@@ -5,22 +5,17 @@
 #ifndef FOXGLOVE_SERVER_H
 #define FOXGLOVE_SERVER_H
 
-// submodules
-
-// modules
 #include "common.hpp"
 
-// packages
-#include <stdint.h>
+#include <cstdint>
 #include <string>
-#include <functional>
-#include <chrono>
 #include <memory>
 #include <stdexcept>
-#include <iostream>
 #include <thread>
-#include <foxglove/channel.hpp>
-#include <foxglove/mcap.hpp>
+
+// Foxglove headers
+#include <foxglove/server.hpp>
+#include <foxglove/schemas.hpp>
 
 namespace foxgloveSer
 {
@@ -33,10 +28,9 @@ namespace foxgloveSer
         void operator()() override;
 
     private:
-        
-        foxglove::McapWriterOptions options{};
-        std::unique_ptr<foxglove::McapWriter> writer_;
-        std::unique_ptr<foxglove::Channel> channel_;
+        foxglove::WebSocketServerOptions ws_options;
+        foxglove::WebSocketServer server;
+        foxglove::schemas::LogChannel channel;
     };
 }
 
