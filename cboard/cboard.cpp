@@ -159,7 +159,7 @@ namespace communicationBoard
                 }
                 else
                 {
-                    LOGW_S("[cboard_submodule] sending overrun by %lld ms", std::chrono::duration_cast<std::chrono::milliseconds>(-sleep_duration).count());
+                    LOGW_S("[cboard_submodule] sending overrun by %lld ms", (long long)std::chrono::duration_cast<std::chrono::milliseconds>(-sleep_duration).count());
                 }
 
             }
