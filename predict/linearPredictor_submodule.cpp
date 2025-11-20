@@ -120,7 +120,7 @@ namespace predict
         auto t = data->time;
         auto &send = data->robotcommand;
         auto robot_status = data->robotstatus;
-        auto target_state = data->target_state;
+        auto &target_state = data->target_state;
 
         Eigen::Quaternionf q(q_raw.matrix().transpose()); // 重建四元数
         Eigen::Matrix3d R_IW = q.matrix().cast<double>(); // 生成旋转矩阵
@@ -130,7 +130,9 @@ namespace predict
 
         /// 过滤出敌方颜色的装甲板 && 判断是否有英雄出现
         std::vector<bbox_t> new_detections; // new_detection: vector 是经过过滤后所有可能考虑的装甲板
-        LOGM_S("enemy_color %d", int(robot_status.enemy_color));
+        if(_debug)
+            LOGM_S("enemy_color %d", int(robot_status.enemy_color));
+            
         for (auto &d : detections)
         {
             if (true||(int(robot_status.enemy_color) == d.color_id)) // 不能随意修改，否则会数组越界0-5

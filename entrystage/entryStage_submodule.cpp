@@ -21,7 +21,7 @@ namespace entrystage
                                      const pipeline::BasicTask* parent)
     {
         // 
-        // 记录敌方机器人位置到 Foxglove
+        //记录敌方机器人位置到 Foxglove
         foxglove_server.log_server_alive();
         foxglove_server.log_enemy_robot(data->target_state);
 

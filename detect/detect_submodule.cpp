@@ -78,11 +78,12 @@ namespace detect
         }
         
         auto t3 = std::chrono::steady_clock::now();
-        // LOGM_S(
-        //     "DetectSubModule Inference %.2lfms Show %.2lfms", 
-        //     std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count()*1000,
-        //     std::chrono::duration_cast<std::chrono::duration<double>>(t3 - t2).count()*1000
-        // );
+        if(_debug)
+            LOGM_S(
+                "DetectSubModule Inference %.2lfms Show %.2lfms", 
+                std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count()*1000,
+                std::chrono::duration_cast<std::chrono::duration<double>>(t3 - t2).count()*1000
+            );
         
         // 检测总是成功的，返回 true
         return SubModuleResult::SUCCESS;

@@ -40,6 +40,14 @@ namespace foxgloveSer
             return;
         }
         log_channel = std::make_unique<foxglove::schemas::LogChannel>(std::move(log_channel_result.value()));
+
+        auto tf_channel_result = foxglove::schemas::FrameTransformChannel::create("/tf");
+        if (!tf_channel_result.has_value())
+        {
+            std::cerr << "Failed to create tf channel: " << foxglove::strerror(tf_channel_result.error()) << '\n';
+            return; 
+        }
+        tf_channel = std::make_unique<foxglove::schemas::FrameTransformChannel>(std::move(tf_channel_result.value()));
     }
 
     FoxgloveServer_t::~FoxgloveServer_t()
@@ -50,24 +58,40 @@ namespace foxgloveSer
     void FoxgloveServer_t::log_enemy_robot(Eigen::Matrix<double, 6, 1> enemy_robot_pose)
     {
         foxglove::schemas::Pose pose;
-        pose.position = foxglove::schemas::Vector3(enemy_robot_pose[0], enemy_robot_pose[2], enemy_robot_pose[4]);
+        if(_debug)
+        {
+            LOGM_S("[foxglove_server] State: x %.2f y %.2f z %.2f", enemy_robot_pose(0,0), enemy_robot_pose(2,0), enemy_robot_pose(4,0));
+        }
+
+        pose.position = foxglove::schemas::Vector3(enemy_robot_pose(0,0), enemy_robot_pose(2,0), enemy_robot_pose(4,0));
+
+
+        foxglove::schemas::FrameTransform tf;
+        tf.parent_frame_id = "world";
+        tf.child_frame_id = "child";
+
+        tf.translation = foxglove::schemas::Vector3(0.0, 0.0, 0.0);
+
+        // 单位旋转（四元数 w=1, x=y=z=0）
+    
+        tf.rotation = foxglove::schemas::Quaternion(0.0, 0.0, 0.0, 1.0);
+    
+    
+        tf_channel->log(tf);
 
 
 
 
         foxglove::schemas::CubePrimitive cube;
         cube.pose = pose;
-        cube.size = foxglove::schemas::Vector3(0.23, 0.13, 0.1); // 设置立方体大小
+        cube.size = foxglove::schemas::Vector3(0.23, 0.02, 0.13); // 设置立方体大小
         cube.color = foxglove::schemas::Color(1.0, 0.0, 0.0, 0.8); // 设置立方体颜色为半透明红色
 
-        if(_debug)
-        {
-            LOGM_S("[foxglove_server] State: x %.2f y %.2f z %.2f", enemy_robot_pose[0], enemy_robot_pose[2], enemy_robot_pose[4]);
-        }
 
         foxglove::schemas::SceneEntity entity;
         entity.id = "enemy_robot";
         entity.cubes.push_back(cube);
+        entity.frame_id = "world";
         foxglove::schemas::SceneUpdate update;
         update.entities.push_back(entity);
         scene_channel->log(update);
