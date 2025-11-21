@@ -46,12 +46,12 @@ namespace sensor
         if (flip_image == "1")
         {
             is_image_input_flipped = true;
-            LOGE_S("[sensor_submodule] Input image will be flipped");
+            LOGM_S("[sensor_submodule] Input image will be flipped");
         }
         else 
         {
             is_image_input_flipped = false;
-            LOGE_S("[sensor_submodule] Input image will not be flipped");
+            LOGM_S("[sensor_submodule] Input image will not be flipped");
         }
         
         LOGM_S("[sensor_submodule] construction completed");

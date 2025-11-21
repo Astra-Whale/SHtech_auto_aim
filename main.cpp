@@ -104,9 +104,6 @@ bool init(void)
     predict_composite->setdebug(display["predic_debug"]);
     predict_composite->setshow(display["predic_show"]);
 
-
-    foxglove_server->setdebug(display["foxglove_server_debug"]);
-    foxglove_server->setshow(display["foxglove_server_show"]);
     
     // 检查所有关键子模块是否注册成功
     if (!entrystage_submodule_registered || !sensor_submodule_registered || !cboard_submodule_registered || !detect_submodule_registered || !predict_submodule_registered || !foxglove_server_submodule_registered) {
@@ -135,7 +132,7 @@ int main(void)
         return 0;
     }
 
-    const int max_mem = 5;
+    const int max_mem = 4;
     autoaim_pipeline cap2det(2), det2pre(2), pre2cap(max_mem + 1);
     for (int i = 0; i < max_mem; i++)
     {
