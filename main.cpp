@@ -72,6 +72,7 @@ bool init(void)
     bool cboard_submodule_registered = false;
     bool detect_submodule_registered = false;
     bool predict_submodule_registered = false;
+    bool planner_submodule_registered = false;
     bool foxglove_server_submodule_registered = false;
 
     cboard_submodule_registered = true; // cboard is instantiated separately
@@ -87,6 +88,8 @@ bool init(void)
 
     predict_submodule_registered = predict_composite->register_submodule_with_params<predict::LinearPredictorSubModule>(
         info["camera_para"],*cboard, atoi(info["latency"].c_str()));
+
+    planner_submodule_registered = predict_composite->register_submodule_with_params<plan::PlannerSubModule>();
 
     // 设置各个任务的调试和显示选项
     cboard->setdebug(display["cboard_debug"]);
@@ -106,7 +109,13 @@ bool init(void)
 
     
     // 检查所有关键子模块是否注册成功
-    if (!entrystage_submodule_registered || !sensor_submodule_registered || !cboard_submodule_registered || !detect_submodule_registered || !predict_submodule_registered || !foxglove_server_submodule_registered) {
+    if (!entrystage_submodule_registered 
+        || !sensor_submodule_registered 
+        || !cboard_submodule_registered 
+        || !detect_submodule_registered 
+        || !predict_submodule_registered 
+        || !foxglove_server_submodule_registered
+        || !planner_submodule_registered) {
         LOGE_S("[init] Critical modules unavailable, system cannot start");
         return false;
     }
