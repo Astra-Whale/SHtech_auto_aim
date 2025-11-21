@@ -526,16 +526,23 @@ namespace pipeline
                     // 串行执行所有子模块，直接处理数据
                     // 由于注册时已保证所有子模块都有效，不需要再检查 nullptr
                     // 先调用 should_skip 决定是否跳过子模块
+                    // 记录了子模块的开始和结束时间戳，如果跳过则结束和开始时间相同
                     // 通过 process 执行子模块处理，返回值记录处理结果
                     for (auto& submodule : submodules)
                     {
                         if(submodule->should_skip(data))
                         {
                             data->submodule_results[static_cast<uint8_t>(submodule->get_submodule_name())] = SubModuleResult::SKIP;
+                            data->submodule_timestamps[static_cast<uint8_t>(submodule->get_submodule_name())] = 
+                                std::make_pair(std::chrono::steady_clock::now(), std::chrono::steady_clock::now());
                             continue;
                         }
+                        auto t_start =  std::chrono::steady_clock::now();
                         auto result = submodule->process(data, this);
+                        auto t_end = std::chrono::steady_clock::now();
                         data->submodule_results[static_cast<uint8_t>(submodule->get_submodule_name())] = result;
+                        data->submodule_timestamps[static_cast<uint8_t>(submodule->get_submodule_name())] = 
+                            std::make_pair(t_start, t_end);
                     }
                     
                     pipeafter.put(data, this);

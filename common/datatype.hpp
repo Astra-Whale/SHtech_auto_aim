@@ -78,6 +78,18 @@ enum class SubModuleName : uint8_t
 // 根据 SubModuleName 自动生成子模块数量常量
 constexpr size_t SUBMODULE_COUNT = static_cast<size_t>(SubModuleName::COUNT);
 
+// 获取子模块名称字符串
+inline const char* getSubModuleName(SubModuleName module) {
+    switch (module) {
+        case SubModuleName::ENTRYSTAGE: return "Entry";
+        case SubModuleName::SENSOR: return "Sensor";
+        case SubModuleName::DETECT: return "Detect";
+        case SubModuleName::LINEARPREDICTOR: return "Predict";
+        case SubModuleName::PLANNING: return "Planning";
+        default: return "Unknown";
+    }
+}
+
 struct RobotStatus
 {
     float robot_speed_mps = 28.0f;
@@ -178,9 +190,14 @@ struct ThreadDataPack
 {
     cv::Mat frame;              /*!< 读取到的原始图像 */
     std::vector<bbox_t> bboxes; /*!< 检测到的bounding boxes */
-    std::chrono::high_resolution_clock::time_point time; /*!< 图像时间戳 */
+    std::chrono::high_resolution_clock::time_point time{}; /*!< 图像时间戳 */
 
     std::array<SubModuleResult, SUBMODULE_COUNT> submodule_results; /*!< 各子模块处理结果 */
+
+    // 为entrystage子模块添加的处理开始时间戳。当我们开始显示处理时间，包已经进入了下一个流水线阶段，因此它的开始时间已经被更新为下一个流水线阶段的时间了
+    // 所以我们要单独记录entrystage的开始时间，并在每次entrystage打印完处理时间后再更新
+    std::chrono::steady_clock::time_point pipeline_enter_time{}; 
+    std::array<std::pair<std::chrono::steady_clock::time_point, std::chrono::steady_clock::time_point>, SUBMODULE_COUNT> submodule_timestamps{};
 
     Eigen::Matrix<double, 6, 1> target_state; /*!< 目标状态量 */
 
