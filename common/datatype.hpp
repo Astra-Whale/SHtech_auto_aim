@@ -194,9 +194,6 @@ struct ThreadDataPack
 
     std::array<SubModuleResult, SUBMODULE_COUNT> submodule_results; /*!< 各子模块处理结果 */
 
-    // 为entrystage子模块添加的处理开始时间戳。当我们开始显示处理时间，包已经进入了下一个流水线阶段，因此它的开始时间已经被更新为下一个流水线阶段的时间了
-    // 所以我们要单独记录entrystage的开始时间，并在每次entrystage打印完处理时间后再更新
-    std::chrono::steady_clock::time_point pipeline_enter_time{}; 
     std::array<std::pair<std::chrono::steady_clock::time_point, std::chrono::steady_clock::time_point>, SUBMODULE_COUNT> submodule_timestamps{};
 
     Eigen::Matrix<double, 6, 1> target_state; /*!< 目标状态量 */

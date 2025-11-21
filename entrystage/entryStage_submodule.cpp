@@ -20,13 +20,15 @@ namespace entrystage
     SubModuleResult EntryStageSubModule::process(std::shared_ptr<ThreadDataPack> data, 
                                      const pipeline::BasicTask* parent)
     {
-        // 缓存外部记录的本次entrystage开始时间，恢复包中存储的上次entrystage开始时间
-        std::chrono::steady_clock::time_point entrystage_start_time_cache = data->submodule_timestamps[static_cast<uint8_t>(SubModuleName::ENTRYSTAGE)].first;
-        data->submodule_timestamps[static_cast<uint8_t>(SubModuleName::ENTRYSTAGE)].first = data->pipeline_enter_time;
-
         // 计算总耗时
-        auto total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::steady_clock::now() - data->pipeline_enter_time).count();
+        // 使用 EntryStage 的开始时间作为流水线开始时间，Planning 的结束时间作为流水线结束时间
+        auto start_time = data->submodule_timestamps[static_cast<uint8_t>(SubModuleName::ENTRYSTAGE)].first;
+        auto end_time = data->submodule_timestamps[static_cast<uint8_t>(SubModuleName::COUNT)-1].second;
+        
+        long total_duration = -1;
+        if (start_time.time_since_epoch().count() > 0 && end_time.time_since_epoch().count() > 0) {
+             total_duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time).count();
+        }
 
         // 存储模块耗时和模块间耗时，格式：[模块0耗时, gap0, 模块1耗时, gap1, ...]
         std::array<long, SUBMODULE_COUNT * 2 - 1> timings;
@@ -80,9 +82,7 @@ namespace entrystage
         // 为下一轮做初始化
         data->index = totalframecounter++;
         data->submodule_results.fill(SubModuleResult::NOTYET);
-        // 恢复为本次entrystage开始时间，供下一轮使用
-        data->pipeline_enter_time = entrystage_start_time_cache; 
-        data->submodule_timestamps[static_cast<uint8_t>(SubModuleName::ENTRYSTAGE)].first = entrystage_start_time_cache;
+        
         return SubModuleResult::SUCCESS;
     }
 }
