@@ -162,7 +162,8 @@ namespace predict
         }
         if (new_detections.empty())
         {
-            LOGM_S("No target");
+            if(_debug)
+                LOGM_S("No target");
             send.distance = -1.f;
             send.yaw_speed = 0.f;
             last_track = false;
@@ -195,12 +196,14 @@ namespace predict
 
         if (!selected && last_track) // 寻找与上次同编号的装甲板
         {
-            LOGM_S("[linear] Try ID");
+            if(_debug)
+                LOGM_S("[linear] Try ID");
             for (auto &d : new_detections)
             {
                 if (d.tag_id == last_bbox.tag_id)
                 {
-                    LOGM_S("[Linear] Same ID");
+                    if(_debug)
+                        LOGM_S("[Linear] Same ID");
                     armor = d;
                     selected = true;
                     same_armor = false;
@@ -223,7 +226,9 @@ namespace predict
                     max_size = size;
                 }
             }
-            LOGM_S("[Linear] Sort by size");
+            
+            if(_debug)
+                LOGM_S("[Linear] Sort by size");
             selected = true;
             same_armor = false;
             same_id = false;
@@ -303,8 +308,8 @@ namespace predict
             send.yaw_angle = (float)s_yaw;
             send.yaw_speed = 0.f;
             send.pitch_angle = (float)s_pitch;
-
-            LOGM_S("[Linear] New Filter");
+            if(_debug)
+                LOGM_S("[Linear] New Filter");
         }
 
         if(_debug)
