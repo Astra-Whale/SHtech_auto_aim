@@ -129,22 +129,33 @@ ONNX::~ONNX()
 
 void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
 {
+//     auto t1 = std::chrono::steady_clock::now();
     // pre-process [bgr2rgb & resize]
     det.clear();
     cv::Mat x;
     cv::Mat preprocessedImage;
     float fx = (float)src.cols / 640.f, fy = (float)src.rows / 384.f;
-    cv::cvtColor(src, x, cv::COLOR_BGR2RGB);
-    x = src;
-    if (src.cols != 640 || src.rows != 384)
-    {
-        cv::resize(x, x, {640, 384});
-    }
-    x.convertTo(x, CV_32F, 1.0 / 255);
+    // 废弃的预处理代码
+    // cv::cvtColor(src, x, cv::COLOR_BGR2RGB);
+    // if (src.cols != 640 || src.rows != 384)
+    // {
+    //     cv::resize(x, x, {640, 384});
+    // }
+    // x.convertTo(x, CV_32F, 1.0 / 255);
 
-    // step 8: Convert the image to CHW RGB float format.
-    // HWC to CHW
-    cv::dnn::blobFromImage(x, preprocessedImage);
+    // // step 8: Convert the image to CHW RGB float format.
+    // // HWC to CHW
+    // cv::dnn::blobFromImage(x, preprocessedImage);
+
+    cv::dnn::blobFromImage(
+        src, 
+        preprocessedImage, 
+        1.0 / 255.0,          // 归一化（等同于你的 convertTo）
+        cv::Size(640, 384),   // 自动缩放
+        cv::Scalar(),         // 不减均值
+        false                  // swapRB: BGR→RGB（关键！）
+    );
+
 
     inputTensorValues.assign(preprocessedImage.begin<float>(), preprocessedImage.end<float>());
 
@@ -154,8 +165,12 @@ void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
     // create argument for the parameter
     prog_params.add(input, migraphx::argument(param_shapes[input], inputTensorValues.data()));
 
+    
+    // auto t2 = std::chrono::steady_clock::now();
     // run inference
     auto outputs = net.eval(prog_params);
+
+    // auto t3 = std::chrono::steady_clock::now();
 
     std::vector<bbox_t> candidates;
     float* out = reinterpret_cast<float*>(outputs[0].data());
@@ -192,4 +207,13 @@ void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
         }
         det.push_back(box1);
     }
+
+    // auto t4 = std::chrono::steady_clock::now();
+
+    // auto pre_time = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+    // auto infer_time = std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count();
+    // auto post_time = std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count();
+
+    // printf("[ONNX] Pre: %ld us|Infer: %ld us|Post: %ld us\n",
+    //        pre_time, infer_time, post_time);
 }
