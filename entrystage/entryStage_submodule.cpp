@@ -54,19 +54,26 @@ namespace entrystage
         
         if(_debug)
         {
-            LOGM_S("[EntryStageSubModule] recording frame index: %d", data->index);
-            LOGM_S("[EntryStageSubModule] total time cost: %ld ms", total_duration);
+            LOGM_F("[EntryStageSubModule] recording frame index: %d", data->index);
+            LOGM_F("[EntryStageSubModule] total time cost: %ld ms", total_duration);
+            LOGM_F("[EntryStageSubModule] start time: %ld",
+                   std::chrono::duration_cast<std::chrono::milliseconds>(start_time.time_since_epoch()).count());
             
             // 打印各模块耗时和模块间耗时
             for (size_t i = 0; i < SUBMODULE_COUNT; ++i) {
                 if (timings[i * 2] >= 0) {
                     const char* module_name = getSubModuleName(static_cast<SubModuleName>(i));
                     if (i > 0 && timings[i * 2 - 1] >= 0) {
-                        LOGM_S("[%s] %ldμs | gap: %ldμs", module_name, timings[i * 2], timings[i * 2 - 1]);
+                        LOGM_F("\"%s\" %ldμs | gap: %ldμs", module_name, timings[i * 2], timings[i * 2 - 1]);
                     } else {
-                        LOGM_S("[%s] %ldμs", module_name, timings[i * 2]);
+                        LOGM_F("\"%s\" %ldμs", module_name, timings[i * 2]);
                     }
                 }
+            }
+            // 如果耗时过低，稍作等待以免日志刷得太快，仅在调试模式下启用
+            if(total_duration >= 0&&total_duration <= 1)
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(3));
             }
         }
         

@@ -28,6 +28,7 @@
 #include "detect/detect_submodule.hpp"
 #include "predict/linearPredictor_submodule.hpp"
 #include "foxglove/foxglove_server.hpp"
+#include "planner/planner_submodule.hpp"
 
 //Common
 #include "common.hpp"
