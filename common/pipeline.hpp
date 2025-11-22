@@ -74,19 +74,19 @@ namespace pipeline
     class BasicTask;
 
     /**
-     * @brief   线程间通信类
+     * @brief   线程间通信类（有缓冲队列）
      * @details 用于在线程间提供缓存队列，并保证线程安全的进行读写
      * @tparam  T 用于交换的报文对象
      */
     template <typename T> // pipeline for memory pool design, no thread security ensurance, make sure memory pool large enough
-    class pipeline_queue_t
+    class BufferedPipeline
     {
     public:
         /**
          * @brief   构造函数
          * @param[in] _max 缓存队列的最大容量
          */
-        pipeline_queue_t(const int _max) : max(_max), count(0){};
+        BufferedPipeline(const int _max) : max(_max), count(0){};
 
         /**
          * @brief   获取报文对象
@@ -161,10 +161,151 @@ namespace pipeline
          */
         inline bool wait_for_get(BasicTask* employee);
     };
+
     /**
-     * @brief   线程间通信类
+     * @brief   零缓冲握手管道类
+     * @details 实现严格的生产者-消费者同步握手机制，无数据积压
+     * @tparam  T 用于交换的报文对象
      */
-    using autoaim_pipeline = pipeline_queue_t<ThreadDataPack>;
+    template <typename T>
+    class HandshakePipeline
+    {
+    public:
+        /**
+         * @brief   构造函数（为兼容性接受容量参数但忽略）
+         * @param[in] ignored_max 容量参数（握手模式下忽略）
+         */
+        HandshakePipeline(const int ignored_max) {}
+
+        /**
+         * @brief   获取报文对象（消费者）
+         * @details 等待生产者提交数据后取走数据并完成握手
+         * @return  指向获取的报文对象的指针
+         */
+        inline std::shared_ptr<T> get(BasicTask* employee = nullptr)
+        {
+            std::unique_lock<std::mutex> lock(mtx);
+            
+            // 标记消费者准备好
+            ready_to_get = true;
+            cv_put.notify_one();  // 通知生产者可以提交
+            
+            // 等待生产者提交数据
+            if (employee != nullptr)
+            {
+                while (!data_ready && employee->isalive())
+                {
+                    cv_get.wait_for(lock, std::chrono::milliseconds(100));
+                }
+                if (!employee->isalive())
+                {
+                    return nullptr;
+                }
+            }
+            else
+            {
+                cv_get.wait(lock, [this]() { return data_ready; });
+            }
+            
+            // 取走数据
+            auto result = std::move(data_to_transfer);
+            data_to_transfer = nullptr;
+            data_ready = false;
+            ready_to_get = false;
+            
+            return result;
+        }
+
+        /**
+         * @brief   提交报文对象（生产者，右值引用版本）
+         * @details 等待消费者准备好后提交数据并完成握手
+         * @param[in] p 指向提交的报文对象的指针
+         */
+        inline bool put(std::shared_ptr<T> &&p, BasicTask* employee = nullptr)
+        {
+            std::unique_lock<std::mutex> lock(mtx);
+            
+            // 等待消费者准备好
+            if (employee != nullptr)
+            {
+                while (!ready_to_get && employee->isalive())
+                {
+                    cv_put.wait_for(lock, std::chrono::milliseconds(100));
+                }
+                if (!employee->isalive())
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                cv_put.wait(lock, [this]() { return ready_to_get; });
+            }
+            
+            // 提交数据
+            data_to_transfer = std::move(p);
+            data_ready = true;
+            cv_get.notify_one();  // 通知消费者数据已就绪
+            
+            return true;
+        }
+
+        /**
+         * @brief   提交报文对象（生产者，左值引用版本）
+         * @details 等待消费者准备好后提交数据并完成握手
+         * @param[in] p 指向提交的报文对象的指针
+         */
+        inline bool put(std::shared_ptr<T> &p, BasicTask* employee = nullptr)
+        {
+            std::unique_lock<std::mutex> lock(mtx);
+            
+            // 等待消费者准备好
+            if (employee != nullptr)
+            {
+                while (!ready_to_get && employee->isalive())
+                {
+                    cv_put.wait_for(lock, std::chrono::milliseconds(100));
+                }
+                if (!employee->isalive())
+                {
+                    return false;
+                }
+            }
+            else
+            {
+                cv_put.wait(lock, [this]() { return ready_to_get; });
+            }
+            
+            // 提交数据
+            data_to_transfer = p;
+            data_ready = true;
+            cv_get.notify_one();  // 通知消费者数据已就绪
+            
+            return true;
+        }
+
+    private:
+        std::mutex mtx;
+        std::condition_variable cv_put;  /*!< 生产者等待/消费者通知 */
+        std::condition_variable cv_get;  /*!< 消费者等待/生产者通知 */
+        std::shared_ptr<T> data_to_transfer;  /*!< 临时数据交换点 */
+        bool ready_to_get = false;  /*!< 消费者准备好标记 */
+        bool data_ready = false;    /*!< 生产者提交数据标记 */
+    };
+
+    /**
+     * @brief   类型别名定义
+     */
+    template <typename T> using AutoAimQueueT = BufferedPipeline<T>;
+    template <typename T> using AutoAimHandshakeT = HandshakePipeline<T>;
+    
+    using AutoAimQueue = AutoAimQueueT<ThreadDataPack>;
+    using AutoAimHandshake = AutoAimHandshakeT<ThreadDataPack>;
+    
+    /**
+     * @brief   向后兼容别名（指向有缓冲队列）
+     */
+    using autoaim_pipeline = AutoAimQueue;
     
     /**
      * @brief   任务类的基类，现在原则上不允许直接插入流水线
@@ -495,9 +636,12 @@ namespace pipeline
 
 
         /**
-         * @brief   执行所有子模块
+         * @brief   执行所有子模块（模板版本，支持不同管道类型）
+         * @tparam InputPipe 输入管道类型
+         * @tparam OutputPipe 输出管道类型
          */
-        void operator()(autoaim_pipeline &pipebefore, autoaim_pipeline &pipeafter)
+        template<typename InputPipe, typename OutputPipe>
+        void operator()(InputPipe &pipebefore, OutputPipe &pipeafter)
         {
             // 统一的等待-工作循环
             while (true)
@@ -557,7 +701,7 @@ namespace pipeline
     };
 
     template<typename T>
-    inline bool pipeline_queue_t<T>::wait_for_put(BasicTask* employee)
+    inline bool BufferedPipeline<T>::wait_for_put(BasicTask* employee)
     {
         std::unique_lock<std::mutex> lock(mtx);
         if (employee != nullptr)
@@ -577,7 +721,7 @@ namespace pipeline
     }
 
     template<typename T>
-    inline bool pipeline_queue_t<T>::wait_for_get(BasicTask* employee)
+    inline bool BufferedPipeline<T>::wait_for_get(BasicTask* employee)
     {
         std::unique_lock<std::mutex> lock(mtx);
         if (employee != nullptr)
