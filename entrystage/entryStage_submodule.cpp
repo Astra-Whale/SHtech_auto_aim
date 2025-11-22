@@ -62,9 +62,9 @@ namespace entrystage
                 if (timings[i * 2] >= 0) {
                     const char* module_name = getSubModuleName(static_cast<SubModuleName>(i));
                     if (i > 0 && timings[i * 2 - 1] >= 0) {
-                        LOGM_S("[%s] %ldμs | gap: %ldμs", module_name, timings[i * 2], timings[i * 2 - 1]);
+                        LOGM_S("\"%s\" %ldμs | gap: %ldμs", module_name, timings[i * 2], timings[i * 2 - 1]);
                     } else {
-                        LOGM_S("[%s] %ldμs", module_name, timings[i * 2]);
+                        LOGM_S("\"%s\" %ldμs", module_name, timings[i * 2]);
                     }
                 }
             }

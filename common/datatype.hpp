@@ -70,7 +70,7 @@ enum class SubModuleName : uint8_t
     SENSOR,
     DETECT,
     LINEARPREDICTOR,
-    PLANNING,
+    PLANNER,
 
     COUNT, // 仅用于计数子模块数量
 };
@@ -85,7 +85,7 @@ inline const char* getSubModuleName(SubModuleName module) {
         case SubModuleName::SENSOR: return "Sensor";
         case SubModuleName::DETECT: return "Detect";
         case SubModuleName::LINEARPREDICTOR: return "Predict";
-        case SubModuleName::PLANNING: return "Planning";
+        case SubModuleName::PLANNER: return "Planner";
         default: return "Unknown";
     }
 }
