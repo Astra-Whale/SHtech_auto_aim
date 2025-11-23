@@ -2,13 +2,14 @@
 #define CBOARD_UARTIMU_UARTIMU_H
 // modules
 #include "common.hpp"
+#include "../imu.hpp"
 
 // packages
 #include <RMCVSerial/RMCVSerial.hpp>
 #include <stdint.h>
 #include <string>
 
-class UartIMU
+class UartIMU : public ImuHead
 {
 private:
     Attitude m_attitude;
@@ -18,33 +19,33 @@ private:
 
 public:
     UartIMU(const std::string device_name);
-    bool init()
+    bool init() override
     {
         LOGM_S("Opening %s ", m_device_name.c_str());
         m_serial.open(m_device_name);
         return m_serial.is_open();
     }
     bool is_open() { return m_serial.is_open(); }
-    void start()
+    void start() override
     {
         m_serial.start_async_receive();
     }
-    void close()
+    void close() override
     {
         m_serial.stop_async_receive();
     }
     void on_receive_imu(drivers::packet_data_t *packet_ptr, drivers::packet_length_t len);
     void on_receive_sts(drivers::packet_data_t *packet_ptr, drivers::packet_length_t len);
     void transmit_cmd(float yaw, float yaw_spd, float pitch, float pitch_spd, float dist, uint8_t shoot = 1);
-    void get_attitude(Attitude &attitude)
+    void get_attitude(Attitude &attitude) override
     {
         attitude = m_attitude;
     }
-    void get_quaternion(Eigen::Quaternionf &q)
+    void get_quaternion(Eigen::Quaternionf &q) override
     {
         m_attitude.toQuaternion(q);
     }
-    void get_robotstatus(RobotStatus &robotstatus)
+    void get_robotstatus(RobotStatus &robotstatus) override
     {
         robotstatus = m_robotstatus;
     }

@@ -7,7 +7,7 @@
 #define CBOARD_H
 
 // submodules
-#include "UartIMU/uartimu.hpp"
+#include "imu.hpp"
 
 // modules
 #include "common.hpp"
@@ -21,58 +21,21 @@
 namespace communicationBoard
 {
     /**
-     * @brief 控制输入的最大范围
-     *
-     * @param input 输入量
-     * @param max 最大值（绝对值）
-     * @return float 约化的输出值
-     */
-    float val_limit(float input, float max);
-
-    /**
-     * @brief 用于输出角度滤波的辅助类
-     */
-    class AngleFilter
-    {
-    private:
-        float angle{0.f};
-        bool init{true};
-
-    public:
-        /**
-         * @brief 重置滤波器
-         */
-        void reset();
-
-        /**
-         * @brief 更新滤波器输入
-         *
-         * @param input 输入
-         * @return float 输出
-         */
-        float update(float input);
-
-        /**
-         * @brief 获取滤波器输出
-         *
-         * @return float 输出
-         */
-        float output();
-    };
-
-    /**
      * @brief   通讯子模块
      * @details 处理与下位机的串口通讯，包括IMU数据接收和控制指令发送
      */
     class Cboard_t : public pipeline::BasicTask
     {
     public:
-        static constexpr size_t commandArrayLength = 10;
+        static constexpr size_t CMDARRAYLENGTH = 10;
+        static constexpr std::chrono::microseconds send_period{2000};
+        using command_array_t = std::array<RobotCommand, CMDARRAYLENGTH>;
+
         /**
          * @brief   构造函数
          * @param[in] device_name 串口设备名称
          */
-        Cboard_t(const std::string& device_name);
+        Cboard_t(const std::string &device_name);
         virtual ~Cboard_t();
 
         /**
@@ -93,32 +56,21 @@ namespace communicationBoard
             imu->get_robotstatus(robotstatus);
         }
 
-        bool read_latest_command_and_attitude_optimistic();
 
-        void set_robotcommand(const std::array<RobotCommand, commandArrayLength>& robotCommands, const Attitude& attitude, const std::chrono::microseconds ctl_period)
-        {
-            //assert(send_period == ctl_period && "Control period mismatch!");
-            // 使用互斥锁保护所有共享数据的写入
-            std::lock_guard<std::mutex> lock(dataMutex);
-            commandStartTime = std::chrono::steady_clock::now();
-            robotCommandArray = robotCommands;
-            attitudeAtLastFrame = attitude;
-        }
+        void set_robotcommand(const command_array_t &robotCommands, const Attitude &attitude);
 
     private:
+        bool read_latest_command_and_attitude();
+        
         // 通讯相关成员变量
-        UartIMU *imu = nullptr;           /*!< IMU 通讯接口指针 */
+        ImuHead *imu = nullptr; /*!< IMU 通讯接口指针 */
         
-        // 状态跟踪
-        AngleFilter pitch_angle_filter;   /*!< 角度滤波器 */
-        static constexpr std::chrono::microseconds send_period{2000};
-        
-        std::array<RobotCommand, commandArrayLength> robotCommandArray; // 会被跨线程访问，在没有锁保护的情况下，不要读取它，commandCache是安全的本地副本
-        RobotCommand commandCache;
-        Attitude attitudeAtLastFrame; // 会被跨线程访问，在没有锁保护的情况下，不要读取它，attitudeCache是安全的本地副本
-        Attitude attitudeCache;
-        std::chrono::steady_clock::time_point commandStartTime;
-        std::mutex dataMutex;
+        command_array_t command_array; // 会被跨线程访问，在没有锁保护的情况下，不要读取它，commandCache是安全的本地副本
+        RobotCommand command_cache;
+        Attitude attitude_at_last_frame; // 会被跨线程访问，在没有锁保护的情况下，不要读取它，attitudeCache是安全的本地副本
+        Attitude attitude_cache;
+        std::chrono::steady_clock::time_point command_start_time;
+        std::mutex data_mutex;
     };
 }
 

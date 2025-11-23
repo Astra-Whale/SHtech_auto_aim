@@ -11,7 +11,7 @@ typedef struct __attribute__((packed))
 {
     float yaw;
     float yaw_spd;
-    float pit;
+    float pitch;
     float pitch_spd;
     float dist;
     uint8_t shoot;
