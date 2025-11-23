@@ -126,8 +126,12 @@ namespace predict
 
         /// 过滤出敌方颜色的装甲板 && 判断是否有英雄出现
         std::vector<bbox_t> new_detections; // new_detection: vector 是经过过滤后所有可能考虑的装甲板
-        if(_debug)
+        static bool enemy_color_appeared = false;
+        if(_debug&&!enemy_color_appeared)
+        {
             LOGM_S("enemy_color %d", int(robot_status.enemy_color));
+            enemy_color_appeared = true;
+        }
             
         for (auto &d : detections)
         {
