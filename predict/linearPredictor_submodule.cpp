@@ -14,7 +14,7 @@ namespace predict
     /// 远距离弹量控制
     constexpr double distant_threshold = 6.;
 
-    LinearPredictorSubModule::LinearPredictorSubModule(const std::string& camera_param,communicationBoard::Cboard_t& cboard, int latency) : SubModule(SubModuleName::LINEARPREDICTOR), cboard(cboard)
+    LinearPredictorSubModule::LinearPredictorSubModule(const std::string& camera_param, int latency) : SubModule(SubModuleName::LINEARPREDICTOR)
     {
         LOGM_S("[LinearPredictorSubModule] constructing with camera_param: %s, latency: %d", 
                camera_param.c_str(), latency);
@@ -77,11 +77,7 @@ namespace predict
         // 执行预测算法
         predict(data);
 
-        cboard.set_robotcommand(
-            std::array<RobotCommand,10>{data->robotcommand}, 
-            data->attitude, 
-            std::chrono::microseconds(2000)
-        );
+
         
         auto t2 = std::chrono::steady_clock::now();
 

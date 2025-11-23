@@ -87,9 +87,9 @@ bool init(void)
     detect_submodule_registered = detect_composite->register_submodule_with_params<detect::DetectSubModule>(info["model"]);
 
     predict_submodule_registered = predict_composite->register_submodule_with_params<predict::LinearPredictorSubModule>(
-        info["camera_para"],*cboard, atoi(info["latency"].c_str()));
+        info["camera_para"], atoi(info["latency"].c_str()));
 
-    planner_submodule_registered = predict_composite->register_submodule_with_params<plan::PlannerSubModule>();
+    planner_submodule_registered = predict_composite->register_submodule_with_params<plan::PlannerSubModule>(*cboard);
 
     // 设置各个任务的调试和显示选项
     cboard->setdebug(display["cboard_debug"]);

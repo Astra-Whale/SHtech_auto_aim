@@ -40,7 +40,7 @@ namespace predict
          * @param[in] camera_param 相机参数文件路径
          * @param[in] latency 通信延迟（毫秒）
          */
-        LinearPredictorSubModule(const std::string& camera_param,communicationBoard::Cboard_t& cboard, int latency = 20);
+        LinearPredictorSubModule(const std::string& camera_param, int latency = 20);
         virtual ~LinearPredictorSubModule() = default;
 
         bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
@@ -55,7 +55,6 @@ namespace predict
                     const pipeline::BasicTask* parent) override;
 
     private:
-        communicationBoard::Cboard_t& cboard; /*!< 通讯板接口 */
         // 来自原 PredictSubModule 的成员
         PositionTransform position_transform;   /*!< 位置变换器 */
         double comm_latency;                    /*!< 通信延迟（秒） */
