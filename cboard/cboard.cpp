@@ -5,52 +5,13 @@
 
 #include "cboard.hpp"
 
-
 namespace communicationBoard
 {
-    /**
-     * @brief 控制输入的最大范围
-     *
-     * @param input 输入量
-     * @param max 最大值（绝对值）
-     * @return float 约化的输出值
-     */
-    float val_limit(float input, float max)
-    {
-        return input < max ? input > -max ? input : -max : max;
-    }
-
-    // AngleFilter 实现
-    void AngleFilter::reset()
-    {
-        angle = 0.f;
-        init = true;
-    }
-
-    float AngleFilter::update(float input)
-    {
-        if (init)
-        {
-            angle = input;
-            init = false;
-        }
-        else
-        {
-            angle = angle * 0.9f + input * 0.1f;
-        }
-        return angle;
-    }
-
-    float AngleFilter::output()
-    {
-        return angle;
-    }
-
     // Cboard_t 实现
-    Cboard_t::Cboard_t(const std::string& device_name) : BasicTask()
+    Cboard_t::Cboard_t(const std::string &device_name) : BasicTask()
     {
         LOGM_S("[cboard_submodule] constructing with device: %s", device_name.c_str());
-        
+
         // 初始化IMU通讯
         imu = new UartIMU(device_name);
         if (imu == nullptr || !imu->init())
@@ -64,27 +25,37 @@ namespace communicationBoard
             imu->start();
         }
     }
-    
-    // 在锁保护下读取最新命令和姿态，用高精时间实现了插值
-    bool Cboard_t::read_latest_command_and_attitude_optimistic()
+
+    void Cboard_t::set_robotcommand(const command_array_t &robotCommands, const Attitude &attitude)
     {
-        // 修复：使用互斥锁保护所有共享数据的读取
-        std::lock_guard<std::mutex> lock(dataMutex);
+        // 使用互斥锁保护跨线程访问的命令数组和姿态数据
+        std::lock_guard<std::mutex> lock(data_mutex);
+        command_start_time = std::chrono::steady_clock::now();
+        command_array = robotCommands;
+        attitude_at_last_frame = attitude;
+    }
+
+    // 读取最新命令和姿态数据，基于时间戳进行线性插值
+    bool Cboard_t::read_latest_command_and_attitude()
+    {
+        // 使用互斥锁保护共享数据的并发访问
+        std::lock_guard<std::mutex> lock(data_mutex);
 
         auto now = std::chrono::steady_clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(now - commandStartTime);
+        auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(now - command_start_time);
         int64_t expectedIndexOne = static_cast<int64_t>(elapsed.count() / send_period.count());
 
         assert(expectedIndexOne >= 0 && "[cboard] Elapsed time calculation error!");
-        if(expectedIndexOne >= commandArrayLength-1) 
+        if (expectedIndexOne >= CMDARRAYLENGTH - 1)
         {
-            return false; // 超出范围-1，没有新命令要发送。范围-1是为了有后项可插值，我们认为最后一个命令在正常情况下不应该被用到，因此舍弃单独处理。
+            // 命令数组已耗尽，保留最后一个元素用于插值计算
+            return false;
         }
-    
+
         std::chrono::microseconds offsetInPeriod = elapsed % send_period;
-        commandCache = command_linear_interpolation(robotCommandArray[expectedIndexOne], robotCommandArray[expectedIndexOne + 1], float(offsetInPeriod.count()) / float(send_period.count()));
-        attitudeCache = attitudeAtLastFrame;
-        
+        command_cache = command_linear_interpolation(command_array[expectedIndexOne], command_array[expectedIndexOne + 1], float(offsetInPeriod.count()) / float(send_period.count()));
+        attitude_cache = attitude_at_last_frame;
+
         return true;
     }
 
@@ -100,23 +71,23 @@ namespace communicationBoard
 
     void Cboard_t::operator()()
     {
-        // 统一的等待-工作循环
+        // basictask框架级实现：统一的等待-工作循环
         while (true)
         {
-            // 等待启动信号或终止信号
+            // basictask框架级实现：等待-启动信号或终止信号
             if (!wait_for_state_change())
             {
-                break;  // 收到终止信号，退出线程
+                break; // 收到终止信号，退出线程
             }
-            
-            // 收到启动信号，开始工作循环
+
+            // basictask框架级实现：收到启动信号，开始工作循环
+            // 本循环内部是具体的任务实现
             while (isalive())
             {
                 auto start_time = std::chrono::high_resolution_clock::now();
 
                 if (imu == nullptr || !imu->is_open())
                 {
-                    pitch_angle_filter.reset();
                     if (_debug)
                     {
                         LOGW_S("[cboard_submodule] Communication not open");
@@ -126,35 +97,35 @@ namespace communicationBoard
                 }
 
                 // 发送控制指令
-                if(read_latest_command_and_attitude_optimistic())
+                if (read_latest_command_and_attitude())
                 {
                     imu->transmit_cmd(
-                        attitudeCache.yaw + val_limit(commandCache.yaw_angle, 10),
-                        commandCache.yaw_speed,
-                        pitch_angle_filter.update(attitudeCache.pitch + val_limit(commandCache.pitch_angle, 10)),
-                        commandCache.pitch_speed, 
-                        commandCache.distance,
-                        static_cast<uint8_t>(commandCache.shoot_mode == ShootMode::COMMON)
-                    );
+                        attitude_cache.yaw + command_cache.yaw_angle,
+                        command_cache.yaw_speed,
+                        attitude_cache.pitch + command_cache.pitch_angle,
+                        command_cache.pitch_speed,
+                        command_cache.distance,
+                        static_cast<uint8_t>(command_cache.shoot_mode == ShootMode::COMMON));
 
                     if (_debug)
                     {
-                        LOGM_S("[cboard_submodule][transmit] p-p:%6.2f | p-m:%6.2f | p-s:%6.2f | y-p:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f",
-                                commandCache.pitch_angle, attitudeCache.pitch,
-                                pitch_angle_filter.output(),
-                                commandCache.yaw_angle, attitudeCache.yaw,
-                                attitudeCache.yaw + val_limit(commandCache.yaw_angle, 10),
-                                commandCache.yaw_speed);
+                        LOGM_S("[cboard_submodule][transmit] p-p:%6.2f | p-m:%6.2f | p-s:%6.2f | ps-s:%6.2f | y-p:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f",
+                               command_cache.pitch_angle, attitude_cache.pitch,
+                               attitude_cache.pitch + command_cache.pitch_angle,
+                               command_cache.pitch_speed,
+                               command_cache.yaw_angle, attitude_cache.yaw,
+                               attitude_cache.yaw + command_cache.yaw_angle,
+                               command_cache.yaw_speed);
                     }
                 }
                 else
                 {
-                    if(_debug)
+                    if (_debug)
                         LOGM_S("[cboard_submodule] No new command to send");
                 }
                 auto end_time = std::chrono::high_resolution_clock::now();
                 auto sleep_duration = send_period - (end_time - start_time);
-                if(sleep_duration > std::chrono::milliseconds(0))
+                if (sleep_duration > std::chrono::milliseconds(0))
                 {
                     std::this_thread::sleep_for(sleep_duration);
                 }
@@ -163,10 +134,9 @@ namespace communicationBoard
                     LOGW_S("[cboard_submodule] sending overrun by %lld ms", (long long)std::chrono::duration_cast<std::chrono::milliseconds>(-sleep_duration).count());
                 }
 
+
             }
-            
-            // 工作循环结束（被stop），回到等待状态
-        }        
-        
+            // basictask框架级实现：工作循环结束（被stop），回到等待状态
+        }
     }
 }

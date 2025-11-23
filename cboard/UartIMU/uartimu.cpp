@@ -4,6 +4,9 @@
 #include <chrono>
 
 using namespace std::chrono;
+
+// 裁判系统规定的最低子弹初速（单位：米/秒）
+constexpr float MIN_BULLET_SPEED_MPS = 10.0f;
 UartIMU::UartIMU(const std::string device_name) : m_device_name(device_name), m_serial()
 {
     m_serial.register_handler(CMD_MCU_DATA, std::bind(&UartIMU::on_receive_imu, this, std::placeholders::_1, std::placeholders::_2));
@@ -18,8 +21,8 @@ void UartIMU::on_receive_imu(drivers::packet_data_t* packet_ptr, drivers::packet
     m_attitude.yaw = _tmp_ptr->curr_yaw;
     m_attitude.pitch = _tmp_ptr->curr_pitch;
     m_robotstatus.robot_speed_mps = _tmp_ptr->shoot_speed;
-    if (_tmp_ptr->shoot_speed < 10.0f) {
-        m_robotstatus.robot_speed_mps = 10.0f;
+    if (_tmp_ptr->shoot_speed < MIN_BULLET_SPEED_MPS) {
+        m_robotstatus.robot_speed_mps = MIN_BULLET_SPEED_MPS;
     }
 }
 
@@ -28,9 +31,9 @@ void UartIMU::on_receive_sts(drivers::packet_data_t* packet_ptr, drivers::packet
     if (len != sizeof(robot_data_t))
         LOGW_S("[UART][ERROR] invalid data length");
     robot_data_t robot_state = *((robot_data_t*)packet_ptr);
-    if (m_robotstatus.robot_speed_mps < 10.0f)
+    if (m_robotstatus.robot_speed_mps < MIN_BULLET_SPEED_MPS)
     {
-        m_robotstatus.robot_speed_mps = 10.0f;
+        m_robotstatus.robot_speed_mps = MIN_BULLET_SPEED_MPS;
     }
     if (0 < robot_state.robot_id && robot_state.robot_id < 20)
     {
@@ -63,7 +66,7 @@ void UartIMU::transmit_cmd(float yaw, float yaw_spd, float pitch, float pitch_sp
     advv_detection_t data_to_send;
     data_to_send.yaw = yaw;
     data_to_send.yaw_spd = yaw_spd;
-    data_to_send.pit = pitch;
+    data_to_send.pitch = pitch;
     data_to_send.pitch_spd = pitch_spd;
     data_to_send.dist = dist;
     data_to_send.shoot = shoot;
