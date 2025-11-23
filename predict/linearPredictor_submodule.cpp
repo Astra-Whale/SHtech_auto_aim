@@ -142,7 +142,8 @@ namespace predict
                 Pos3D m_pw = position_transform.pc_to_pw(m_pc);              // point world: 目标在世界坐标系下的坐标。（世界坐标系:陀螺仪的全局世界坐标系）
                 if (m_pw[2] < height_thres)
                 {
-                    LOGW_S("To High! height is %lf", m_pw[2]);
+                    if(_debug)
+                        LOGW_S("To High! height is %lf", m_pw[2]);
                     continue;
                 }
                 if (int(robot_status.game_state) == 0)
@@ -150,7 +151,8 @@ namespace predict
                     double distance = m_pw.norm();
                     if (distance > distant_threshold)
                     {
-                        LOGW_S("To Far! Distance is %lf", distance);
+                        if(_debug)
+                            LOGW_S("To Far! Distance is %lf", distance);
                         continue;
                     }
                 }
