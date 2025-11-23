@@ -47,13 +47,14 @@ namespace plan
                     const pipeline::BasicTask* parent) override;
 
     private:
+        static constexpr size_t CMDARRAYLENGTH = communicationBoard::Cboard_t::CMDARRAYLENGTH;
+        static constexpr std::chrono::microseconds ctl_period = communicationBoard::Cboard_t::send_period;
+        using command_array_t = communicationBoard::Cboard_t::command_array_t;
+        
         command_array_t generate_command_array(const RobotCommand& command);
 
         communicationBoard::Cboard_t& cboard;
         
-        static constexpr size_t CMDARRAYLENGTH = communicationBoard::Cboard_t::CMDARRAYLENGTH;
-        static constexpr std::chrono::microseconds ctl_period = communicationBoard::Cboard_t::send_period;
-        using command_array_t = std::array<RobotCommand, CMDARRAYLENGTH>;
     };
 }
 
