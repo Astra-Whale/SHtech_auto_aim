@@ -7,7 +7,7 @@
 #define CBOARD_H
 
 // submodules
-#include "imu.hpp"
+#include "UartIMU/uartimu.hpp"
 
 // modules
 #include "common.hpp"
@@ -68,7 +68,7 @@ namespace hardware
         void handle_planner_message(const pipeline::bridge::PlannerToSerialMessage &msg);
         
         // 通讯相关成员变量
-        ImuHead *imu = nullptr; /*!< IMU 通讯接口指针 */
+        UartIMU *imu = nullptr; /*!< IMU 通讯接口指针 */
         pipeline::bridge::PlannerToSerialBridge &planner_bridge; /*!< 消息桥接引用 */
         
         command_array_t command_array; // 会被跨线程访问，在没有锁保护的情况下，不要读取它，commandCache是安全的本地副本
