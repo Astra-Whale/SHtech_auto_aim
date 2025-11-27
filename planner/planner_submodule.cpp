@@ -8,7 +8,8 @@
 namespace plan
 {
 
-    PlannerSubModule::PlannerSubModule(communicationBoard::Cboard_t& cboard) : SubModule(SubModuleName::PLANNER), cboard(cboard)
+    PlannerSubModule::PlannerSubModule(pipeline::bridge::PlannerToSerialBridge &message_bridge) 
+        : SubModule(SubModuleName::PLANNER), planner_bridge(message_bridge)
     {
         LOGM_S("[PlannerSubModule] construction completed");
     }
@@ -18,6 +19,7 @@ namespace plan
     }
 
     command_array_t PlannerSubModule::generate_command_array(const RobotCommand& command) {
+        constexpr std::chrono::microseconds ctl_period{2000};
         command_array_t commands;
         for (size_t i = 0; i < CMDARRAYLENGTH; ++i) {
             commands[i] = RobotCommand{
@@ -36,11 +38,11 @@ namespace plan
     SubModuleResult PlannerSubModule::process(std::shared_ptr<ThreadDataPack> data, 
                                      const pipeline::BasicTask* parent)
     {
-        cboard.set_robotcommand(
-            generate_command_array(data->robotcommand), 
-            data->attitude, 
-            std::chrono::microseconds(2000)
-        );
+        pipeline::bridge::PlannerToSerialMessage msg{
+            generate_command_array(data->robotcommand),
+            data->attitude
+        };
+        planner_bridge.send(msg);
         return SubModuleResult::SUCCESS;
     }
 

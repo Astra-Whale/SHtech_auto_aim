@@ -1,6 +1,6 @@
 //
 // Created for pipeline refactor - SensorSubModule
-// Wraps original Sensor logic as SubModule (Camera only, communication moved to communicationBoard)
+// Wraps original Sensor logic as SubModule (Camera only, hardware communication moved to hardware::TimedSerial)
 //
 
 #ifndef SENSOR_SENSOR_SUBMODULE_H
@@ -25,7 +25,7 @@ namespace sensor
     /**
      * @brief   传感器子模块
      * @details 包装原有 Sensor 逻辑为 SubModule，专注于相机数据处理
-     *          通讯功能已移至 communicationBoard 模块
+     *          通讯功能已移至 hardware::TimedSerial 模块
      */
     class SensorSubModule : public pipeline::SubModule
     {
@@ -35,7 +35,7 @@ namespace sensor
          * @param[in] VideoSource 视频源路径
          * @param[in] flip_image 是否翻转图像
          */
-        SensorSubModule(const std::string& VideoSource, const std::string& flip_image, communicationBoard::Cboard_t& cboard); 
+        SensorSubModule(const std::string& VideoSource, const std::string& flip_image, hardware::TimedSerial& cboard); 
         virtual ~SensorSubModule();
 
         bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
@@ -58,7 +58,7 @@ namespace sensor
         fps_counter total_fps{"sensor_fps"};    /*!< FPS计数器 */
 
         // 通讯子模块引用
-        communicationBoard::Cboard_t& cboard;
+        hardware::TimedSerial& cboard;
     };
 }
 

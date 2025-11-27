@@ -7,7 +7,7 @@
 
 // modules
 #include "common.hpp"
-#include "cboard.hpp"
+#include "message_bridge.hpp"
 
 // packages
 #include <ctime>
@@ -31,8 +31,9 @@ namespace plan
     public:
         /**
          * @brief   构造函数
+         * @param[in] message_bridge 消息桥接对象引用
          */
-        PlannerSubModule(communicationBoard::Cboard_t& cboard);
+        PlannerSubModule(pipeline::bridge::PlannerToSerialBridge &message_bridge);
         virtual ~PlannerSubModule() = default;
 
         bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
@@ -49,10 +50,9 @@ namespace plan
     private:
         command_array_t generate_command_array(const RobotCommand& command);
 
-        communicationBoard::Cboard_t& cboard;
+        pipeline::bridge::PlannerToSerialBridge &planner_bridge;
         
-        static constexpr size_t CMDARRAYLENGTH = communicationBoard::Cboard_t::CMDARRAYLENGTH;
-        static constexpr std::chrono::microseconds ctl_period = communicationBoard::Cboard_t::send_period;
+        static constexpr size_t CMDARRAYLENGTH = 10;
         using command_array_t = std::array<RobotCommand, CMDARRAYLENGTH>;
     };
 }
