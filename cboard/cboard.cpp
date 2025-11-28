@@ -1,49 +1,56 @@
 //
-// Created for communication module separation - Cboard_t
-// Extracted communication functionality from UartIMU
+// Created for hardware communication module - TimedSerial
+// Handles timed serial communication with lower machines
 //
 
 #include "cboard.hpp"
 
-namespace communicationBoard
+namespace hardware
 {
-    // Cboard_t 实现
-    Cboard_t::Cboard_t(const std::string &device_name) : BasicTask()
+    // TimedSerial 实现
+    TimedSerial::TimedSerial(const std::string &device_name, pipeline::bridge::PlannerToSerialBridge &message_bridge) 
+        : BasicTask(), planner_bridge(message_bridge)
     {
-        LOGM_S("[cboard_submodule] constructing with device: %s", device_name.c_str());
+        LOGM_S("[TimedSerial] constructing with device: %s", device_name.c_str());
+
+        // 注册为消息接收者
+        planner_bridge.set_receiver([this](const pipeline::bridge::PlannerToSerialMessage &msg) {
+            this->handle_planner_message(msg);
+        });
 
         // 初始化IMU通讯
         imu = new UartIMU(device_name);
         if (imu == nullptr || !imu->init())
         {
-            LOGE_S("[cboard_submodule] Failed to initialize IMU communication");
+            LOGE_S("[TimedSerial] Failed to initialize IMU communication");
         }
         else
         {
-            LOGM_S("[cboard_submodule] IMU communication initialized successfully");
+            LOGM_S("[TimedSerial] IMU communication initialized successfully");
             // 立即启动通讯
             imu->start();
         }
     }
 
-    void Cboard_t::set_robotcommand(const command_array_t &robotCommands, const Attitude &attitude)
+    void TimedSerial::handle_planner_message(const pipeline::bridge::PlannerToSerialMessage &msg)
     {
         // 使用互斥锁保护跨线程访问的命令数组和姿态数据
         std::lock_guard<std::mutex> lock(data_mutex);
         command_start_time = std::chrono::steady_clock::now();
-        command_array = robotCommands;
-        attitude_at_last_frame = attitude;
+        command_array = msg.command_array;
+        attitude_at_last_frame = msg.attitude;
+        plan_period = msg.plan_period;
     }
 
     // 读取最新命令和姿态数据，基于时间戳进行线性插值
-    bool Cboard_t::read_latest_command_and_attitude()
+    bool TimedSerial::read_latest_command_and_attitude()
     {
         // 使用互斥锁保护共享数据的并发访问
         std::lock_guard<std::mutex> lock(data_mutex);
 
         auto now = std::chrono::steady_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(now - command_start_time);
-        int64_t expectedIndexOne = static_cast<int64_t>(elapsed.count() / send_period.count());
+        int64_t expectedIndexOne = static_cast<int64_t>(elapsed.count() / plan_period.count());
 
         assert(expectedIndexOne >= 0 && "[cboard] Elapsed time calculation error!");
         if (expectedIndexOne >= CMDARRAYLENGTH - 1)
@@ -52,24 +59,24 @@ namespace communicationBoard
             return false;
         }
 
-        std::chrono::microseconds offsetInPeriod = elapsed % send_period;
-        command_cache = command_linear_interpolation(command_array[expectedIndexOne], command_array[expectedIndexOne + 1], float(offsetInPeriod.count()) / float(send_period.count()));
+        std::chrono::microseconds offsetInPeriod = elapsed % plan_period;
+        command_cache = command_linear_interpolation(command_array[expectedIndexOne], command_array[expectedIndexOne + 1], float(offsetInPeriod.count()) / float(plan_period.count()));
         attitude_cache = attitude_at_last_frame;
 
         return true;
     }
 
-    Cboard_t::~Cboard_t()
+    TimedSerial::~TimedSerial()
     {
         if (imu)
         {
             imu->close();
             delete imu;
         }
-        std::cout << "[cboard_submodule] destroyed" << std::endl;
+        std::cout << "[TimedSerial] destroyed" << std::endl;
     }
 
-    void Cboard_t::operator()()
+    void TimedSerial::operator()()
     {
         // basictask框架级实现：统一的等待-工作循环
         while (true)
@@ -91,7 +98,7 @@ namespace communicationBoard
                 {
                     if (_debug)
                     {
-                        LOGW_S("[cboard_submodule] Communication not open");
+                        LOGW_S("[TimedSerial] Communication not open");
                     }
                     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
                     continue;
@@ -114,7 +121,7 @@ namespace communicationBoard
 
                     if (false&&_debug)
                     {
-                        LOGM_S("[cboard_submodule][transmit] p-p:%6.2f | p-m:%6.2f | p-s:%6.2f | ps-s:%6.2f | y-p:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f",
+                        LOGM_S("[TimedSerial][transmit] p-p:%6.2f | p-m:%6.2f | p-s:%6.2f | ps-s:%6.2f | y-p:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f",
                                command_cache.pitch_angle, attitude_cache.pitch,
                                attitude_cache.pitch + command_cache.pitch_angle,
                                command_cache.pitch_speed,
@@ -126,7 +133,7 @@ namespace communicationBoard
                 else
                 {
                     if (_debug)
-                        LOGM_S("[cboard_submodule] No new command to send");
+                        LOGM_S("[TimedSerial] No new command to send");
                 }
 
                 if (true||_debug)
@@ -143,8 +150,8 @@ namespace communicationBoard
                 }
                 else
                 {
-                    LOGW_S("[cboard_submodule] sending overrun by %lld ms", (long long)std::chrono::duration_cast<std::chrono::microseconds>(-sleep_duration).count());
-                    LOGW_F("[cboard_submodule] sending overrun by %lld us", (long long)std::chrono::duration_cast<std::chrono::microseconds>(-sleep_duration).count());
+                    LOGW_S("[TimedSerial] sending overrun by %lld ms", (long long)std::chrono::duration_cast<std::chrono::microseconds>(-sleep_duration).count());
+                    LOGW_F("[TimedSerial] sending overrun by %lld us", (long long)std::chrono::duration_cast<std::chrono::microseconds>(-sleep_duration).count());
                 }
                 
                 

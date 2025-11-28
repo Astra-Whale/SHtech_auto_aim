@@ -1,6 +1,6 @@
 //
 // Created for pipeline refactor - SensorSubModule
-// Wraps original Sensor logic as SubModule (Camera only, communication moved to communicationBoard)
+// Wraps original Sensor logic as SubModule (Camera only, hardware communication moved to hardware::TimedSerial)
 //
 
 #include "sensor_submodule.hpp"
@@ -18,7 +18,7 @@
 namespace sensor
 {
     // SensorSubModule 实现
-    SensorSubModule::SensorSubModule(const std::string& VideoSource, const std::string& flip_image, communicationBoard::Cboard_t& cboard) : SubModule(SubModuleName::SENSOR), cboard(cboard)
+    SensorSubModule::SensorSubModule(const std::string& VideoSource, const std::string& flip_image, hardware::TimedSerial& cboard) : SubModule(SubModuleName::SENSOR), cboard(cboard)
     {
         LOGM_S("[sensor_submodule] constructing with video: %s", VideoSource.c_str());
         // 初始化视频源
