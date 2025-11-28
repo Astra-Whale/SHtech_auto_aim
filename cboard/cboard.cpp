@@ -39,6 +39,7 @@ namespace hardware
         command_start_time = std::chrono::steady_clock::now();
         command_array = msg.command_array;
         attitude_at_last_frame = msg.attitude;
+        plan_period = msg.plan_period;
     }
 
     // 读取最新命令和姿态数据，基于时间戳进行线性插值
@@ -49,7 +50,7 @@ namespace hardware
 
         auto now = std::chrono::steady_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(now - command_start_time);
-        int64_t expectedIndexOne = static_cast<int64_t>(elapsed.count() / send_period.count());
+        int64_t expectedIndexOne = static_cast<int64_t>(elapsed.count() / plan_period.count());
 
         assert(expectedIndexOne >= 0 && "[cboard] Elapsed time calculation error!");
         if (expectedIndexOne >= CMDARRAYLENGTH - 1)
@@ -58,8 +59,8 @@ namespace hardware
             return false;
         }
 
-        std::chrono::microseconds offsetInPeriod = elapsed % send_period;
-        command_cache = command_linear_interpolation(command_array[expectedIndexOne], command_array[expectedIndexOne + 1], float(offsetInPeriod.count()) / float(send_period.count()));
+        std::chrono::microseconds offsetInPeriod = elapsed % plan_period;
+        command_cache = command_linear_interpolation(command_array[expectedIndexOne], command_array[expectedIndexOne + 1], float(offsetInPeriod.count()) / float(plan_period.count()));
         attitude_cache = attitude_at_last_frame;
 
         return true;
