@@ -9,22 +9,23 @@ int totalFrameCounter = 0;
 pipeline::PipelineTask* sensor_composite = nullptr;
 pipeline::PipelineTask* detect_composite = nullptr;
 pipeline::PipelineTask* predict_composite = nullptr;
-communicationBoard::Cboard_t* cboard = nullptr;
+hardware::TimedSerial* timed_serial = nullptr;
 foxgloveSer::FoxgloveServer_t* foxglove_server = nullptr;
+pipeline::bridge::PlannerToSerialBridge* planner_to_serial_bridge = nullptr;
 
 void terminate(int signal)
 {
     LOGM_S("Received termination signal, shutting down all tasks...");
     
     // 终止所有复合任务（这会唤醒等待的线程并让它们退出）
-    if (cboard) cboard->terminate();
+    if (timed_serial) timed_serial->terminate();
     if (sensor_composite) sensor_composite->terminate();
     if (detect_composite) detect_composite->terminate();
     if (predict_composite) predict_composite->terminate();
     if (foxglove_server) foxglove_server->terminate();
     
     LOGM_S("Quit");
-    if ((cboard && !cboard->isterminated())
+    if ((timed_serial && !timed_serial->isterminated())
         ||(sensor_composite && !sensor_composite->isterminated())
         || (detect_composite && !detect_composite->isterminated())
         || (predict_composite && !predict_composite->isterminated())
@@ -62,8 +63,11 @@ bool init(void)
     detect_composite = new pipeline::PipelineTask();
     predict_composite = new pipeline::PipelineTask();
 
+    // 创建消息桥接（连接 planner 和 cboard）
+    planner_to_serial_bridge = new pipeline::bridge::PlannerToSerialBridge();
+
     // 初始化独立任务
-    cboard = new communicationBoard::Cboard_t(info["port"]);
+    timed_serial = new hardware::TimedSerial(info["port"], *planner_to_serial_bridge);
     foxglove_server = new foxgloveSer::FoxgloveServer_t();
 
     // 注册各个子模块
@@ -75,25 +79,25 @@ bool init(void)
     bool planner_submodule_registered = false;
     bool foxglove_server_submodule_registered = false;
 
-    cboard_submodule_registered = true; // cboard is instantiated separately
+    cboard_submodule_registered = true; // timed_serial is instantiated separately
     foxglove_server_submodule_registered = true; // foxglove_server is instantiated separately
 
 
     entrystage_submodule_registered = sensor_composite->register_submodule_with_params<entrystage::EntryStageSubModule>(*foxglove_server);
 
     sensor_submodule_registered = sensor_composite->register_submodule_with_params<sensor::SensorSubModule>(
-        info["source"], info["flip"], *cboard);
+        info["source"], info["flip"], *timed_serial);
 
     detect_submodule_registered = detect_composite->register_submodule_with_params<detect::DetectSubModule>(info["model"]);
 
     predict_submodule_registered = predict_composite->register_submodule_with_params<predict::LinearPredictorSubModule>(
         info["camera_para"], atoi(info["latency"].c_str()));
 
-    planner_submodule_registered = predict_composite->register_submodule_with_params<plan::PlannerSubModule>(*cboard);
+    planner_submodule_registered = predict_composite->register_submodule_with_params<plan::PlannerSubModule>(*planner_to_serial_bridge);
 
     // 设置各个任务的调试和显示选项
-    cboard->setdebug(display["cboard_debug"]);
-    cboard->setshow(display["cboard_show"]);
+    timed_serial->setdebug(display["cboard_debug"]);
+    timed_serial->setshow(display["cboard_show"]);
 
     sensor_composite->setdebug(display["sensor_debug"]);
     sensor_composite->setshow(display["sensor_show"]);
@@ -136,8 +140,9 @@ int main(void)
         delete sensor_composite;
         delete detect_composite;
         delete predict_composite;
-        delete cboard;
+        delete timed_serial;
         delete foxglove_server;
+        delete planner_to_serial_bridge;
         return 0;
     }
 
@@ -171,7 +176,7 @@ int main(void)
                             { (*predict_composite)(det2pre, pre2cap); });
                             
     t_cboard = std::thread([&]()
-                          { (*cboard)(); });
+                          { (*timed_serial)(); });
 
     t_foxglove_server = std::thread([&]()
                           { (*foxglove_server)(); });
@@ -180,7 +185,7 @@ int main(void)
 
     // 启动所有任务开始工作
     LOGM_S("Starting all composite tasks...");
-    cboard->start();
+    timed_serial->start();
     sensor_composite->start();
     detect_composite->start();
     predict_composite->start();
@@ -215,8 +220,9 @@ int main(void)
     delete sensor_composite;
     delete detect_composite;
     delete predict_composite;
-    delete cboard;
+    delete timed_serial;
     delete foxglove_server;
+    delete planner_to_serial_bridge;
 
     return 0;
 }

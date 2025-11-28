@@ -1,6 +1,6 @@
 //
-// Created for communication module separation - Cboard_t
-// Extracted communication functionality from UartIMU
+// Created for hardware communication module - TimedSerial
+// Handles timed serial communication with lower machines
 //
 
 #ifndef CBOARD_H
@@ -11,6 +11,7 @@
 
 // modules
 #include "common.hpp"
+#include "message_bridge.hpp"
 
 // packages
 #include <stdint.h>
@@ -18,13 +19,13 @@
 #include <functional>
 #include <chrono>
 
-namespace communicationBoard
+namespace hardware
 {
     /**
-     * @brief   通讯子模块
+     * @brief   串口定时通讯子模块
      * @details 处理与下位机的串口通讯，包括IMU数据接收和控制指令发送
      */
-    class Cboard_t : public pipeline::BasicTask
+    class TimedSerial : public pipeline::BasicTask
     {
     public:
         static constexpr size_t CMDARRAYLENGTH = 10;
@@ -34,9 +35,10 @@ namespace communicationBoard
         /**
          * @brief   构造函数
          * @param[in] device_name 串口设备名称
+         * @param[in] message_bridge 消息桥接对象引用
          */
-        Cboard_t(const std::string &device_name);
-        virtual ~Cboard_t();
+        TimedSerial(const std::string &device_name, pipeline::bridge::PlannerToSerialBridge &message_bridge);
+        virtual ~TimedSerial();
 
         /**
          * @brief   子模块处理函数
@@ -56,19 +58,24 @@ namespace communicationBoard
             imu->get_robotstatus(robotstatus);
         }
 
-
-        void set_robotcommand(const command_array_t &robotCommands, const Attitude &attitude);
-
     private:
         bool read_latest_command_and_attitude();
         
+        /**
+         * @brief   处理来自 Planner 的命令消息（回调函数）
+         * @param[in] msg 包含命令数组和姿态的消息
+         */
+        void handle_planner_message(const pipeline::bridge::PlannerToSerialMessage &msg);
+        
         // 通讯相关成员变量
         UartIMU *imu = nullptr; /*!< IMU 通讯接口指针 */
-
+        pipeline::bridge::PlannerToSerialBridge &planner_bridge; /*!< 消息桥接引用 */
+        
         command_array_t command_array; // 会被跨线程访问，在没有锁保护的情况下，不要读取它，commandCache是安全的本地副本
         RobotCommand command_cache;
         Attitude attitude_at_last_frame; // 会被跨线程访问，在没有锁保护的情况下，不要读取它，attitudeCache是安全的本地副本
         Attitude attitude_cache;
+        std::chrono::microseconds plan_period; // planner模块的控制周期，原理上会被跨线程访问，但目前只在初始化时写入一次
         std::chrono::steady_clock::time_point command_start_time;
         std::mutex data_mutex;
         fps_counter total_fps{"cboard_fps"};
