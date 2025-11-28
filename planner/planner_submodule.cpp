@@ -18,7 +18,7 @@ namespace plan
         return false;
     }
 
-    command_array_t PlannerSubModule::generate_command_array(const RobotCommand& command) {
+    PlannerSubModule::command_array_t PlannerSubModule::generate_command_array(const RobotCommand& command) {
         constexpr std::chrono::microseconds plan_period{2000};
         command_array_t commands;
         for (size_t i = 0; i < CMDARRAYLENGTH; ++i) {
