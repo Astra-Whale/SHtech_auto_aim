@@ -28,9 +28,6 @@ namespace hardware
     class TimedSerial : public pipeline::BasicTask
     {
     public:
-        static constexpr size_t CMDARRAYLENGTH = 10;
-        static constexpr std::chrono::microseconds send_period{2000};
-        using command_array_t = std::array<RobotCommand, CMDARRAYLENGTH>;
 
         /**
          * @brief   构造函数
@@ -66,6 +63,10 @@ namespace hardware
          * @param[in] msg 包含命令数组和姿态的消息
          */
         void handle_planner_message(const pipeline::bridge::PlannerToSerialMessage &msg);
+
+        static constexpr size_t CMDARRAYLENGTH = 10;
+        static constexpr std::chrono::microseconds send_period{2000};
+        using command_array_t = std::array<RobotCommand, CMDARRAYLENGTH>;
         
         // 通讯相关成员变量
         UartIMU *imu = nullptr; /*!< IMU 通讯接口指针 */

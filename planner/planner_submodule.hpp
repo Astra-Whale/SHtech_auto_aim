@@ -55,9 +55,6 @@ namespace plan
         command_array_t generate_command_array(const RobotCommand& command);
 
         pipeline::bridge::PlannerToSerialBridge &planner_bridge;
-        
-        static constexpr size_t CMDARRAYLENGTH = 10;
-        using command_array_t = std::array<RobotCommand, CMDARRAYLENGTH>;
     };
 }
 
