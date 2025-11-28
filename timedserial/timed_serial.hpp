@@ -3,8 +3,8 @@
 // Handles timed serial communication with lower machines
 //
 
-#ifndef CBOARD_H
-#define CBOARD_H
+#ifndef TIMEDSERIAL_H
+#define TIMEDSERIAL_H
 
 // submodules
 #include "UartIMU/uartimu.hpp"
@@ -79,8 +79,8 @@ namespace hardware
         std::chrono::microseconds plan_period; // planner模块的控制周期，原理上会被跨线程访问，但目前只在初始化时写入一次
         std::chrono::steady_clock::time_point command_start_time;
         std::mutex data_mutex;
-        fps_counter total_fps{"cboard_fps"};
+        fps_counter total_fps{"timedserial_fps"};
     };
 }
 
-#endif // CBOARD_H
+#endif // TIMEDSERIAL_H

@@ -63,7 +63,7 @@ bool init(void)
     detect_composite = new pipeline::PipelineTask();
     predict_composite = new pipeline::PipelineTask();
 
-    // 创建消息桥接（连接 planner 和 cboard）
+    // 创建消息桥接（连接 planner 和 timed_serial）
     planner_to_serial_bridge = new pipeline::bridge::PlannerToSerialBridge();
 
     // 初始化独立任务
@@ -73,13 +73,13 @@ bool init(void)
     // 注册各个子模块
     bool entrystage_submodule_registered = false;
     bool sensor_submodule_registered = false;
-    bool cboard_submodule_registered = false;
+    bool timed_serial_submodule_registered = false;
     bool detect_submodule_registered = false;
     bool predict_submodule_registered = false;
     bool planner_submodule_registered = false;
     bool foxglove_server_submodule_registered = false;
 
-    cboard_submodule_registered = true; // timed_serial is instantiated separately
+    timed_serial_submodule_registered = true; // timed_serial is instantiated separately
     foxglove_server_submodule_registered = true; // foxglove_server is instantiated separately
 
 
@@ -96,8 +96,8 @@ bool init(void)
     planner_submodule_registered = predict_composite->register_submodule_with_params<plan::PlannerSubModule>(*planner_to_serial_bridge);
 
     // 设置各个任务的调试和显示选项
-    timed_serial->setdebug(display["cboard_debug"]);
-    timed_serial->setshow(display["cboard_show"]);
+    timed_serial->setdebug(display["timedserial_debug"]);
+    timed_serial->setshow(display["timedserial_show"]);
 
     sensor_composite->setdebug(display["sensor_debug"]);
     sensor_composite->setshow(display["sensor_show"]);
@@ -115,7 +115,7 @@ bool init(void)
     // 检查所有关键子模块是否注册成功
     if (!entrystage_submodule_registered 
         || !sensor_submodule_registered 
-        || !cboard_submodule_registered 
+        || !timed_serial_submodule_registered 
         || !detect_submodule_registered 
         || !predict_submodule_registered 
         || !foxglove_server_submodule_registered
@@ -156,7 +156,7 @@ int main(void)
         pre2cap.put(std::make_shared<ThreadDataPack>());
     }
 
-    std::thread t_sensor, t_detect, t_predict, t_cboard, t_foxglove_server;
+    std::thread t_sensor, t_detect, t_predict, t_timed_serial, t_foxglove_server;
 
     sigset_t oldmask;
     sigset_t mask;
@@ -175,7 +175,7 @@ int main(void)
     t_predict = std::thread([&]()
                             { (*predict_composite)(det2pre, pre2cap); });
                             
-    t_cboard = std::thread([&]()
+    t_timed_serial = std::thread([&]()
                           { (*timed_serial)(); });
 
     t_foxglove_server = std::thread([&]()
@@ -197,8 +197,8 @@ int main(void)
 // terminate(0);
 
     // 主线程等待所有工作线程结束
-    t_cboard.join();
-    LOGM_S("Cboard Thread Quit Success!");
+    t_timed_serial.join();
+    LOGM_S("timed_serial Thread Quit Success!");
 
     t_sensor.join();
     LOGM_S("Sensor Thread Quit Success!");

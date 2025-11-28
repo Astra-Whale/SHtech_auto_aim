@@ -1,5 +1,5 @@
-#ifndef CBOARD_UARTIMU_PACKET_H
-#define CBOARD_UARTIMU_PACKET_H
+#ifndef TIMEDSERIAL_UARTIMU_PACKET_H
+#define TIMEDSERIAL_UARTIMU_PACKET_H
 
 /**
  * @brief 下行控制指令
@@ -67,4 +67,4 @@ typedef struct __attribute__((packed))
     uint8_t robot_id;
 } robot_data_t;
 
-#endif //CBOARD_UARTIMU_PACKET_H
+#endif //TIMEDSERIAL_UARTIMU_PACKET_H

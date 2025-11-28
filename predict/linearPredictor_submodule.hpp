@@ -10,7 +10,6 @@
 #include "common.hpp"
 #include "tools.hpp"
 #include "kalman.h"
-#include "cboard.hpp"
 
 // packages
 #include <ctime>

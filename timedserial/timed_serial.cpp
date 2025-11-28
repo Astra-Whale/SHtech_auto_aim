@@ -3,7 +3,7 @@
 // Handles timed serial communication with lower machines
 //
 
-#include "cboard.hpp"
+#include "timed_serial.hpp"
 
 namespace hardware
 {
@@ -52,7 +52,7 @@ namespace hardware
         auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(now - command_start_time);
         int64_t expectedIndexOne = static_cast<int64_t>(elapsed.count() / plan_period.count());
 
-        assert(expectedIndexOne >= 0 && "[cboard] Elapsed time calculation error!");
+        assert(expectedIndexOne >= 0 && "[timedserial] Elapsed time calculation error!");
         if (expectedIndexOne >= CMDARRAYLENGTH - 1)
         {
             // 命令数组已耗尽，保留最后一个元素用于插值计算
@@ -110,7 +110,7 @@ namespace hardware
                     auto read_time_cost = std::chrono::high_resolution_clock::now() - start_time;
                     if(_debug)
                         if(read_time_cost > std::chrono::microseconds(500))
-                            LOGM_S("[cboard_submodule] Cost time: %lld us", (long long)std::chrono::duration_cast<std::chrono::microseconds>(read_time_cost).count());
+                            LOGM_S("[timedserial_submodule] Cost time: %lld us", (long long)std::chrono::duration_cast<std::chrono::microseconds>(read_time_cost).count());
                     imu->transmit_cmd(
                         attitude_cache.yaw + command_cache.yaw_angle,
                         command_cache.yaw_speed,
@@ -155,7 +155,7 @@ namespace hardware
                 }
                 
                 
-                LOGM_F("[cboard]%llu start time: %lld|last time: %lld",frame_index++,
+                LOGM_F("[timedserial]%llu start time: %lld|last time: %lld",frame_index++,
                        static_cast<long long>(std::chrono::duration_cast<std::chrono::microseconds>(start_time.time_since_epoch()).count()),
                        static_cast<long long>(std::chrono::duration_cast<std::chrono::microseconds>(end_time-start_time).count())
                 );

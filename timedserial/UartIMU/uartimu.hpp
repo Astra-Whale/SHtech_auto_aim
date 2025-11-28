@@ -1,5 +1,5 @@
-#ifndef CBOARD_UARTIMU_UARTIMU_H
-#define CBOARD_UARTIMU_UARTIMU_H
+#ifndef TIMEDSERIAL_UARTIMU_UARTIMU_H
+#define TIMEDSERIAL_UARTIMU_UARTIMU_H
 // modules
 #include "common.hpp"
 #include "../imu.hpp"
@@ -58,4 +58,4 @@ private:
     void read_handler();
 };
 
-#endif // CBOARD_UARTIMU_UARTIMU_H
+#endif // TIMEDSERIAL_UARTIMU_UARTIMU_H
