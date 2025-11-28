@@ -82,6 +82,7 @@ namespace communicationBoard
 
             // basictask框架级实现：收到启动信号，开始工作循环
             // 本循环内部是具体的任务实现
+            unsigned long long frame_index = 0;
             while (isalive())
             {
                 auto start_time = std::chrono::high_resolution_clock::now();
@@ -99,6 +100,10 @@ namespace communicationBoard
                 // 发送控制指令
                 if (read_latest_command_and_attitude())
                 {
+                    auto read_time_cost = std::chrono::high_resolution_clock::now() - start_time;
+                    if(_debug)
+                        if(read_time_cost > std::chrono::microseconds(500))
+                            LOGM_S("[cboard_submodule] Cost time: %lld us", (long long)std::chrono::duration_cast<std::chrono::microseconds>(read_time_cost).count());
                     imu->transmit_cmd(
                         attitude_cache.yaw + command_cache.yaw_angle,
                         command_cache.yaw_speed,
@@ -107,7 +112,7 @@ namespace communicationBoard
                         command_cache.distance,
                         static_cast<uint8_t>(command_cache.shoot_mode == ShootMode::COMMON));
 
-                    if (_debug)
+                    if (false&&_debug)
                     {
                         LOGM_S("[cboard_submodule][transmit] p-p:%6.2f | p-m:%6.2f | p-s:%6.2f | ps-s:%6.2f | y-p:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f",
                                command_cache.pitch_angle, attitude_cache.pitch,
@@ -123,6 +128,13 @@ namespace communicationBoard
                     if (_debug)
                         LOGM_S("[cboard_submodule] No new command to send");
                 }
+
+                if (true||_debug)
+                {
+                    CNT_FPS(total_fps, {});
+                    // LOGM_S("[sensor_submodule]Info: Idx = %d, Bytes = %d", data->index, data->frame.size().height * data->frame.size().width);
+                }
+
                 auto end_time = std::chrono::high_resolution_clock::now();
                 auto sleep_duration = send_period - (end_time - start_time);
                 if (sleep_duration > std::chrono::milliseconds(0))
@@ -131,8 +143,15 @@ namespace communicationBoard
                 }
                 else
                 {
-                    LOGW_S("[cboard_submodule] sending overrun by %lld ms", (long long)std::chrono::duration_cast<std::chrono::milliseconds>(-sleep_duration).count());
+                    LOGW_S("[cboard_submodule] sending overrun by %lld ms", (long long)std::chrono::duration_cast<std::chrono::microseconds>(-sleep_duration).count());
+                    LOGW_F("[cboard_submodule] sending overrun by %lld us", (long long)std::chrono::duration_cast<std::chrono::microseconds>(-sleep_duration).count());
                 }
+                
+                
+                LOGM_F("[cboard]%llu start time: %lld|last time: %lld",frame_index++,
+                       static_cast<long long>(std::chrono::duration_cast<std::chrono::microseconds>(start_time.time_since_epoch()).count()),
+                       static_cast<long long>(std::chrono::duration_cast<std::chrono::microseconds>(end_time-start_time).count())
+                );
 
 
             }

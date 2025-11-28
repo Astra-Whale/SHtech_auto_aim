@@ -64,13 +64,14 @@ namespace communicationBoard
         
         // 通讯相关成员变量
         UartIMU *imu = nullptr; /*!< IMU 通讯接口指针 */
-        
+
         command_array_t command_array; // 会被跨线程访问，在没有锁保护的情况下，不要读取它，commandCache是安全的本地副本
         RobotCommand command_cache;
         Attitude attitude_at_last_frame; // 会被跨线程访问，在没有锁保护的情况下，不要读取它，attitudeCache是安全的本地副本
         Attitude attitude_cache;
         std::chrono::steady_clock::time_point command_start_time;
         std::mutex data_mutex;
+        fps_counter total_fps{"cboard_fps"};
     };
 }
 
