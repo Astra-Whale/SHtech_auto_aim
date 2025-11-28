@@ -75,6 +75,7 @@ namespace hardware
         RobotCommand command_cache;
         Attitude attitude_at_last_frame; // 会被跨线程访问，在没有锁保护的情况下，不要读取它，attitudeCache是安全的本地副本
         Attitude attitude_cache;
+        std::chrono::microseconds plan_period; // planner模块的控制周期，原理上会被跨线程访问，但目前只在初始化时写入一次
         std::chrono::steady_clock::time_point command_start_time;
         std::mutex data_mutex;
     };

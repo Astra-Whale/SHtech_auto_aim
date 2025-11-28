@@ -66,6 +66,7 @@ private:
 struct PlannerToSerialMessage {
     std::array<RobotCommand, 10> command_array;
     Attitude attitude;
+    std::chrono::microseconds plan_period;
 };
 
 /**
