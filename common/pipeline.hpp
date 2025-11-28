@@ -50,7 +50,7 @@ using SafeUniquePtr = std::unique_ptr<T, SafeDeleter>;
  * BasicTask (基础层)
  *    ├── 职责：线程生命周期控制、调试变量控制
  *    ├── 地位：独立的处理单元，只可单独存在，没有流水线支持
- *    └── 关系：独立运行的流水线外单元：如cboard
+ *    └── 关系：独立运行的流水线外单元：如timed_serial
  * 
  * PipelineTask (组合层) 
  *    ├── 继承：BasicTask (IS-A 关系)
