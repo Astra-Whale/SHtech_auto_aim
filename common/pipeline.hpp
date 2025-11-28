@@ -507,43 +507,6 @@ namespace pipeline
         class SubModuleRegistrar
         {
         public:
-            /**
-             * @brief   构造函数，注册并初始化子模块
-             * @tparam Args 构造函数参数类型
-             * @param task 复合任务引用
-             * @param args 构造函数参数
-             */
-            template<typename... Args>
-            SubModuleRegistrar(PipelineTask& task, Args&&... args)
-            {
-                task.register_submodule_with_params<T>(std::forward<Args>(args)...);
-            }
-        };
-        /**
-         * @brief   注册子模块
-         * @param[in] submodule 子模块的独占所有权，调用后 submodule 将被移动
-         * @throws  std::invalid_argument 当 submodule 为 nullptr 时抛出异常
-         */
-        void register_submodule(std::unique_ptr<SubModule> submodule)
-        {
-            if (!submodule)
-            {
-                throw std::invalid_argument("PipelineTask: Cannot register null submodule");
-            }
-            submodules.emplace_back(std::move(submodule));
-        }
-
-        /**
-         * @brief   使用初始化列表批量注册子模块
-         * @param[in] submodule_list 子模块初始化列表
-         */
-        template<typename... Args>
-        void register_submodules(Args&&... args)
-        {
-            static_assert(sizeof...(args) > 0, "At least one submodule must be provided");
-            (register_submodule(std::forward<Args>(args)), ...);
-        }
-
         /**
          * @brief   注册并初始化子模块（模板版本）
          * @tparam T 子模块类型，必须继承自 SubModule
@@ -697,6 +660,20 @@ namespace pipeline
         }
 
     private:
+        /**
+         * @brief   注册子模块
+         * @param[in] submodule 子模块的独占所有权，调用后 submodule 将被移动
+         * @throws  std::invalid_argument 当 submodule 为 nullptr 时抛出异常
+         */
+        void register_submodule(std::unique_ptr<SubModule> submodule)
+        {
+            if (!submodule)
+            {
+                throw std::invalid_argument("PipelineTask: Cannot register null submodule");
+            }
+            submodules.emplace_back(std::move(submodule));
+        }
+
         std::vector<std::unique_ptr<SubModule>> submodules;
     };
 
