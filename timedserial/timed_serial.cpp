@@ -7,14 +7,14 @@
 
 namespace hardware
 {
-    // TimedSerialNew 实现
-    TimedSerialNew::TimedSerialNew(std::unique_ptr<SerialInterface> driver_impl, 
+    // TimedSerial 实现
+    TimedSerial::TimedSerial(std::unique_ptr<SerialInterface> driver_impl, 
                                    pipeline::bridge::PlannerToSerialBridge &message_bridge) 
         : BasicTask(), 
           driver_(std::move(driver_impl)), 
           planner_bridge_(message_bridge)
     {
-        LOGM_S("[TimedSerialNew] constructing with injected driver");
+        LOGM_S("[TimedSerial] constructing with injected driver");
 
         // 注册为 Planner 消息接收者
         planner_bridge_.set_receiver([this](const pipeline::bridge::PlannerToSerialMessage &msg) {
@@ -33,11 +33,11 @@ namespace hardware
         // 初始化驱动
         if (!driver_->init())
         {
-            LOGE_S("[TimedSerialNew] Failed to initialize serial driver");
+            LOGE_S("[TimedSerial] Failed to initialize serial driver");
         }
         else
         {
-            LOGM_S("[TimedSerialNew] Serial driver initialized successfully");
+            LOGM_S("[TimedSerial] Serial driver initialized successfully");
             // 立即启动通讯
             driver_->start();
         }
@@ -49,7 +49,7 @@ namespace hardware
      * 这是 Planner 模块通过消息桥发送命令时的回调
      * 需要保护共享数据的访问
      */
-    void TimedSerialNew::handle_planner_message(const pipeline::bridge::PlannerToSerialMessage &msg)
+    void TimedSerial::handle_planner_message(const pipeline::bridge::PlannerToSerialMessage &msg)
     {
         // 使用互斥锁保护跨线程访问的命令数组和姿态数据
         std::lock_guard<std::mutex> lock(command_mutex_);
@@ -65,14 +65,14 @@ namespace hardware
      * 这是驱动层收到姿态数据时的回调
      * 立即更新本地状态，确保数据的实时性
      */
-    void TimedSerialNew::handle_attitude_update(const Attitude& att)
+    void TimedSerial::handle_attitude_update(const Attitude& att)
     {
         std::lock_guard<std::mutex> lock(sensor_mutex_);
         latest_attitude_ = att;
         
         if (_debug)
         {
-            LOGM_S("[TimedSerialNew] Attitude updated: yaw=%.2f, pitch=%.2f", 
+            LOGM_S("[TimedSerial] Attitude updated: yaw=%.2f, pitch=%.2f", 
                    att.yaw, att.pitch);
         }
     }
@@ -89,7 +89,7 @@ namespace hardware
      * 
      * 这里采用"保留已有值"的策略，避免被默认值覆盖
      */
-    void TimedSerialNew::handle_status_update(const RobotStatus& sts)
+    void TimedSerial::handle_status_update(const RobotStatus& sts)
     {
         std::lock_guard<std::mutex> lock(sensor_mutex_);
         
@@ -107,7 +107,7 @@ namespace hardware
         
         if (_debug)
         {
-            LOGM_S("[TimedSerialNew] Status updated: enemy_color=%d, speed=%.2f", 
+            LOGM_S("[TimedSerial] Status updated: enemy_color=%d, speed=%.2f", 
                    static_cast<int>(latest_robot_status_.enemy_color), 
                    latest_robot_status_.robot_speed_mps);
         }
@@ -118,7 +118,7 @@ namespace hardware
      * 
      * 此函数在发送线程中调用，需要锁保护
      */
-    bool TimedSerialNew::read_latest_command_and_attitude()
+    bool TimedSerial::read_latest_command_and_attitude()
     {
         // 使用互斥锁保护共享数据的并发访问
         std::lock_guard<std::mutex> lock(command_mutex_);
@@ -146,16 +146,16 @@ namespace hardware
         return true;
     }
 
-    TimedSerialNew::~TimedSerialNew()
+    TimedSerial::~TimedSerial()
     {
         if (driver_)
         {
             driver_->close();
         }
-        std::cout << "[TimedSerialNew] destroyed" << std::endl;
+        std::cout << "[TimedSerial] destroyed" << std::endl;
     }
 
-    void TimedSerialNew::operator()()
+    void TimedSerial::operator()()
     {
         // basictask框架级实现：统一的等待-工作循环
         while (true)
@@ -177,7 +177,7 @@ namespace hardware
                 {
                     if (_debug)
                     {
-                        LOGW_S("[TimedSerialNew] Driver not available");
+                        LOGW_S("[TimedSerial] Driver not available");
                     }
                     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
                     continue;
@@ -202,7 +202,7 @@ namespace hardware
 
                     if (false && _debug)
                     {
-                        LOGM_S("[TimedSerialNew][transmit] p-p:%6.2f | p-m:%6.2f | p-s:%6.2f | ps-s:%6.2f | y-p:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f",
+                        LOGM_S("[TimedSerial][transmit] p-p:%6.2f | p-m:%6.2f | p-s:%6.2f | ps-s:%6.2f | y-p:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f",
                                command_cache_.pitch_angle, attitude_cache_.pitch,
                                attitude_cache_.pitch + command_cache_.pitch_angle,
                                command_cache_.pitch_speed,
@@ -214,7 +214,7 @@ namespace hardware
                 else
                 {
                     if (_debug)
-                        LOGM_S("[TimedSerialNew] No new command to send");
+                        LOGM_S("[TimedSerial] No new command to send");
                 }
 
                 if (true || _debug)
@@ -230,9 +230,9 @@ namespace hardware
                 }
                 else
                 {
-                    LOGW_S("[TimedSerialNew] sending overrun by %lld ms", 
+                    LOGW_S("[TimedSerial] sending overrun by %lld ms", 
                            (long long)std::chrono::duration_cast<std::chrono::microseconds>(-sleep_duration).count());
-                    LOGW_F("[TimedSerialNew] sending overrun by %lld us", 
+                    LOGW_F("[TimedSerial] sending overrun by %lld us", 
                            (long long)std::chrono::duration_cast<std::chrono::microseconds>(-sleep_duration).count());
                 }
                 

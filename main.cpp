@@ -9,7 +9,7 @@ int totalFrameCounter = 0;
 pipeline::PipelineTask* sensor_composite = nullptr;
 pipeline::PipelineTask* detect_composite = nullptr;
 pipeline::PipelineTask* predict_composite = nullptr;
-hardware::TimedSerialNew* timed_serial = nullptr;
+hardware::TimedSerial* timed_serial = nullptr;
 foxgloveSer::FoxgloveServer_t* foxglove_server = nullptr;
 pipeline::bridge::PlannerToSerialBridge* planner_to_serial_bridge = nullptr;
 
@@ -79,7 +79,7 @@ bool init(void)
         driver = std::make_unique<UartDriver>(info["port"]);
     }
 
-    timed_serial = new hardware::TimedSerialNew(std::move(driver), *planner_to_serial_bridge);
+    timed_serial = new hardware::TimedSerial(std::move(driver), *planner_to_serial_bridge);
     
     foxglove_server = new foxgloveSer::FoxgloveServer_t();
 
