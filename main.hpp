@@ -25,6 +25,8 @@
 #include "entrystage/entryStage_submodule.hpp"
 #include "sensor/sensor_submodule.hpp"
 #include "timedserial/timed_serial.hpp"
+#include "timedserial/serial_interface.hpp"
+#include "timedserial/UartIMU/uart_driver.hpp"
 #include "detect/detect_submodule.hpp"
 #include "predict/linearPredictor_submodule.hpp"
 #include "foxglove/foxglove_server.hpp"

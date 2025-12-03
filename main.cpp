@@ -9,7 +9,7 @@ int totalFrameCounter = 0;
 pipeline::PipelineTask* sensor_composite = nullptr;
 pipeline::PipelineTask* detect_composite = nullptr;
 pipeline::PipelineTask* predict_composite = nullptr;
-hardware::TimedSerial* timed_serial = nullptr;
+hardware::TimedSerialNew* timed_serial = nullptr;
 foxgloveSer::FoxgloveServer_t* foxglove_server = nullptr;
 pipeline::bridge::PlannerToSerialBridge* planner_to_serial_bridge = nullptr;
 
@@ -66,8 +66,11 @@ bool init(void)
     // 创建消息桥接（连接 planner 和 timed_serial）
     planner_to_serial_bridge = new pipeline::bridge::PlannerToSerialBridge();
 
-    // 初始化独立任务
-    timed_serial = new hardware::TimedSerial(info["port"], *planner_to_serial_bridge);
+    // 初始化独立任务 - 使用依赖注入模式
+    // 1. 创建驱动实例
+    auto driver = std::make_unique<UartDriver>(info["port"]);
+    // 2. 注入到业务层
+    timed_serial = new hardware::TimedSerialNew(std::move(driver), *planner_to_serial_bridge);
     foxglove_server = new foxgloveSer::FoxgloveServer_t();
 
     // 注册各个子模块
