@@ -2,6 +2,33 @@
 // Message PushBridge for decoupling inter-module communication
 // Header-only design for minimal compilation overhead
 //
+/**
+ * ======================================================================================
+ * ⚠️ 安全性协议与架构契约 (SECURITY PROTOCOL & ARCHITECTURE CONTRACT) ⚠️
+ * ======================================================================================
+ * 本文件实现的 PushBridge/PullBridge 为了追求极致性能，使用了裸指针和 std::function。
+ * 它本身 **不包含** 互斥锁保护。为了防止 内存崩溃(SegFault) 和 数据竞争(Data Race)，
+ * 所有使用者必须严格遵守以下【全生命周期安全规范】：
+ *
+ * 1. 【初始化阶段 (Wiring Phase)】
+ * - set_receiver / set_provider 必须且只能在 **单线程初始化阶段** 完成。
+ * - 严禁在任何工作线程启动（std::thread 构造）之后修改回调函数。
+ * - 此时 bridge 的回调被视为“只读”配置。
+ *
+ * 2. 【运行阶段 (Running Phase)】
+ * - Sender 可以在任意线程并发调用 send()。
+ * - Receiver 的回调函数必须自行保证线程安全（若访问共享资源）。
+ * - 严禁在运行期间调用 set_receiver（会导致未定义的竞争行为）。
+ *
+ * 3. 【销毁阶段 (Destruction Phase)】
+ * - 必须遵循“二段式关闭”原则：
+ * Step A: 通知所有线程停止 (terminate flags)。
+ * Step B: 主线程调用 join() 等待所有 Sender 线程彻底结束。
+ * Step C: 只有在所有线程都 join 之后，才能 delete Bridge 和 Receiver 对象。
+ * - 违反此顺序将导致 Use-After-Free (悬垂指针) 崩溃。
+ *
+ * ======================================================================================
+ */
 
 #ifndef COMMON_MESSAGE_BRIDGE_HPP
 #define COMMON_MESSAGE_BRIDGE_HPP
@@ -36,7 +63,11 @@ public:
      * @param[in] callback 回调函数
      */
     void set_receiver(CallbackFunc callback) {
+        if (receiver_set_) {
+            LOGE_S("Receiver already set for this PushBridge.");
+        }
         callback_ = std::move(callback);
+        receiver_set_ = true;
     }
     
     /**
@@ -44,8 +75,15 @@ public:
      * @param[in] msg 要发送的消息
      */
     void send(const MessageType& msg) const {
-        if (callback_) {
-            callback_(msg);
+        try
+        {
+            if (callback_) {
+                callback_(msg);
+            }
+        }
+        catch(const std::exception& e)
+        {
+            LOGE_S("PushBridge send exception: %s", e.what());
         }
     }
     
@@ -58,6 +96,7 @@ public:
     
 private:
     CallbackFunc callback_;
+    bool receiver_set_ = false;
 };
 
 template<typename MessageType>
@@ -76,7 +115,11 @@ public:
      * @param[in] provider 一个无参函数，返回 MessageType
      */
     void set_provider(ProviderFunc provider) {
+        if (provider_set_) {
+            LOGE_S("Provider already set for this PullBridge.");
+        }
         provider_ = std::move(provider);
+        provider_set_ = true;
     }
 
     /**
@@ -84,9 +127,17 @@ public:
      * @return  若已设置 provider，则返回其结果；否则返回 MessageType 默认值
      */
     MessageType get() const {
-        if (provider_) {
-            return provider_();
+        try
+        {
+            if (provider_) {
+                return provider_();
+            }
         }
+        catch(const std::exception& e)
+        {
+            LOGE_S("PullBridge get exception: %s", e.what());
+        }
+        LOGE_S("No provider set for this PullBridge, returning default MessageType.");
         return MessageType{};
     }
 
@@ -99,6 +150,7 @@ public:
 
 private:
     ProviderFunc provider_;
+    bool provider_set_ = false;
 };
 
 /**
