@@ -27,6 +27,7 @@
 #include "timedserial/timed_serial.hpp"
 #include "timedserial/serial_interface.hpp"
 #include "timedserial/UartIMU/uart_driver.hpp"
+#include "timedserial/UartIMU/mock_driver.hpp"
 #include "detect/detect_submodule.hpp"
 #include "predict/linearPredictor_submodule.hpp"
 #include "foxglove/foxglove_server.hpp"
