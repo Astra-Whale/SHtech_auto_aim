@@ -66,11 +66,21 @@ bool init(void)
     // 创建消息桥接（连接 planner 和 timed_serial）
     planner_to_serial_bridge = new pipeline::bridge::PlannerToSerialBridge();
 
-    // 初始化独立任务 - 使用依赖注入模式
-    // 1. 创建驱动实例
-    auto driver = std::make_unique<UartDriver>(info["port"]);
-    // 2. 注入到业务层
+    // 初始化独立任务 - 根据配置选择驱动类型
+    std::unique_ptr<SerialInterface> driver;
+
+    if (info["port"] == "None" || info["port"].empty()) {
+        // 使用 MockDriver（无硬件模式）
+        LOGW_S("[init] Using MockDriver (no hardware mode)");
+        driver = std::make_unique<MockDriver>();
+    } else {
+        // 使用真实的 UartDriver
+        LOGM_S("[init] Using UartDriver with port: %s", info["port"].c_str());
+        driver = std::make_unique<UartDriver>(info["port"]);
+    }
+
     timed_serial = new hardware::TimedSerialNew(std::move(driver), *planner_to_serial_bridge);
+    
     foxglove_server = new foxgloveSer::FoxgloveServer_t();
 
     // 注册各个子模块
