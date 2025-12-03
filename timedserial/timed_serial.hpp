@@ -31,7 +31,7 @@ namespace hardware
      * - 数据汇聚：作为数据的汇聚点，统一管理和合并来自驱动层的数据
      * - 线程安全：使用互斥锁保护共享数据
      */
-    class TimedSerialNew : public pipeline::BasicTask
+    class TimedSerial : public pipeline::BasicTask
     {
     public:
 
@@ -40,10 +40,10 @@ namespace hardware
          * @param[in] driver_impl 串口驱动实现的独占指针（依赖注入）
          * @param[in] message_bridge 消息桥接对象引用
          */
-        TimedSerialNew(std::unique_ptr<SerialInterface> driver_impl, 
+        TimedSerial(std::unique_ptr<SerialInterface> driver_impl, 
                        pipeline::bridge::PlannerToSerialBridge &message_bridge);
         
-        virtual ~TimedSerialNew();
+        virtual ~TimedSerial();
 
         /**
          * @brief   子模块处理函数
