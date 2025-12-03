@@ -7,7 +7,6 @@
 
 // modules
 #include "common.hpp"
-#include "foxglove_server.hpp"
 
 // packages
 #include <ctime>
@@ -32,7 +31,8 @@ namespace entrystage
         /**
          * @brief   构造函数
          */
-        EntryStageSubModule(foxgloveSer::FoxgloveServer_t& foxglove_server);
+        EntryStageSubModule(pipeline::bridge::EntryStageToFoxgloveRobotBridge& robot_bridge,
+                           pipeline::bridge::EntryStageToFoxgloveAliveBridge& alive_bridge);
         virtual ~EntryStageSubModule() = default;
 
         bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
@@ -48,7 +48,8 @@ namespace entrystage
 
     private:
         int totalframecounter = 0;              /*!< 总帧数计数器 */
-        foxgloveSer::FoxgloveServer_t& foxglove_server; /*!< Foxglove 服务器引用 */
+        pipeline::bridge::EntryStageToFoxgloveRobotBridge& robot_bridge_;  /*!< 机器人状态消息桥接 */
+        pipeline::bridge::EntryStageToFoxgloveAliveBridge& alive_bridge_;  /*!< 存活信号消息桥接 */
     };
 }
 

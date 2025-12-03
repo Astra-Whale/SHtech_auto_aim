@@ -5,20 +5,24 @@
 
 #include "sensor_submodule.hpp"
 
-//submodules
+// submodules
 #include <video/video_wrapper.hpp>
 #ifdef ENABLE_HIKCAM
-#warning ENABLE_HIKCAM 
+#warning ENABLE_HIKCAM
 #include <hikcam/hikcam_wrapper.hpp>
 #else
-#warning 
-#warning DISABLE_HIKCAM 
+#warning
+#warning DISABLE_HIKCAM
 #endif
 
 namespace sensor
 {
     // SensorSubModule 实现
-    SensorSubModule::SensorSubModule(const std::string& VideoSource, const std::string& flip_image, hardware::TimedSerial& timed_serial) : SubModule(SubModuleName::SENSOR), timed_serial(timed_serial)
+    SensorSubModule::SensorSubModule(const std::string &VideoSource, 
+                                    const std::string &flip_image, 
+                                    pipeline::bridge::SensorFromSerialAttitudeBridge attitude_bridge, 
+                                    pipeline::bridge::SensorFromSerialRobotStatusBridge status_bridge) 
+        : SubModule(SubModuleName::SENSOR), attitude_bridge(attitude_bridge), status_bridge(status_bridge)
     {
         LOGM_S("[sensor_submodule] constructing with video: %s", VideoSource.c_str());
         // 初始化视频源
@@ -34,26 +38,26 @@ namespace sensor
         {
             video = new VideoWrapper(VideoSource);
         }
-        
+
         // 初始化视频设备
         while (!video->init())
         {
             LOGE_S("[sensor_submodule]Error: Initialize video stream failed");
         }
         LOGM_S("[sensor_submodule] video initialized");
-        
+
         // 设置图像翻转标志
         if (flip_image == "1")
         {
             is_image_input_flipped = true;
             LOGM_S("[sensor_submodule] Input image will be flipped");
         }
-        else 
+        else
         {
             is_image_input_flipped = false;
             LOGM_S("[sensor_submodule] Input image will not be flipped");
         }
-        
+
         LOGM_S("[sensor_submodule] construction completed");
     }
 
@@ -71,18 +75,18 @@ namespace sensor
         return false;
     }
 
-    SubModuleResult SensorSubModule::process(std::shared_ptr<ThreadDataPack> data, 
-                                  const pipeline::BasicTask* parent)
+    SubModuleResult SensorSubModule::process(std::shared_ptr<ThreadDataPack> data,
+                                             const pipeline::BasicTask *parent)
     {
         auto t1 = std::chrono::steady_clock::now();
-        
+
         // 读取图像
         bool state = video->read(data->frame, _debug);
         data->time = std::chrono::high_resolution_clock::now();
 
         // 读取imu
-        timed_serial.get_attitude(data->attitude);
-        timed_serial.get_robotstatus(data->robotstatus );
+        data->attitude = attitude_bridge.get().attitude;
+        data->robotstatus = status_bridge.get().robotstatus;
 
         if (!state)
         {
@@ -109,7 +113,7 @@ namespace sensor
         {
             cv::flip(data->frame, data->frame, -1);
         }
-        
+
         auto t2 = std::chrono::steady_clock::now();
 
         // 显示图像（如果需要）
@@ -126,14 +130,14 @@ namespace sensor
             CNT_FPS(total_fps, {});
             // LOGM_S("[sensor_submodule]Info: Idx = %d, Bytes = %d", data->index, data->frame.size().height * data->frame.size().width);
         }
-        
+
         auto t3 = std::chrono::steady_clock::now();
         // LOGM_S(
-        //     "SensorSubModule Read %.2lfms Show %.2lfms", 
+        //     "SensorSubModule Read %.2lfms Show %.2lfms",
         //     std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count()*1000,
         //     std::chrono::duration_cast<std::chrono::duration<double>>(t3 - t2).count()*1000
         // );
-        
+
         // 成功处理，返回 true 表示应该传递到下游
         return SubModuleResult::SUCCESS;
     }
