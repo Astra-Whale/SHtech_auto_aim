@@ -9,16 +9,26 @@ namespace hardware
 {
     // TimedSerial 实现
     TimedSerial::TimedSerial(std::unique_ptr<SerialInterface> driver_impl, 
-                                   pipeline::bridge::PlannerToSerialBridge &message_bridge) 
+                                   pipeline::bridge::PlannerToSerialBridge &planner_bridge) 
         : BasicTask(), 
           driver_(std::move(driver_impl)), 
-          planner_bridge_(message_bridge)
+          planner_bridge_(planner_bridge),
+          attitude_bridge_(attitude_bridge),
+          status_bridge_(status_bridge)
     {
         LOGM_S("[TimedSerial] constructing with injected driver");
 
         // 注册为 Planner 消息接收者
         planner_bridge_.set_receiver([this](const pipeline::bridge::PlannerToSerialMessage &msg) {
             this->handle_planner_message(msg);
+        });
+
+        attitude_bridge_.set_provider([this](const Attitude& att) {
+            this->handle_attitude_get(att);
+        });
+
+        status_bridge_.set_provider([this](const RobotStatus& sts) {
+            this->handle_robotstatus_get(sts);
         });
 
         // 注册驱动层的两个独立回调

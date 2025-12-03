@@ -7,8 +7,18 @@
 
 namespace foxgloveSer
 {
-    FoxgloveServer_t::FoxgloveServer_t() : BasicTask()
+    FoxgloveServer_t::FoxgloveServer_t(pipeline::bridge::EntryStageToFoxgloveRobotBridge& robot_bridge,
+                                      pipeline::bridge::EntryStageToFoxgloveAliveBridge& alive_bridge)
+        : BasicTask(), robot_bridge_(robot_bridge), alive_bridge_(alive_bridge)
     {
+        // 注册消息接收回调
+        robot_bridge_.set_receiver([this](const pipeline::bridge::EntryStageToFoxgloveRobotMessage& msg) {
+            this->handle_robot_state_message(msg);
+        });
+
+        alive_bridge_.set_receiver([this](const pipeline::bridge::EntryStageToFoxgloveAliveMessage& msg) {
+            this->handle_alive_message(msg);
+        });
 
         // Start a server to communicate with the Foxglove app.
         foxglove::WebSocketServerOptions ws_options;
@@ -55,8 +65,9 @@ namespace foxgloveSer
     }
 
     
-    void FoxgloveServer_t::log_enemy_robot(Eigen::Matrix<double, 6, 1> enemy_robot_pose)
+    void FoxgloveServer_t::handle_robot_state_message(const pipeline::bridge::EntryStageToFoxgloveRobotMessage& msg)
     {
+        const auto& enemy_robot_pose = msg.enemy_robot_state;
         foxglove::schemas::Pose pose;
         if(_debug)
         {
@@ -97,13 +108,13 @@ namespace foxgloveSer
         scene_channel->log(update);
     }
 
-    void FoxgloveServer_t::log_server_alive()
+    void FoxgloveServer_t::handle_alive_message(const pipeline::bridge::EntryStageToFoxgloveAliveMessage& msg)
     {
         // 记录服务器存活状态的逻辑
-        foxglove::schemas::Log msg;
-        msg.level = foxglove::schemas::Log::LogLevel::INFO;
-        msg.message = "Foxglove server is alive";
-        log_channel->log(msg);
+        foxglove::schemas::Log log_msg;
+        log_msg.level = foxglove::schemas::Log::LogLevel::INFO;
+        log_msg.message = "Foxglove server is alive";
+        log_channel->log(log_msg);
     }
 
     void FoxgloveServer_t::operator()()

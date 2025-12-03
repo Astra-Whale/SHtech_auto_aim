@@ -28,16 +28,21 @@ namespace foxgloveSer
     class FoxgloveServer_t : public pipeline::BasicTask
     {
     public:
-        FoxgloveServer_t();
+        FoxgloveServer_t(pipeline::bridge::EntryStageToFoxgloveRobotBridge& robot_bridge,
+                        pipeline::bridge::EntryStageToFoxgloveAliveBridge& alive_bridge);
         virtual ~FoxgloveServer_t();
 
         void operator()() override;
-
-        void log_enemy_robot(Eigen::Matrix<double, 6, 1> enemy_robot_state);
-
-        void log_server_alive();
  
     private:
+        // 消息桥接引用
+        pipeline::bridge::EntryStageToFoxgloveRobotBridge& robot_bridge_;
+        pipeline::bridge::EntryStageToFoxgloveAliveBridge& alive_bridge_;
+
+        // 消息处理方法
+        void handle_robot_state_message(const pipeline::bridge::EntryStageToFoxgloveRobotMessage& msg);
+        void handle_alive_message(const pipeline::bridge::EntryStageToFoxgloveAliveMessage& msg);
+
         std::unique_ptr<foxglove::McapWriter> writer;
         std::unique_ptr<foxglove::WebSocketServer> server;
         std::unique_ptr<foxglove::schemas::LogChannel> log_channel;

@@ -41,7 +41,10 @@ namespace hardware
          * @param[in] message_bridge 消息桥接对象引用
          */
         TimedSerial(std::unique_ptr<SerialInterface> driver_impl, 
-                       pipeline::bridge::PlannerToSerialBridge &message_bridge);
+                        pipeline::bridge::PlannerToSerialBridge &planner_bridge,
+                        pipeline::bridge::SensorFromSerialAttitudeBridge attitude_bridge,
+                        pipeline::bridge::SensorFromSerialRobotStatusBridge status_bridge
+                    );
         
         virtual ~TimedSerial();
 
@@ -95,6 +98,10 @@ namespace hardware
          */
         void handle_status_update(const RobotStatus& sts);
 
+        Attitude handle_attitude_get()
+
+        RobotStatus handle_robotstatus_get()
+
         // 常量定义
         static constexpr size_t CMDARRAYLENGTH = 10;
         static constexpr std::chrono::microseconds send_period{2000};
@@ -103,6 +110,8 @@ namespace hardware
         // 通讯相关成员变量
         std::unique_ptr<SerialInterface> driver_; /*!< 串口驱动独占指针（依赖注入） */
         pipeline::bridge::PlannerToSerialBridge &planner_bridge_; /*!< 消息桥接引用 */
+        pipeline::bridge::SensorFromSerialAttitudeBridge attitude_bridge_; /*!< 串口到传感器的姿态消息桥接 */
+        pipeline::bridge::SensorFromSerialRobotStatusBridge status_bridge_; /*!< 串口到传感器的状态消息桥接 */
         
         // 来自 Planner 的命令数据（受 command_mutex_ 保护）
         command_array_t command_array_;

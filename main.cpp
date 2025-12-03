@@ -12,6 +12,8 @@ pipeline::PipelineTask* predict_composite = nullptr;
 hardware::TimedSerial* timed_serial = nullptr;
 foxgloveSer::FoxgloveServer_t* foxglove_server = nullptr;
 pipeline::bridge::PlannerToSerialBridge* planner_to_serial_bridge = nullptr;
+pipeline::bridge::EntryStageToFoxgloveRobotBridge* entrystage_to_foxglove_robot_bridge = nullptr;
+pipeline::bridge::EntryStageToFoxgloveAliveBridge* entrystage_to_foxglove_alive_bridge = nullptr;
 
 void terminate(int signal)
 {
@@ -66,6 +68,10 @@ bool init(void)
     // 创建消息桥接（连接 planner 和 timed_serial）
     planner_to_serial_bridge = new pipeline::bridge::PlannerToSerialBridge();
 
+    // 创建消息桥接（连接 entrystage 和 foxglove）
+    entrystage_to_foxglove_robot_bridge = new pipeline::bridge::EntryStageToFoxgloveRobotBridge();
+    entrystage_to_foxglove_alive_bridge = new pipeline::bridge::EntryStageToFoxgloveAliveBridge();
+
     // 初始化独立任务 - 根据配置选择驱动类型
     std::unique_ptr<SerialInterface> driver;
 
@@ -81,7 +87,8 @@ bool init(void)
 
     timed_serial = new hardware::TimedSerial(std::move(driver), *planner_to_serial_bridge);
     
-    foxglove_server = new foxgloveSer::FoxgloveServer_t();
+    foxglove_server = new foxgloveSer::FoxgloveServer_t(*entrystage_to_foxglove_robot_bridge, 
+                                                        *entrystage_to_foxglove_alive_bridge);
 
     // 注册各个子模块
     bool entrystage_submodule_registered = false;
@@ -96,7 +103,8 @@ bool init(void)
     foxglove_server_submodule_registered = true; // foxglove_server is instantiated separately
 
 
-    entrystage_submodule_registered = sensor_composite->register_submodule_with_params<entrystage::EntryStageSubModule>(*foxglove_server);
+    entrystage_submodule_registered = sensor_composite->register_submodule_with_params<entrystage::EntryStageSubModule>(
+        *entrystage_to_foxglove_robot_bridge, *entrystage_to_foxglove_alive_bridge);
 
     sensor_submodule_registered = sensor_composite->register_submodule_with_params<sensor::SensorSubModule>(
         info["source"], info["flip"], *timed_serial);
@@ -156,6 +164,8 @@ int main(void)
         delete timed_serial;
         delete foxglove_server;
         delete planner_to_serial_bridge;
+        delete entrystage_to_foxglove_robot_bridge;
+        delete entrystage_to_foxglove_alive_bridge;
         return 0;
     }
 
@@ -236,6 +246,8 @@ int main(void)
     delete timed_serial;
     delete foxglove_server;
     delete planner_to_serial_bridge;
+    delete entrystage_to_foxglove_robot_bridge;
+    delete entrystage_to_foxglove_alive_bridge;
 
     return 0;
 }
