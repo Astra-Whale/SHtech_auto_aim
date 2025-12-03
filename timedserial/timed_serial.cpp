@@ -44,6 +44,7 @@ namespace hardware
         if (!driver_->init())
         {
             LOGE_S("[TimedSerial] Failed to initialize serial driver");
+            std::throw std::runtime_error("TimedSerial driver initialization failed");
         }
         else
         {
