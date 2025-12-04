@@ -65,11 +65,11 @@ public:
      * @param[in] callback 回调函数
      */
     void set_receiver(CallbackFunc callback) {
-        if (receiver_set_) {
+        if (callback_) {
             LOGE_S("Receiver already set for this PushBridge.");
+            return;
         }
         callback_ = std::move(callback);
-        receiver_set_ = true;
     }
     
     /**
@@ -87,6 +87,10 @@ public:
         {
             LOGE_S("PushBridge send exception: %s", e.what());
         }
+        catch (...)
+        {
+            LOGE_S("PushBridge send unknown exception");
+        }
     }
     
     /**
@@ -98,7 +102,6 @@ public:
     
 private:
     CallbackFunc callback_;
-    bool receiver_set_ = false;
 };
 
 template<typename MessageType>
@@ -117,11 +120,11 @@ public:
      * @param[in] provider 一个无参函数，返回 MessageType
      */
     void set_provider(ProviderFunc provider) {
-        if (provider_set_) {
+        if (provider_) {
             LOGE_S("Provider already set for this PullBridge.");
+            return;
         }
         provider_ = std::move(provider);
-        provider_set_ = true;
     }
 
     /**
@@ -139,6 +142,10 @@ public:
         {
             LOGE_S("PullBridge get exception: %s", e.what());
         }
+        catch (...)
+        {
+            LOGE_S("PullBridge get unknown exception");
+        }
         LOGE_S("No provider set for this PullBridge, returning default MessageType.");
         return MessageType{};
     }
@@ -152,7 +159,6 @@ public:
 
 private:
     ProviderFunc provider_;
-    bool provider_set_ = false;
 };
 
 /**
