@@ -11,7 +11,7 @@ namespace plan
     PlannerSubModule::PlannerSubModule(pipeline::bridge::PlannerToSerialBridge &message_bridge) 
         : SubModule(SubModuleName::PLANNER), planner_bridge(message_bridge)
     {
-        LOGM_S("[PlannerSubModule] construction completed");
+        LOGM_S("[Planner] construction completed");
     }
 
     bool PlannerSubModule::should_skip(std::shared_ptr<ThreadDataPack> data) const {

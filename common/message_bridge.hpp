@@ -68,7 +68,7 @@ public:
      */
     void set_receiver(CallbackFunc callback) {
         if (callback_) {
-            LOGE_S("Receiver already set for this PushBridge.");
+            LOGE_S("[Bridge] Receiver seted twice!");
             return;
         }
         callback_ = std::move(callback);
@@ -87,11 +87,11 @@ public:
         }
         catch(const std::exception& e)
         {
-            LOGE_S("PushBridge send exception: %s", e.what());
+            LOGE_S("[Bridge] PushBridge send exception: %s", e.what());
         }
         catch (...)
         {
-            LOGE_S("PushBridge send unknown exception");
+            LOGE_S("[Bridge] PushBridge send unknown exception");
         }
     }
     
@@ -123,7 +123,7 @@ public:
      */
     void set_provider(ProviderFunc provider) {
         if (provider_) {
-            LOGE_S("Provider already set for this PullBridge.");
+            LOGE_S("[Bridge] Provider seted twice!");
             return;
         }
         provider_ = std::move(provider);
@@ -142,13 +142,13 @@ public:
         }
         catch(const std::exception& e)
         {
-            LOGE_S("PullBridge get exception: %s", e.what());
+            LOGE_S("[Bridge] PullBridge get exception: %s", e.what());
         }
         catch (...)
         {
-            LOGE_S("PullBridge get unknown exception");
+            LOGE_S("[Bridge] PullBridge get unknown exception");
         }
-        LOGE_S("No provider set for this PullBridge, returning default MessageType.");
+        LOGE_S("[Bridge] No provider set for this PullBridge, returning default MessageType.");
         return MessageType{};
     }
 

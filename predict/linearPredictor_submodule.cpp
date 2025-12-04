@@ -16,7 +16,7 @@ namespace predict
 
     LinearPredictorSubModule::LinearPredictorSubModule(const std::string& camera_param, int latency) : SubModule(SubModuleName::LINEARPREDICTOR)
     {
-        LOGM_S("[LinearPredictorSubModule] constructing with camera_param: %s, latency: %d", 
+        LOGM_S("[LinearPredictor] constructing with camera_param: %s, latency: %d", 
                camera_param.c_str(), latency);
         
         // 初始化位置变换器和通信延迟（原 PredictSubModule 的功能）
@@ -29,7 +29,7 @@ namespace predict
         // 初始化卡尔曼滤波器
         initFilters();
         
-        LOGM_S("[LinearPredictorSubModule] construction completed");
+        LOGM_S("[LinearPredictor] construction completed");
     }
 
     bool LinearPredictorSubModule::should_skip(std::shared_ptr<ThreadDataPack> data) const
@@ -70,38 +70,23 @@ namespace predict
     SubModuleResult LinearPredictorSubModule::process(std::shared_ptr<ThreadDataPack> data, 
                                            const pipeline::BasicTask* parent)
     {
-        auto t1 = std::chrono::steady_clock::now();
-
-        //LOGM_S("[LinearPredictorSubModule] ready");
-        
         // 执行预测算法
         predict(data);
 
-
-        
-        auto t2 = std::chrono::steady_clock::now();
-
         // 调试信息
-        if (_debug)
+        if (_debugprint)
         {
             auto &send = data->robotcommand;
-            LOGM_S("[LinearPredictorSubModule] pitch %6.2f, yaw %6.2f, dist %4.1f",
+            LOGM_S("[LinearPredictor] pitch %6.2f, yaw %6.2f, dist %4.1f",
                    send.pitch_angle, send.yaw_angle,
                    (float)send.distance / 10);
         }
         
         // 显示结果（如果需要）
-        if (_show)
+        if (_imgshow)
         {
             // 预测模块的显示逻辑（如果需要的话）
         }
-
-        auto t3 = std::chrono::steady_clock::now();
-        // LOGM_S(
-        //     "LinearPredictorSubModule Predict %.2lfms Show %.2lfms", 
-        //     std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count()*1000,
-        //     std::chrono::duration_cast<std::chrono::duration<double>>(t3 - t2).count()*1000
-        // );
         
         // 预测总是成功的，返回 true
         return SubModuleResult::SUCCESS;
@@ -127,9 +112,9 @@ namespace predict
         /// 过滤出敌方颜色的装甲板 && 判断是否有英雄出现
         std::vector<bbox_t> new_detections; // new_detection: vector 是经过过滤后所有可能考虑的装甲板
         static bool enemy_color_appeared = false;
-        if(_debug&&!enemy_color_appeared)
+        if(_debugprint&&!enemy_color_appeared)
         {
-            LOGM_S("enemy_color %d", int(robot_status.enemy_color));
+            LOGM_S("[LinearPredictor] enemy_color %d", int(robot_status.enemy_color));
             enemy_color_appeared = true;
         }
             
@@ -142,8 +127,8 @@ namespace predict
                 Pos3D m_pw = position_transform.pc_to_pw(m_pc);              // point world: 目标在世界坐标系下的坐标。（世界坐标系:陀螺仪的全局世界坐标系）
                 if (m_pw[2] < height_thres)
                 {
-                    if(_debug)
-                        LOGW_S("To High! height is %lf", m_pw[2]);
+                    if(_debugprint)
+                        LOGM_S("[LinearPredictor] To High! height is %lf", m_pw[2]);
                     continue;
                 }
                 if (int(robot_status.game_state) == 0)
@@ -151,8 +136,8 @@ namespace predict
                     double distance = m_pw.norm();
                     if (distance > distant_threshold)
                     {
-                        if(_debug)
-                            LOGW_S("To Far! Distance is %lf", distance);
+                        if(_debugprint)
+                            LOGM_S("[LinearPredictor] To Far! Distance is %lf", distance);
                         continue;
                     }
                 }
@@ -164,8 +149,8 @@ namespace predict
         }
         if (new_detections.empty())
         {
-            if(_debug)
-                LOGM_S("No target");
+            if(_debugprint)
+                LOGM_S("[LinearPredictor] No target");
             send.distance = -1.f;
             send.yaw_speed = 0.f;
             last_track = false;
@@ -179,7 +164,7 @@ namespace predict
 
         if (last_track) // 寻找上一次打击的装甲板
         {
-            // LOGM_S("[linear] Try Armor");
+            // LOGM_S("[LinearPredictor] Try Armor");
             for (auto &d : new_detections)
             {
                 auto center = points_center(d.pts);
@@ -198,14 +183,14 @@ namespace predict
 
         if (!selected && last_track) // 寻找与上次同编号的装甲板
         {
-            if(_debug)
-                LOGM_S("[linear] Try ID");
+            if(_debugprint)
+                LOGM_S("[LinearPredictor]  Try ID");
             for (auto &d : new_detections)
             {
                 if (d.tag_id == last_bbox.tag_id)
                 {
-                    if(_debug)
-                        LOGM_S("[Linear] Same ID");
+                    if(_debugprint)
+                        LOGM_S("[LinearPredictor]  Same ID");
                     armor = d;
                     selected = true;
                     same_armor = false;
@@ -229,8 +214,8 @@ namespace predict
                 }
             }
             
-            if(_debug)
-                LOGM_S("[Linear] Sort by size");
+            if(_debugprint)
+                LOGM_S("[LinearPredictor] Sort by size");
             selected = true;
             same_armor = false;
             same_id = false;
@@ -310,13 +295,13 @@ namespace predict
             send.yaw_angle = (float)s_yaw;
             send.yaw_speed = 0.f;
             send.pitch_angle = (float)s_pitch;
-            if(_debug)
-                LOGM_S("[Linear] New Filter");
+            if(_debugprint)
+                LOGM_S("[LinearPredictor] New Filter");
         }
 
-        if(_debug)
+        if(_debugprint)
         {
-            LOGM_S("[LinearPredictorSubModule] State: x %.2f y %.2f z %.2f", target_state[0], target_state[2], target_state[4]
+            LOGM_S("[LinearPredictor] State: x %.2f y %.2f z %.2f", target_state[0], target_state[2], target_state[4]
                    );
         }
 

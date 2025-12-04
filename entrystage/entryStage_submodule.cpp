@@ -12,7 +12,7 @@ namespace entrystage
                                             pipeline::bridge::EntryStageToFoxgloveAliveBridge& alive_bridge)
         : SubModule(SubModuleName::ENTRYSTAGE), robot_bridge_(robot_bridge), alive_bridge_(alive_bridge)
     {
-        LOGM_S("[EntryStageSubModule] construction completed");
+        LOGM_S("[EntryStage] construction completed");
     }
 
     bool EntryStageSubModule::should_skip(std::shared_ptr<ThreadDataPack> data) const {
@@ -54,11 +54,11 @@ namespace entrystage
             }
         }
         
-        if(_debug)
+        if(_filelog)
         {
-            LOGM_F("[EntryStageSubModule] recording frame index: %d", data->index);
-            LOGM_F("[EntryStageSubModule] total time cost: %ld ms", total_duration);
-            LOGM_F("[EntryStageSubModule] start time: %ld",
+            LOGM_F("[EntryStage] recording frame index: %d", data->index);
+            LOGM_F("[EntryStage] total time cost: %ld ms", total_duration);
+            LOGM_F("[EntryStage] start time: %ld",
                    std::chrono::duration_cast<std::chrono::milliseconds>(start_time.time_since_epoch()).count());
             
             // 打印各模块耗时和模块间耗时
@@ -66,9 +66,9 @@ namespace entrystage
                 if (timings[i * 2] >= 0) {
                     const char* module_name = getSubModuleName(static_cast<SubModuleName>(i));
                     if (i > 0 && timings[i * 2 - 1] >= 0) {
-                        LOGM_F("\"%s\" %ldμs | gap: %ldμs", module_name, timings[i * 2], timings[i * 2 - 1]);
+                        LOGM_F("[EntryStage] \"%s\" %ldμs | gap: %ldμs", module_name, timings[i * 2], timings[i * 2 - 1]);
                     } else {
-                        LOGM_F("\"%s\" %ldμs", module_name, timings[i * 2]);
+                        LOGM_F("[EntryStage] \"%s\" %ldμs", module_name, timings[i * 2]);
                     }
                 }
             }

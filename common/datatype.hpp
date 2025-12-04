@@ -90,9 +90,11 @@ inline const char* getSubModuleName(SubModuleName module) {
     }
 }
 
+constexpr float INF_BALL_SPEED = 24.0f; // 步兵最大弹速 m/s
+
 struct RobotStatus
 {
-    float robot_speed_mps = 28.0f;
+    float robot_speed_mps = INF_BALL_SPEED;
     uint16_t enemy[6];                        // 敌方哨兵0、英雄1、工程2、步兵3、步兵4、步兵5
     GameState game_state = GameState::COMMON; // 是否设计远处
     EnemyColor enemy_color = EnemyColor::RED;

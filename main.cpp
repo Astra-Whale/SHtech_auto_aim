@@ -140,31 +140,6 @@ pipeline::bridge::SensorFromSerialAttitudeBridge* sensor_from_serial_attitude_br
 pipeline::bridge::SensorFromSerialRobotStatusBridge* sensor_from_serial_robot_status_bridge = nullptr;
 // 第一步结束
 
-// void terminate(int signal)
-// {
-//     LOGM_S("Received termination signal, shutting down all tasks...");
-
-//     // 第四步: 停止线程
-//     // 终止所有复合任务（这会唤醒等待的线程并让它们退出）
-//     if (timed_serial) timed_serial->terminate();
-//     if (sensor_composite) sensor_composite->terminate();
-//     if (detect_composite) detect_composite->terminate();
-//     if (predict_composite) predict_composite->terminate();
-//     if (foxglove_server) foxglove_server->terminate();
-    
-//     LOGM_S("Quit");
-//     if ((timed_serial && !timed_serial->isterminated())
-//         ||(sensor_composite && !sensor_composite->isterminated())
-//         || (detect_composite && !detect_composite->isterminated())
-//         || (predict_composite && !predict_composite->isterminated())
-//         || (foxglove_server && !foxglove_server->isterminated())
-//     )
-//     {
-//         LOGM_S("terminate flags cannot be set, quit fail!");
-//         exit(0);
-//     }
-//     // 第四步结束
-// }
 
 // 专门处理 SIGSEGV 的函数
 void segv_handler(int sig) {
@@ -315,20 +290,25 @@ bool init(void)
     planner_submodule_registered = predict_composite->register_submodule_with_params<plan::PlannerSubModule>(*planner_to_serial_bridge);
 
     // 设置各个任务的调试和显示选项
-    timed_serial->setdebug(display["timedserial_debug"]);
-    timed_serial->setshow(display["timedserial_show"]);
+    timed_serial->set_debug_print(display["timedserial_debug"]);
+    timed_serial->set_img_show(display["timedserial_show"]);
+    timed_serial->set_file_log(display["timedserial_filelog"]);
 
-    sensor_composite->setdebug(display["sensor_debug"]);
-    sensor_composite->setshow(display["sensor_show"]);
+    sensor_composite->set_debug_print(display["sensor_debug"]);
+    sensor_composite->set_img_show(display["sensor_show"]);
+    sensor_composite->set_file_log(display["sensor_filelog"]);
 
-    detect_composite->setdebug(display["detect_debug"]);
-    detect_composite->setshow(display["detect_show"]);
+    detect_composite->set_debug_print(display["detect_debug"]);
+    detect_composite->set_img_show(display["detect_show"]);
+    detect_composite->set_file_log(display["detect_filelog"]);
 
-    foxglove_server->setdebug(display["foxglove_server_debug"]);
-    foxglove_server->setshow(display["foxglove_server_show"]);
+    foxglove_server->set_debug_print(display["foxglove_server_debug"]);
+    foxglove_server->set_img_show(display["foxglove_server_show"]);
+    foxglove_server->set_file_log(display["foxglove_server_filelog"]);
 
-    predict_composite->setdebug(display["predic_debug"]);
-    predict_composite->setshow(display["predic_show"]);
+    predict_composite->set_debug_print(display["predic_debug"]);
+    predict_composite->set_img_show(display["predic_show"]);
+    predict_composite->set_file_log(display["predic_filelog"]);
 
     
     // 检查所有关键子模块是否注册成功
@@ -348,7 +328,7 @@ bool init(void)
         LOGE_S("[init] some composite tasks unavailable, system still can start");
     }
 
-    LOGE_S("[init] all composite tasks registered successfully, system can start");
+    LOGM_S("[init] all composite tasks registered successfully, system can start");
     return true;
     // 第三步结束
 }
