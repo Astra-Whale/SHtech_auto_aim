@@ -88,10 +88,10 @@ static inline int prepare_io(AX_ENGINE_IO_INFO_T* info, AX_ENGINE_IO_T* io_data,
         if (ret != 0)
         {
             free_io_index(io_data->pInputs, i);
-            LOGE_S( "Allocate input{%d} { phy: %p, vir: %p, size: %lu Bytes }. fail \n", i, (void*)buffer->phyAddr, buffer->pVirAddr, (long)meta.nSize);
+            LOGE_S( "[AXCL] Allocate input{%d} { phy: %p, vir: %p, size: %lu Bytes }. fail \n", i, (void*)buffer->phyAddr, buffer->pVirAddr, (long)meta.nSize);
             return ret;
         }
-        // LOGE_S( "Allocate input{%d} { phy: %p, vir: %p, size: %lu Bytes }. \n", i, (void*)buffer->phyAddr, buffer->pVirAddr, (long)meta.nSize);
+        // LOGE_S( "[AXCL] Allocate input{%d} { phy: %p, vir: %p, size: %lu Bytes }. \n", i, (void*)buffer->phyAddr, buffer->pVirAddr, (long)meta.nSize);
     }
 
     io_data->pOutputs = new AX_ENGINE_IO_BUFFER_T[info->nOutputSize];
@@ -112,12 +112,12 @@ static inline int prepare_io(AX_ENGINE_IO_INFO_T* info, AX_ENGINE_IO_T* io_data,
         }
         if (ret != 0)
         {
-            LOGE_S( "Allocate output{%d} { phy: %p, vir: %p, size: %lu Bytes }. fail \n", i, (void*)buffer->phyAddr, buffer->pVirAddr, (long)meta.nSize);
+            LOGE_S( "[AXCL] Allocate output{%d} { phy: %p, vir: %p, size: %lu Bytes }. fail \n", i, (void*)buffer->phyAddr, buffer->pVirAddr, (long)meta.nSize);
             free_io_index(io_data->pInputs, io_data->nInputSize);
             free_io_index(io_data->pOutputs, i);
             return ret;
         }
-        // LOGE_S( "Allocate output{%d} { phy: %p, vir: %p, size: %lu Bytes }.\n", i, (void*)buffer->phyAddr, buffer->pVirAddr, (long)meta.nSize);
+        // LOGE_S( "[AXCL] Allocate output{%d} { phy: %p, vir: %p, size: %lu Bytes }.\n", i, (void*)buffer->phyAddr, buffer->pVirAddr, (long)meta.nSize);
     }
 
     return 0;
@@ -226,42 +226,42 @@ AXCL::AXCL(const std::string &AXCL_file) : BackEnd(), inputTensorValues(3*384*64
 
     if (0 != ret)
     {
-        LOGE_S( "Init ENGINE failed.\n");
+        LOGE_S( "[AXCL] Init ENGINE failed.\n");
         return;
     }
 
     // 2. load model
     if (!read_file(AXCL_file, model_buffer))
     {
-        LOGE_S( "Read Run-Joint model(%s) file failed.\n", AXCL_file.c_str());
+        LOGE_S( "[AXCL] Read Run-Joint model(%s) file failed.\n", AXCL_file.c_str());
         return;
     }
 
     // 3. create handle
     ret = AX_ENGINE_CreateHandle(&handle, model_buffer.data(), model_buffer.size());
     SAMPLE_AX_ENGINE_DEAL_HANDLE
-    LOGM_S( "Engine creating handle is done.\n");
+    LOGM_S( "[AXCL] Engine creating handle is done.\n");
 
     // 4. create context
     ret = AX_ENGINE_CreateContext(handle);
     SAMPLE_AX_ENGINE_DEAL_HANDLE
-    LOGM_S( "Engine creating context is done.\n");
+    LOGM_S( "[AXCL] Engine creating context is done.\n");
 
     // 5. set io
     AX_ENGINE_IO_INFO_T* io_info;
     ret = AX_ENGINE_GetIOInfo(handle, &io_info);
     SAMPLE_AX_ENGINE_DEAL_HANDLE
-    LOGM_S( "Engine get io info is done. \n");
+    LOGM_S( "[AXCL] Engine get io info is done. \n");
 
     for (int i = 0; i < io_info->nOutputSize; i++)
     {
-        LOGM_S( "%d: name=%s,shape=%d,%d,%d  \n", i, io_info->pOutputs[i].pName, io_info->pOutputs[i].pShape[0], io_info->pOutputs[i].pShape[1], io_info->pOutputs[i].pShape[2]);
+        LOGM_S( "[AXCL] %d: name=%s,shape=%d,%d,%d  \n", i, io_info->pOutputs[i].pName, io_info->pOutputs[i].pShape[0], io_info->pOutputs[i].pShape[1], io_info->pOutputs[i].pShape[2]);
     }
 
     // 6. alloc io
     ret = prepare_io(io_info, &io_data, std::make_pair(AX_ENGINE_ABST_DEFAULT, AX_ENGINE_ABST_CACHED));
     SAMPLE_AX_ENGINE_DEAL_HANDLE
-    LOGM_S( "Engine alloc io is done. \n");
+    LOGM_S( "[AXCL] Engine alloc io is done. \n");
 }
 
 AXCL::~AXCL()

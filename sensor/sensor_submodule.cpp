@@ -31,7 +31,7 @@ namespace sensor
             #ifdef ENABLE_HIKCAM
                 video = new HikCamWrapper();
             #else
-                LOGW_S("[sensor_submodule] hikcam not enabled!");
+                LOGE_S("[sensor_submodule] hikcam not enabled!");
             #endif
         }
         else
@@ -55,7 +55,7 @@ namespace sensor
         else
         {
             is_image_input_flipped = false;
-            LOGM_S("[sensor_submodule] Input image will not be flipped");
+            // LOGM_S("[sensor_submodule] Input image will not be flipped");
         }
 
         LOGM_S("[sensor_submodule] construction completed");
@@ -81,7 +81,7 @@ namespace sensor
         auto t1 = std::chrono::steady_clock::now();
 
         // 读取图像
-        bool state = video->read(data->frame, _debug);
+        bool state = video->read(data->frame, _debugprint);
         data->time = std::chrono::high_resolution_clock::now();
 
         // 读取imu
@@ -90,21 +90,21 @@ namespace sensor
 
         if (!state)
         {
-            if (_debug)
+            LOGE_S("[sensor_submodule]Error: read image fail!");
+            if (_debugprint)
             {
-                LOGE_S("[sensor_submodule]Error: read image fail!");
                 LOGM_S("[sensor_submodule] Total frames handled: %d", data->index);
                 LOGM_S("[sensor_submodule] ReOpen Camera");
             }
-            video->close(_debug);
-            video->init(_debug);
+            video->close(_debugprint);
+            video->init(_debugprint);
             // 在失败情况下，返回 false 表示不应该传递到下游
             return SubModuleResult::FAILURE;
         }
 
         if (data->frame.empty())
         {
-            LOGW_S("[sensor_submodule] empty image");
+            LOGE_S("[sensor_submodule] empty image");
             // 在空图像情况下，也返回 false
             return SubModuleResult::FAILURE;
         }
@@ -117,7 +117,7 @@ namespace sensor
         auto t2 = std::chrono::steady_clock::now();
 
         // 显示图像（如果需要）
-        if (_show)
+        if (_imgshow)
         {
             cv::Mat im2show = data->frame.clone();
             cv::imshow("sensor_submodule", im2show);
@@ -125,18 +125,11 @@ namespace sensor
         }
 
         // 调试信息
-        if (_debug)
+        if (_debugprint)
         {
             CNT_FPS(total_fps, {});
             // LOGM_S("[sensor_submodule]Info: Idx = %d, Bytes = %d", data->index, data->frame.size().height * data->frame.size().width);
         }
-
-        auto t3 = std::chrono::steady_clock::now();
-        // LOGM_S(
-        //     "SensorSubModule Read %.2lfms Show %.2lfms",
-        //     std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count()*1000,
-        //     std::chrono::duration_cast<std::chrono::duration<double>>(t3 - t2).count()*1000
-        // );
 
         // 成功处理，返回 true 表示应该传递到下游
         return SubModuleResult::SUCCESS;

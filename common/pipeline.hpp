@@ -21,6 +21,8 @@
 #include <stdexcept>
 #include <type_traits>
 
+#include "log/log.hpp"
+
 enum class SubModuleName : uint8_t;
 struct ThreadDataPack;
 class BasicTask;
@@ -532,11 +534,11 @@ namespace pipeline
                 return true;
             } catch (const std::exception& e) {
                 // 构造失败，打印错误信息并返回false
-                //LOGE_S("Failed to construct submodule: %s", e.what());
+                LOGE_S("[PipelineTask] Failed to construct submodule: %s", e.what());
                 return false;
             } catch (...) {
                 // 其他异常，打印错误信息并返回false
-                //LOGE_S("Failed to construct submodule with provided arguments");
+                LOGE_S("[PipelineTask] Failed to construct submodule with provided arguments");
                 return false;
             }
         }
@@ -586,6 +588,21 @@ namespace pipeline
                 if(submodule)
                 {
                     submodule->set_img_show(show);
+                }
+            }
+        }
+
+                /**
+         * @brief   设置结果展示（级联到所有子模块）
+         */
+        virtual void set_file_log(const bool &filelog) override
+        {
+            BasicTask::set_file_log(filelog);
+            for (auto& submodule : submodules)
+            {
+                if(submodule)
+                {
+                    submodule->set_file_log(filelog);
                 }
             }
         }

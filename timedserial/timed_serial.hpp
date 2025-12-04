@@ -11,7 +11,6 @@
 
 // modules
 #include "common.hpp"
-#include "message_bridge.hpp"
 
 // packages
 #include <stdint.h>

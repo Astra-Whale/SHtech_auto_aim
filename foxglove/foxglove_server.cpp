@@ -69,7 +69,7 @@ namespace foxgloveSer
     {
         const auto& enemy_robot_pose = msg.enemy_robot_state;
         foxglove::schemas::Pose pose;
-        if(_debug)
+        if(_debugprint)
         {
             LOGM_S("[foxglove_server] State: x %.2f y %.2f z %.2f", enemy_robot_pose(0,0), enemy_robot_pose(2,0), enemy_robot_pose(4,0));
         }
