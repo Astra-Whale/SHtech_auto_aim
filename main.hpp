@@ -8,18 +8,21 @@
 //Std
 #include <vector>
 #include <fstream>
-#include <stdio.h>
+#include <cstdio>
 #include <string>
-#include <string.h>
+#include <cstring>
 #include <unistd.h>
-#include <stdlib.h>
-#include "signal.h"
+#include <cstdlib>
+#include <csignal>
 #include <thread>
 #include "pthread.h"
 #include <dirent.h>
 #include <mutex>
 #include <atomic>
 #include <condition_variable>
+#include <execinfo.h>
+#include <future>
+#include <map>
 
 //Submodules
 #include "entrystage/entryStage_submodule.hpp"
