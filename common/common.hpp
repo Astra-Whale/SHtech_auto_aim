@@ -1,6 +1,7 @@
 #ifndef COMMON_COMMON_H
 #define COMMON_COMMON_H
 #include <opencv2/opencv.hpp>
+#include <Eigen/Dense>
 #include "datatype.hpp"
 #include "pipeline.hpp"
 #include "message_bridge.hpp"
