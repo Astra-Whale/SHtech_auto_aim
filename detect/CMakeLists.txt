@@ -18,7 +18,7 @@ if(INFERENCE_BACKEND STREQUAL "TRT")
     aux_source_directory(TensorRT trt_src)
     
     # 只编译新的 SubModule，移除原有的 detect.cpp
-    add_library(detect OBJECT detect_submodule.cpp ${trt_src})
+    add_library(detect OBJECT detect_submodule.cpp armor_corner_optimizer.cpp ${trt_src})
     
     if(DEFINED ENV{TRT_PATH})
         FILE(GLOB TRT_LIBS "$ENV{TRT_PATH}/lib/libnv*.so")
@@ -36,7 +36,7 @@ elseif(INFERENCE_BACKEND STREQUAL "ONNX")
     aux_source_directory(ONNX onnx_src)
 
     # 只编译新的 SubModule，移除原有的 detect.cpp
-    add_library(detect OBJECT detect_submodule.cpp ${onnx_src})
+    add_library(detect OBJECT detect_submodule.cpp armor_corner_optimizer.cpp ${onnx_src})
 
     target_link_libraries(detect ${OpenCV_LIBS} migraphx_c)
     target_link_directories(detect PUBLIC /opt/rocm/lib)
@@ -47,7 +47,7 @@ elseif(INFERENCE_BACKEND STREQUAL "AXCL")
     aux_source_directory(AXCL axcl_src)
 
     # 只编译新的 SubModule，移除原有的 detect.cpp
-    add_library(detect OBJECT detect_submodule.cpp ${axcl_src})
+    add_library(detect OBJECT detect_submodule.cpp armor_corner_optimizer.cpp ${axcl_src})
 
     target_link_libraries(detect ${OpenCV_LIBS} ax_interpreter ax_sys ax_ivps ax_engine)
     target_link_directories(detect PUBLIC /soc/lib)

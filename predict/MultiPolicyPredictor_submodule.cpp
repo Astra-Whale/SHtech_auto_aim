@@ -1,38 +1,49 @@
-//
-// LinearPredictorSubModule - Merged PredictSubModule and LinearPredictor
-// Combines pipeline integration and prediction algorithm in one class
-//
+/**
+ * @file MultiPolicyPredictor.cpp
+ * @brief 多策略预测器实现 - 整合完整预测系统的主要实现
+ * @author Cao Jingyan
+ * @date 2025/11/21
+ * 
+ * 实现功能：
+ * 1. 预测流程的完整执行逻辑
+ * 2. 装甲板筛选和目标匹配算法
+ * 3. 多种可视化显示实现
+ * 4. 机器人控制指令生成
+ */
 
-#include "linearPredictor_submodule.hpp"
+#include "MultiPolicyPredictor_submodule.hpp"
 
 namespace predict
 {
-    /// 选择高度限制
-    constexpr double height_thres = -20.;
-    /// 识别双阈值
-    constexpr float conf_thres = 0.1f;
-    /// 远距离弹量控制
-    constexpr double distant_threshold = 6.;
-
-    LinearPredictorSubModule::LinearPredictorSubModule(const std::string& camera_param, int latency) : SubModule(SubModuleName::LINEARPREDICTOR)
+    /**
+     * @brief 构造函数 - 初始化多策略预测器的所有组件
+     * @param camera_param 相机参数文件路径
+     * @param comm_latency_ 通信延迟时间 (毫秒)
+     * @param shoot_latency_ 发射延迟时间 (毫秒)
+     * @param debug_ 调试模式标志
+     * @param show_ 显示模式标志
+     * @param plot_ 绘图模式标志
+     * @param adjust_ 参数调整模式标志
+     * @details 初始化坐标变换器、跟踪器和规划器，设置各种显示和调试选项
+     */ 
+    MultiPolicyPredictorSubModule::MultiPolicyPredictorSubModule(const std::string camera_param, int comm_latency_, int shoot_latency_,
+                                                                    bool debug_, bool show_, bool plot_, bool adjust_)
+    : SubModule(SubModuleName::MULTI_POLICY_PREDICTOR),
+      debug(debug_),
+      show(show_),
+      plot(plot_),
+      adjust(adjust_),
+      coord_transformer(camera_param),
+      tracker(debug_, adjust_),
+      planner(comm_latency_ / 1e3, shoot_latency_ / 1e3, debug_)
     {
-        LOGM_S("[LinearPredictorSubModule] constructing with camera_param: %s, latency: %d", 
-               camera_param.c_str(), latency);
+        LOGM_S("[MultiPolicyPredictorSubModule] constructing with camera_param: %s, latency: %d", 
+               camera_param.c_str(), comm_latency_);
         
-        // 初始化位置变换器和通信延迟（原 PredictSubModule 的功能）
-        position_transform = PositionTransform(camera_param);
-        comm_latency = latency / 1e3;
-        
-        // 初始化预测器状态（原 LinearPredictor 的功能）
-        last_track = false;
-        
-        // 初始化卡尔曼滤波器
-        initFilters();
-        
-        LOGM_S("[LinearPredictorSubModule] construction completed");
+        LOGM_S("[MultiPolicyPredictorSubModule] construction completed");
     }
 
-    bool LinearPredictorSubModule::should_skip(std::shared_ptr<ThreadDataPack> data) const
+    bool MultiPolicyPredictorSubModule::should_skip(std::shared_ptr<ThreadDataPack> data) const
     {
         if(data->submodule_results[static_cast<uint8_t>(SubModuleName::DETECT)] != SubModuleResult::SUCCESS || 
            data->submodule_results[static_cast<uint8_t>(SubModuleName::SENSOR)] != SubModuleResult::SUCCESS
@@ -41,53 +52,25 @@ namespace predict
         return false;
     }
 
-    void LinearPredictorSubModule::initFilters()
-    {
-        // 初始化滤波器参数（来自原 LinearPredictor 构造函数）
-        Matxx A = Matxx::Identity();    // 转移矩阵
-        Matzx H;                        // 观测矩阵
-        Matxx R;                        // 过程噪声矩阵
-        Matzz Q{0.05};                  // 测量噪声矩阵
-        Matx1 init{0, 0};               // 初始值
-        
-        // 初始化观测矩阵
-        H(0, 0) = 1;
-        
-        // 初始化过程方差
-        R(0, 0) = 10;
-        R(1, 1) = 10;
-        
-        // 初始化 x, y 轴滤波器
-        auto now = std::chrono::high_resolution_clock::now();
-        filter_x = _filter(A, H, R, Q, init, now);
-        filter_y = _filter(A, H, R, Q, init, now);
-        
-        // yaw 滤波器使用不同的测量噪声矩阵
-        Q(0, 0) = 0.075;
-        filter_yaw = _filter(A, H, R, Q, init, now);
-    }
-
-    SubModuleResult LinearPredictorSubModule::process(std::shared_ptr<ThreadDataPack> data, 
+    SubModuleResult MultiPolicyPredictorSubModule::process(std::shared_ptr<ThreadDataPack> data, 
                                            const pipeline::BasicTask* parent)
     {
         auto t1 = std::chrono::steady_clock::now();
 
-        //LOGM_S("[LinearPredictorSubModule] ready");
+        //LOGM_S("[MultiPolicyPredictorSubModule] ready");
         
         // 执行预测算法
         predict(data);
-
-
         
         auto t2 = std::chrono::steady_clock::now();
 
         // 调试信息
         if (_debug)
         {
-            auto &send = data->robotcommand;
-            LOGM_S("[LinearPredictorSubModule] pitch %6.2f, yaw %6.2f, dist %4.1f",
-                   send.pitch_angle, send.yaw_angle,
-                   (float)send.distance / 10);
+            // auto &send = data->robotcommand;
+            // LOGM_S("[MultiPolicyPredictorSubModule] pitch %6.2f, yaw %6.2f, dist %4.1f",
+            //        send.pitch_angle, send.yaw_angle,
+            //        (float)send.distance / 10);
         }
         
         // 显示结果（如果需要）
@@ -107,221 +90,446 @@ namespace predict
         return SubModuleResult::SUCCESS;
     }
 
-    void LinearPredictorSubModule::predict(std::shared_ptr<ThreadDataPack> data)
+    /**
+     * @brief 主预测函数 - 执行完整的预测流程
+     * @param data 线程数据包，包含检测结果、传感器数据、图像等
+     * @details 完整的预测流程：
+     *          1. 更新坐标变换矩阵
+     *          2. 根据跟踪状态执行不同的处理逻辑
+     *          3. 装甲板筛选和目标匹配
+     *          4. 执行跟踪和预测计算
+     *          5. 生成控制指令
+     *          6. 可视化显示（可选）
+     */
+    void MultiPolicyPredictorSubModule::predict(std::shared_ptr<ThreadDataPack> data)
     {
-        // 以下代码来自原 LinearPredictor::predict 方法
-        auto &detections = data->bboxes;
-        auto q_raw = data->attitude.toQuaternion();
-        auto &img = data->frame;
-        auto t = data->time;
-        auto &send = data->robotcommand;
-        auto robot_status = data->robotstatus;
-        auto &target_state = data->target_state;
+        // === 提取数据包信息 ===
+        auto &detected_armors = data->bboxes;          // 检测到的装甲板列表
+        auto attitude_yaw = data->attitude.yaw / 180 * M_PI;      // 机器人偏航角（转换为弧度）
+        auto attitude_pitch = data->attitude.pitch / 180 * M_PI;  // 机器人俯仰角（转换为弧度）
+        auto q_raw = data->attitude.toQuaternion();    // 机器人姿态四元数
+        auto tp = data->time;                          // 当前时间戳
+        auto &send = data->robotcommand;               // 机器人控制指令结构体
+        auto robot_status = data->robotstatus;         // 机器人状态信息
 
-        Eigen::Quaternionf q(q_raw.matrix().transpose()); // 重建四元数
-        Eigen::Matrix3d R_IW = q.matrix().cast<double>(); // 生成旋转矩阵
-        position_transform.update_R_IW(R_IW);             // 更新旋转矩阵
+        // 更新坐标变换矩阵（根据IMU姿态数据）
+        coord_transformer.update_R_world2imu(q_raw);
 
-        bbox_t armor;
+        LOGT_S();
 
-        /// 过滤出敌方颜色的装甲板 && 判断是否有英雄出现
-        std::vector<bbox_t> new_detections; // new_detection: vector 是经过过滤后所有可能考虑的装甲板
-        static bool enemy_color_appeared = false;
-        if(_debug&&!enemy_color_appeared)
-        {
-            LOGM_S("enemy_color %d", int(robot_status.enemy_color));
-            enemy_color_appeared = true;
+        bool show_armor = false; // 控制是否在可视化中显示装甲板边界框
+
+        // === 根据跟踪器状态执行不同逻辑 ===
+        if (tracker.get_tracker_state() == TrackingState::IDLE) {
+            // === 空闲状态：寻找新目标或重置系统 ===
+            if (detected_armors.empty()) {
+                // 没有检测到装甲板，重置规划器
+                planner.planner_reset();
+
+                if (debug)
+                    std::cout << "[predict] empty detection" << std::endl;
+            }
+            else {
+                // 检测到装甲板，开始新的跟踪
+                // TODO: 添加装甲板筛选逻辑
+                // TODO: 添加车辆选择逻辑
+                tracked_armor = detected_armors.front();
+
+                show_armor = true;
+
+                // 通过PnP算法获取装甲板的3D位置和姿态
+                float yaw_in_camera;
+                tracked_measurement = coord_transformer.pnp_get_measurement(tracked_armor.pts, tracked_armor.tag_id, 
+                                                                            attitude_yaw, yaw_in_camera);
+                
+                // 重置跟踪器并初始化目标
+                auto &target = tracker.reset_target(tracked_measurement, tp);
+                
+                // 初始化规划器
+                planner.aim_target_init();
+                
+                // 生成初始预测计划
+                auto &plan = planner.make_plan(target, coord_transformer, robot_status.robot_speed_mps,
+                             attitude_yaw, attitude_pitch, tp);
+
+                if (debug)
+                    std::cout << "[predict] start tracking" << std::endl;
+            }
         }
-            
-        for (auto &d : detections)
-        {
-            if (true||(int(robot_status.enemy_color) == d.color_id)) // 不能随意修改，否则会数组越界0-5
-            {
-                /* 放行正确颜色的装甲板 */
-                Pos3D m_pc = position_transform.pnp_get_pc(d.pts, d.tag_id); // point camera: 目标在相机坐标系下的坐标
-                Pos3D m_pw = position_transform.pc_to_pw(m_pc);              // point world: 目标在世界坐标系下的坐标。（世界坐标系:陀螺仪的全局世界坐标系）
-                if (m_pw[2] < height_thres)
-                {
-                    if(_debug)
-                        LOGW_S("To High! height is %lf", m_pw[2]);
-                    continue;
-                }
-                if (int(robot_status.game_state) == 0)
-                {
-                    double distance = m_pw.norm();
-                    if (distance > distant_threshold)
-                    {
-                        if(_debug)
-                            LOGW_S("To Far! Distance is %lf", distance);
-                        continue;
+        else {
+            // === 非空闲状态：执行跟踪和预测 ===
+            // 注意：以下逻辑针对单个车辆进行处理
+
+            // === 装甲板筛选和匹配 ===
+            // 寻找与当前跟踪目标相同ID的装甲板，优先考虑上次跟踪的装甲板
+            int same_id_armor_count = 0;         // 同ID装甲板数量
+            double min_position_diff = DBL_MAX;  // 最小位置差
+            bbox_t selected_armor;               // 选中的装甲板
+            Eigen::Matrix<double, 4, 1> selected_measurement; // 选中装甲板的测量值
+
+            // 遍历所有检测到的装甲板
+            for (const auto &armor : detected_armors) {
+                if (armor.tag_id == tracked_armor.tag_id) {
+                    // 找到同ID装甲板，进行PnP解算
+                    float yaw_in_camera;
+                    Eigen::Matrix<double, 4, 1> measured_measurement = coord_transformer.pnp_get_measurement(
+                        armor.pts, armor.tag_id, attitude_yaw, yaw_in_camera);
+                    
+                    // 计算位置变化
+                    Eigen::Matrix<double, 3, 1> measured_pw(measured_measurement(1, 0), measured_measurement(0, 0), measured_measurement(2, 0));
+                    Eigen::Matrix<double, 3, 1> tracked_pw(tracked_measurement(1, 0), tracked_measurement(0, 0), tracked_measurement(2, 0));
+
+                    if (true) { // (abs(yaw_in_camera) < max_yaw_accept) {
+                        same_id_armor_count++;
+                        show_armor = true;
+                    }
+                    
+                    // 选择位置变化最小的装甲板作为跟踪目标
+                    double pw_diff = (tracked_pw - measured_pw).norm();
+                    if (pw_diff < min_position_diff) {
+                        min_position_diff = pw_diff;
+                        selected_armor = armor;
+                        selected_measurement = measured_measurement;
                     }
                 }
-
-                if (d.confidence >= conf_thres)
-                    /* 阈值大于 conf_thres 直接放行 */
-                    new_detections.push_back(d);
             }
-        }
-        if (new_detections.empty())
-        {
-            if(_debug)
-                LOGM_S("No target");
-            send.distance = -1.f;
-            send.yaw_speed = 0.f;
-            last_track = false;
-            return;
-        }
 
-        bool selected = false;
-        bool same_armor = false;
-        bool same_id = false;
-        bool need_init = false;
+            if (debug)
+                std::cout << "[predict] same id armor count: " << same_id_armor_count << std::endl;
 
-        if (last_track) // 寻找上一次打击的装甲板
-        {
-            // LOGM_S("[linear] Try Armor");
-            for (auto &d : new_detections)
-            {
-                auto center = points_center(d.pts);
-                Pos3D pw = position_transform.pnp_get_pw(d.pts, d.tag_id);
-                if (last_track && (center.inside(get_ROI(last_bbox)) || is_same_armor_by_distance(last_pw, pw)))
-                {
-                    armor = d;
-                    selected = true;
-                    same_armor = true;
-                    same_id = false;
-                    need_init = false;
-                    break;
-                }
+            // cout << same_id_armor_count << endl;
+
+            // 更新跟踪目标（如果找到同ID装甲板）
+            if (same_id_armor_count) {
+                tracked_armor = selected_armor;
+                tracked_measurement = selected_measurement;
             }
+
+            // === 执行跟踪更新 ===
+            auto &target = tracker.track(tracked_measurement, same_id_armor_count, tp, attitude_yaw);
+
+            // === 生成预测计划 ===
+            auto &plan = planner.make_plan(target, coord_transformer, robot_status.robot_speed_mps,
+                                        attitude_yaw, attitude_pitch, tp);
+
+            // 输出数据用于绘图分析（可选）
+            if (plot)
+                output_data_to_plot(target, plan);
         }
 
-        if (!selected && last_track) // 寻找与上次同编号的装甲板
-        {
-            if(_debug)
-                LOGM_S("[linear] Try ID");
-            for (auto &d : new_detections)
-            {
-                if (d.tag_id == last_bbox.tag_id)
-                {
-                    if(_debug)
-                        LOGM_S("[Linear] Same ID");
-                    armor = d;
-                    selected = true;
-                    same_armor = false;
-                    same_id = true;
-                    need_init = true;
-                    break;
-                }
-            }
-        }
+        // === 获取最终的目标和计划信息 ===
+        auto &target = tracker.get_target();
+        auto &plan = planner.get_plan();
 
-        if (!selected) // 寻找最大的装甲板
-        {
-            double max_size = 0;
-            for (auto &d : new_detections)
-            {
-                auto size = get_bbox_size(d);
-                if (size > max_size)
-                {
-                    armor = d;
-                    max_size = size;
-                }
-            }
+        // === 更新发送给下位机的控制指令 ===
+        update_information_to_send(plan, send, attitude_yaw, attitude_pitch);
+
+        // === 可视化显示（可选） ===
+        if (show) {
+            show_real_world(target, plan, data, show_armor);  // 显示真实世界视图
+            show_sim(target, plan);                           // 显示仿真俯视图
+        }
+    }
+
+    /**
+     * @brief 更新发送给下位机的控制指令
+     * @param plan 预测计划结构体
+     * @param send 机器人控制指令结构体（输出）
+     * @details 将预测结果转换为机器人可执行的控制指令
+     */
+    void MultiPolicyPredictorSubModule::update_information_to_send(const Plan &plan, RobotCommand &send,
+                                                                   float attitude_yaw, float attitude_pitch)
+    {
+        if (plan.aimed_target_type != AimedTargetType::NONE) {
+            // 有有效目标时，更新控制指令
+            send.distance = plan.target_distance;                          // 目标距离
+            send.fire_enable = plan.fire_enable;                          // 射击使能
+            send.pitch_angle = (plan.target_pitch - attitude_pitch) / M_PI * 180.0f;         // 俯仰角（转换为度数）
+            send.pitch_speed = plan.target_pitch_speed;                   // 俯仰角速度
+            send.yaw_angle = (plan.target_yaw - attitude_yaw) / M_PI * 180.0f;            // 偏航角（转换为度数）
+            send.yaw_speed = plan.target_yaw_speed;                       // 偏航角速度
+            send.target_id = tracked_armor.tag_id;                        // 目标ID
+        }
+        else {
+            // 无有效目标时，清除目标ID
+            send.target_id = 0;
+
+            if (debug)
+                cout << "[predictor] target: none" << endl;
+        }
+    }
+
+    /**
+     * @brief 输出数据用于绘图分析
+     * @param target 目标跟踪状态
+     * @param plan 预测计划
+     * @details 输出关键跟踪和预测数据，用于离线分析和系统调优
+     *          当前实现中的输出语句已被注释，可根据需要启用特定数据的输出
+     */
+    void MultiPolicyPredictorSubModule::output_data_to_plot(const Target &target, const Plan &plan) 
+    {
+        // cout << target.tracked_measurement(0, 0) << std::endl;
+        // cout << target.tracked_measurement(1, 0) << std::endl;
+        // cout << target.tracked_measurement(2, 0) << std::endl;
+        // cout << target.tracked_measurement(3, 0) << std::endl;
+
+        // cout << target.tracked_measurement(0, 0) + target.tracked_state(8, 0) * cos(target.tracked_state(6, 0)) << std::endl;
+        // cout << target.tracked_measurement(1, 0) + target.tracked_state(8, 0) * sin(target.tracked_state(6, 0)) << std::endl;
+        // cout << target.tracked_state(0, 0) - target.tracked_state(8, 0) * cos(target.tracked_state(6, 0)) << std::endl;
+        // cout << target.tracked_state(2, 0) - target.tracked_state(8, 0) * sin(target.tracked_state(6, 0)) << std::endl;
+        // cout << target.tracked_measurement(2, 0) << std::endl;
+        // cout << target.tracked_measurement(3, 0) << std::endl;
+        // std::cout << static_cast<int>(target.predictor_state) << std::endl;
+        // cout << target.ab_counter << std::endl;
+
+        // cout << target.yaw_state(0, 0) << endl;
+        // cout << target.yaw_state(1, 0) << endl;
+
+        // cout << target.armor_y_state(0, 0) << endl;
+        // cout << target.armor_y_state(1, 0) << endl;
+
+        // cout << target.armor_x_state(0, 0) << endl;
+        // cout << target.armor_x_state(1, 0) << endl;
+
+        // cout << target.armor_z_state(0, 0) << endl;
+        // cout << target.armor_z_state(1, 0) << endl;
+        
+        cout << target.tracked_state(0, 0) << std::endl;
+        cout << target.tracked_state(1, 0) << std::endl;
+        cout << target.tracked_state(2, 0) << std::endl;
+        cout << target.tracked_state(3, 0) << std::endl;
+        cout << target.tracked_state(4, 0) << std::endl;
+        cout << target.tracked_state(5, 0) << std::endl;
+        cout << target.tracked_state(6, 0) << std::endl;
+        cout << target.tracked_state(7, 0) << std::endl;
+        cout << target.tracked_state(8, 0) << std::endl;
+
+        // cout << plan.aimed_armor_pos(0, 0) << endl;
+        // cout << plan.aimed_armor_pos(1, 0) << endl;
+        // cout << plan.aimed_armor_pos(2, 0) << endl;
+
+        // cout << plan.target_yaw << std::endl;
+        // cout << plan.target_yaw_speed << std::endl;
+
+        // cout << plan.target_pitch << std::endl;
+        // cout << plan.target_pitch_speed << std::endl;
+
+        // cout << plan.fire_enable << endl;
+    }
+
+    // === 枚举转字符串辅助函数 ===
+    
+    /**
+     * @brief 跟踪状态枚举转字符串
+     * @param x 跟踪状态枚举值
+     * @return 对应的字符串描述
+     */
+    std::string MultiPolicyPredictorSubModule::TrackingState2String(const TrackingState & x) 
+    {
+        switch (x) {
+            case TrackingState::IDLE: return "idle";
+            case TrackingState::DETECTING: return "detecting";
+            case TrackingState::TRACKING: return "tracking";
+            case TrackingState::TEMP_LOST: return "temp lost";
+            default: return "error";
+        }
+    }
+
+    /**
+     * @brief 瞄准目标类型枚举转字符串
+     * @param x 瞄准目标类型枚举值
+     * @return 对应的字符串描述
+     */
+    std::string MultiPolicyPredictorSubModule::AimedTargetType2String(const AimedTargetType & x) 
+    {
+        switch (x) {
+            case AimedTargetType::NONE: return "NONE";
+            case AimedTargetType::ARMOR_WITH_NO_MODEL: return "ARMOR_WITH_NO_MODEL";
+            case AimedTargetType::ARMOR_WITH_ARMOR_MODEL: return "ARMOR_WITH_ARMOR_MODEL";
+            case AimedTargetType::ARMOR_WITH_VEHICLE_MODEL: return "ARMOR_WITH_VEHICLE_MODEL";
+            case AimedTargetType::VEHICLE_CENTER_WITH_VEHICLE_MODEL: return "VEHICLE_CENTER_WITH_VEHICLE_MODEL";
+            default: return "error";
+        }
+    }
+
+    /**
+     * @brief 模型更新类型枚举转字符串
+     * @param x 模型更新类型枚举值
+     * @return 对应的字符串描述
+     */
+    std::string MultiPolicyPredictorSubModule::UpdatingModelType2String(const UpdatingModelType & x) 
+    {
+        switch (x) {
+            case UpdatingModelType::ARMOR_MODEL: return "ARMOR_MODEL";
+            case UpdatingModelType::VEHICLE_MODEL: return "VEHICLE_MODEL";
+            case UpdatingModelType::BOTH: return "BOTH";
+            default: return "error";
+        }
+    }
+
+    /**
+     * @brief 显示真实世界视图
+     * @param target 目标跟踪状态
+     * @param plan 预测计划
+     * @param data 线程数据包（包含原始图像）
+     * @param show_armor 是否显示装甲板边界框
+     * @details 在原始图像上叠加显示：
+     *          - 白色圆圈：估计的车辆中心位置
+     *          - 绿色圆圈：测量的装甲板位置
+     *          - 蓝色圆圈：估计的装甲板位置（基于整车模型）
+     *          - 红色圆圈：预测的瞄准点
+     *          - 白色边框：装甲板检测边界框
+     *          - 文字信息：跟踪状态和估计参数
+     */
+    void MultiPolicyPredictorSubModule::show_real_world(const Target &target, const Plan &plan, 
+                                                std::shared_ptr<ThreadDataPack> &data, bool show_armor)
+    {
+        cv::Point2d zero(50, 50);
+        cv::Point2d right_top(800, 50);
+        cv::Point2d offset(0, 50);
+
+        static const cv::Scalar colors[3] = {{0, 0, 255}, {255, 0, 0}, {255, 255, 255}};
+        cv::Mat im2show = data->frame.clone();
+
+        // estimated center
+        Pos3D pw(target.tracked_state(2, 0), target.tracked_state(0, 0), target.tracked_state(4, 0));
+        Pos3D pc = coord_transformer.pw_to_pc(pw);
+        Pos3D pu = coord_transformer.pc_to_pu(pc);
+        cv::Point2d pi(pu(0, 0), pu(1, 0));
+        cv::circle(im2show, pi, 5, {255, 255, 255}, 3); // white
+
+        // measured armor
+        Pos3D pw_a(target.tracked_measurement(1, 0), target.tracked_measurement(0, 0), target.tracked_measurement(2, 0));
+        Pos3D pc_a = coord_transformer.pw_to_pc(pw_a);
+        Pos3D pu_a = coord_transformer.pc_to_pu(pc_a);
+        cv::Point2d pi_a(pu_a(0, 0), pu_a(1, 0));
+        cv::circle(im2show, pi_a, 5, {0, 255, 0}, 3); // green
+
+        // // estimated armor, armor model
+        // Eigen::Matrix<double, 4, 1> estimated_armor_m;
+        // estimated_armor_m << target.armor_y_state(0, 0), target.armor_x_state(0, 0), target.armor_z_state(0, 0), 0;
+        // Pos3D pw_ea(estimated_armor_m(1, 0), estimated_armor_m(0, 0), estimated_armor_m(2, 0));
+        // Pos3D pc_ea = coord_transformer.pw_to_pc(pw_ea);
+        // Pos3D pu_ea = coord_transformer.pc_to_pu(pc_ea);
+        // cv::Point2d pi_ea(pu_ea(0, 0), pu_ea(1, 0));
+        // cv::circle(im2show, pi_ea, 5, {255, 0, 0}, 3); // blue
+
+        // estimated armor, vehicle model
+        Eigen::Matrix<double, 4, 1> estimated_armor_m = planner.whole_state_2_measurement(target.tracked_state);
+        Pos3D pw_ea(estimated_armor_m(1, 0), estimated_armor_m(0, 0), estimated_armor_m(2, 0));
+        Pos3D pc_ea = coord_transformer.pw_to_pc(pw_ea);
+        Pos3D pu_ea = coord_transformer.pc_to_pu(pc_ea);
+        cv::Point2d pi_ea(pu_ea(0, 0), pu_ea(1, 0));
+        cv::circle(im2show, pi_ea, 5, {255, 0, 0}, 3); // blue
+
+        // armor target
+        Pos3D pw_t(plan.aimed_armor_pos(0, 0), plan.aimed_armor_pos(1, 0), plan.aimed_armor_pos(2, 0));
+        Pos3D pc_t = coord_transformer.pw_to_pc(pw_t);
+        Pos3D pu_t = coord_transformer.pc_to_pu(pc_t);
+        cv::Point2d pi_t(pu_t(0, 0), pu_t(1, 0));
+        cv::circle(im2show, pi_t, 5, {0, 0, 255}, 3); // red
+
+        // armor bbox
+        if (show_armor) {
+            cv::line(im2show, tracked_armor.pts[0], tracked_armor.pts[1], colors[2], 1);
+            cv::line(im2show, tracked_armor.pts[1], tracked_armor.pts[2], colors[2], 1);
+            cv::line(im2show, tracked_armor.pts[2], tracked_armor.pts[3], colors[2], 1);
+            cv::line(im2show, tracked_armor.pts[3], tracked_armor.pts[0], colors[2], 1); // white
             
-            if(_debug)
-                LOGM_S("[Linear] Sort by size");
-            selected = true;
-            same_armor = false;
-            same_id = false;
-            need_init = true;
+            cv::putText(im2show, std::to_string(tracked_armor.tag_id), tracked_armor.pts[0], cv::FONT_HERSHEY_SIMPLEX, 1, colors[tracked_armor.color_id]);
+
         }
 
-        if (same_armor)
-        {
-            Pos3D m_pw = position_transform.pnp_get_pw(armor.pts, armor.tag_id);                      // point world: 目标在世界坐标系下的坐标
-            Eigen::Matrix<double, 1, 1> z_k_x{m_pw(0, 0)};                                            // z_k_x: x轴滤波器观测量
-            Eigen::Matrix<double, 1, 1> z_k_y{m_pw(1, 0)};                                            // z_k_y: y轴滤波器观测量
+        // states
+        cv::putText(im2show, std::to_string(target.tracked_state(2, 0)), zero, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
+        cv::putText(im2show, std::to_string(target.tracked_state(0, 0)), zero + offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
+        cv::putText(im2show, std::to_string(target.tracked_state(4, 0)), zero + 2 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
+        cv::putText(im2show, std::to_string(target.tracked_state(3, 0)), zero + 3 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
+        cv::putText(im2show, std::to_string(target.tracked_state(1, 0)), zero + 4 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
+        cv::putText(im2show, std::to_string(target.tracked_state(5, 0)), zero + 5 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
+        cv::putText(im2show, "yaw: " + std::to_string(target.tracked_state(6, 0)), zero + 6 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
+        cv::putText(im2show, "v_yaw: " + std::to_string(target.tracked_state(7, 0)), zero + 7 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
+        cv::putText(im2show, std::to_string(target.tracked_state(8, 0)), zero + 8 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
+        cv::putText(im2show, "another_r: " + std::to_string(target.another_r), zero + 13 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
+        cv::putText(im2show, "measurement:" + std::to_string(target.tracked_measurement(1, 0)), zero + 9 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
+        cv::putText(im2show, std::to_string(target.tracked_measurement(0, 0)), zero + 10 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
+        cv::putText(im2show, std::to_string(target.tracked_measurement(2, 0)), zero + 11 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
+        cv::putText(im2show, std::to_string(target.tracked_measurement(3, 0)), zero + 12 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
 
-            double m_yaw = position_transform.pnp_get_armor_angle(armor.pts, armor.tag_id);
-            Eigen::Matrix<double, 1, 1> z_k_yaw{m_yaw};
+        cv::putText(im2show, TrackingState2String(target.predictor_state), right_top + 0 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
+        cv::putText(im2show, UpdatingModelType2String(target.updating_model_type), right_top + 1 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
+        cv::putText(im2show, AimedTargetType2String(plan.aimed_target_type), right_top + 2 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
 
-            auto p_x = filter_x.update(z_k_x, t);                                                     // p_x: x轴滤波器状态量
-            auto p_y = filter_y.update(z_k_y, t);                                                     // p_y: y轴滤波器状态量
-            auto p_yaw = filter_yaw.update(z_k_yaw, t);
+        cv::imshow("predictor_real_world", im2show);
+        cv::waitKey(1);
+    }
 
-            
+    /**
+     * @brief 显示仿真俯视图
+     * @param target 目标跟踪状态
+     * @param plan 预测计划
+     * @details 显示俯视角度的2D仿真图，包括：
+     *          - 白色圆圈：估计的车辆中心位置
+     *          - 蓝色圆圈：估计的装甲板位置
+     *          - 绿色圆圈：测量的装甲板位置
+     *          - 红色圆圈：预测的瞄准点
+     *          - 绿色直线：装甲板朝向指示
+     */
+    void MultiPolicyPredictorSubModule::show_sim(const Target &target, const Plan &plan)
+    {
+        // 仿真图像参数设置
+        int h = 1000;           // 图像高度
+        int w = 1000;           // 图像宽度
+        int percentage = 300;   // 坐标缩放比例
+        int origin_x = 500;     // 原点X坐标
+        int origin_y = 1000;    // 原点Y坐标
+        cv::Mat hh = cv::Mat::zeros(1000,1000,CV_8UC3); // 创建黑色背景图像
 
-            // Switching strategy
-            double armor_yaw_angle = p_yaw(0, 0);
-            double armor_yaw_spd = p_yaw(1, 0);
+        // === 绘制估计的车辆中心（白色圆圈） ===
+        cv::Point2d pw(500-target.tracked_state(2, 0)*percentage, origin_y-target.tracked_state(0, 0)*percentage);
+        cv::circle(hh, pw, 5, {255, 255, 255}, 3);  // 白色圆圈
 
-            if (armor_yaw_spd < 0 && armor_yaw_angle > 30)
-            {
-                send.shoot_mode = ShootMode::FOLLOW;
-            } else {
-                send.shoot_mode = ShootMode::COMMON;
-            }
-            if (armor_yaw_spd > 0) {
-                send.distance = -1.f;
-                send.yaw_speed = 0.f;
-                last_track = false;
-            }
+        // === 绘制估计的装甲板位置（蓝色圆圈） ===
+        cv::Point2d pa(500-(target.tracked_state(2, 0) - target.tracked_state(8, 0) * sin(target.tracked_state(6, 0)))*percentage, 
+                        origin_y-(target.tracked_state(0, 0) - target.tracked_state(8, 0) * cos(target.tracked_state(6, 0)))*percentage);
+        cv::circle(hh, pa, 5, {255, 0, 0}, 3);  // 蓝色圆圈
 
-            double ft = FlightTimePredict(m_pw, robot_status.robot_speed_mps);                        // ft: 预测弹丸飞行时间
-            auto now_t = std::chrono::high_resolution_clock::now();                                   //
-            double process_latency = duration_cast<std::chrono::microseconds>(now_t - t).count() / 1e6;            //
-            double t_delay = ft + comm_latency + process_latency;                                     //
-            Pos3D s_pw{p_x(0, 0) + t_delay * p_x(1, 0), p_y(0, 0) + t_delay * p_y(1, 0), m_pw(2, 0)}; // s_pw: ft后预测点
-            Eigen::Vector2d r_vec(p_x(0, 0), p_y(0, 0));                                              // 目标装甲板位矢
-            Eigen::Vector2d v_vec(p_y(1, 0), -p_x(1, 0));                                             // 目标装甲板速度
-            s_pw(2, 0) -= TrajectoryCompensation(s_pw, robot_status.robot_speed_mps);                 // 抬枪后预测点
-            Pos3D s_pc = position_transform.pw_to_pc(s_pw);                                           // point camera: 目标在相机坐标系下的坐标
-            double s_yaw_spd = -(r_vec.dot(v_vec)) / (r_vec.norm() * r_vec.norm()) / M_PI * 180.;     // s_yaw_spd: yaw轴速度计算值
-            double s_yaw = atan(s_pc(0, 0) / s_pc(2, 0)) / M_PI * 180.;
-            double s_pitch = atan(s_pc(1, 0) / s_pc(2, 0)) / M_PI * 180.;
+        // === 绘制测量的装甲板位置（绿色圆圈） ===
+        cv::Point2d pa_m(500-target.tracked_measurement(1, 0)*percentage, origin_y-target.tracked_measurement(0, 0)*percentage);
+        cv::circle(hh, pa_m, 5, {0, 255, 0}, 3);  // 绿色圆圈
 
-            
-            target_state << p_x,p_y,m_pw(2, 0), 0;
+        // === 绘制预测的瞄准目标（红色圆圈） ===
+        cv::Point2d pa_aim(500-plan.aimed_armor_pos(0, 0)*percentage, origin_y-plan.aimed_armor_pos(1, 0)*percentage);
+        cv::circle(hh, pa_aim, 5, {0, 0, 255}, 3);  // red
 
-            send.distance = (float)distance_2D(s_pw);
-            send.yaw_angle = (float)s_yaw;
-            send.yaw_speed = (float)s_yaw_spd;
-            send.pitch_angle = (float)s_pitch;
+        // cv::Point2d pw(500-target.tracked_state(2, 0)*percentage, origin_y-target.tracked_state(0, 0)*percentage);
+        // cv::circle(hh, pw, 5, {255, 0, 0}, 3);  // blue
 
-            //std::cerr << send.distance << std::endl;
-        }
-        else
-        {
-            Pos3D m_pw = position_transform.pnp_get_pw(armor.pts, armor.tag_id);        // point world: 目标在世界坐标系下的坐标
-            filter_x.reset(m_pw(0, 0), t), filter_y.reset(m_pw(1, 0), t);               // 重置 x,y 轴滤波器
-            double m_yaw = position_transform.pnp_get_armor_angle(armor.pts, armor.tag_id);
-            filter_yaw.reset(m_yaw, t);
-            double height = TrajectoryCompensation(m_pw, robot_status.robot_speed_mps); // height: 弹道下坠高度
-            Pos3D s_pw{m_pw(0, 0), m_pw(1, 0), m_pw(2, 0) - height};                    // 抬枪后预测点
-            Pos3D s_pc = position_transform.pw_to_pc(s_pw);                             // point camera: 目标在相机坐标系下的坐标
-            double s_yaw = atan(s_pc(0, 0) / s_pc(2, 0)) / M_PI * 180.;
-            double s_pitch = atan(s_pc(1, 0) / s_pc(2, 0)) / M_PI * 180.;
+        // // std::cout << pw << std::endl;
+        
+        // // cv::line(im2show, 500-target.tracked_measurement(2,0), 500-target.tracked_measurement(0,0), {255, 0, 0}, 2);
+        // cv::Point2d pa(500-target.tracked_measurement(1,0)*percentage, origin_y-target.tracked_measurement(0,0)*percentage);
+        // cv::circle(hh, pa, 5, {0, 255, 0}, 3);  // green
 
-            
-            target_state  << m_pw(0, 0), 0, m_pw(1, 0), 0, m_pw(2,0), 0;
+        // Eigen::Matrix<double, 4, 1> tt = planner.whole_state_2_measurement(target.tracked_state);
+        // cv::Point2d pa_state(500-tt(1,0)*percentage, origin_y-tt(0,0)*percentage);
+        // cv::circle(hh, pa_state, 5, {255, 0, 0}, 3);
+        
+        // cv::Point2d p_armor_left(500-(target.tracked_measurement(1,0) + 0.066*cos(-target.tracked_measurement(3, 0)))*percentage, 
+        //                          origin_y-(target.tracked_measurement(0,0) + 0.066*sin(-target.tracked_measurement(3, 0)))*percentage);
+        // cv::Point2d p_armor_right(500-(target.tracked_measurement(1,0) - 0.066*cos(-target.tracked_measurement(3, 0)))*percentage, 
+        //                          origin_y-(target.tracked_measurement(0,0) - 0.066*sin(-target.tracked_measurement(3, 0)))*percentage);
+        // cv::line(hh, p_armor_left, p_armor_right, {0, 255, 0}, 2);
 
-            send.distance = (float)distance_2D(s_pw);
-            send.yaw_angle = (float)s_yaw;
-            send.yaw_speed = 0.f;
-            send.pitch_angle = (float)s_pitch;
-            if(_debug)
-                LOGM_S("[Linear] New Filter");
-        }
+        // cv::line(hh, pw, pa, {255, 0, 0}, 2);
 
-        if(_debug)
-        {
-            LOGM_S("[LinearPredictorSubModule] State: x %.2f y %.2f z %.2f", target_state[0], target_state[2], target_state[4]
-                   );
-        }
+        cv::Point2d origin(500,500);
+        int r = 200;
+        cv::Point2d point(500+r*cos(-target.tracked_measurement(3, 0)),500+r*sin(-target.tracked_measurement(3, 0)));
+        cv::line(hh, origin, point, {0, 255, 0}, 2);
 
-        last_track = true;
-        last_bbox = armor;
-        last_pw = position_transform.pnp_get_pw(armor.pts, armor.tag_id);
+        // 显示仿真图像 
+        cv::imshow("predictor_sim", hh);
+        cv::waitKey(1);
     }
 }

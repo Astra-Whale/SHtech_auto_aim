@@ -256,10 +256,12 @@ bool init(void)
     sensor_submodule_registered = sensor_composite->register_submodule_with_params<sensor::SensorSubModule>(
         info["source"], info["flip"], *sensor_from_serial_attitude_bridge, *sensor_from_serial_robot_status_bridge);
 
-    detect_submodule_registered = detect_composite->register_submodule_with_params<detect::DetectSubModule>(info["model"]);
+    detect_submodule_registered = detect_composite->register_submodule_with_params<detect::DetectSubModule>(info["model"], display["detect_adjust"]);
 
-    predict_submodule_registered = predict_composite->register_submodule_with_params<predict::LinearPredictorSubModule>(
-        info["camera_para"], atoi(info["latency"].c_str()));
+    predict_submodule_registered = predict_composite->register_submodule_with_params<predict::MultiPolicyPredictorSubModule>(
+        info["camera_para"], atoi(info["latency"].c_str()), atoi(info["shoot_latency"].c_str()), 
+        display["predic_debug"], display["predic_show"], display["predic_plot"], 
+        display["predic_adjust"]);
 
     planner_submodule_registered = predict_composite->register_submodule_with_params<plan::PlannerSubModule>(*planner_to_serial_bridge);
 

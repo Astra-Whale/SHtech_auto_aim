@@ -219,19 +219,20 @@ namespace hardware
                     
                     driver_->transmit_cmd(
                         attitude_cache_.yaw + command_cache_.yaw_angle,
-                        command_cache_.yaw_speed,
                         attitude_cache_.pitch + command_cache_.pitch_angle,
+                        command_cache_.yaw_speed,
                         command_cache_.pitch_speed,
                         command_cache_.distance,
-                        static_cast<uint8_t>(command_cache_.shoot_mode == ShootMode::COMMON));
+                        command_cache_.fire_enable,
+                        command_cache_.target_id);
 
                     if (false && _debug)
                     {
-                        LOGM_S("[TimedSerial][transmit] p-p:%6.2f | p-m:%6.2f | p-s:%6.2f | ps-s:%6.2f | y-p:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f",
-                               command_cache_.pitch_angle, attitude_cache_.pitch,
+                        LOGM_S("[TimedSerial][transmit] p-m:%6.2f | p-s:%6.2f | ps-s:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f",
+                               attitude_cache_.pitch,
                                attitude_cache_.pitch + command_cache_.pitch_angle,
                                command_cache_.pitch_speed,
-                               command_cache_.yaw_angle, attitude_cache_.yaw,
+                               attitude_cache_.yaw,
                                attitude_cache_.yaw + command_cache_.yaw_angle,
                                command_cache_.yaw_speed);
                     }

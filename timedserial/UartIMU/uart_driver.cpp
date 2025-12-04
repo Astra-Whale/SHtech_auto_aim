@@ -10,7 +10,7 @@
 using namespace std::chrono;
 
 // 裁判系统规定的最低子弹初速（单位：米/秒）
-constexpr float MIN_BULLET_SPEED_MPS = 10.0f;
+constexpr float MIN_BULLET_SPEED_MPS = 20.0f;
 
 UartDriver::UartDriver(const std::string device_name) 
     : m_device_name(device_name), m_serial()
@@ -51,10 +51,10 @@ void UartDriver::close()
 void UartDriver::on_receive_imu(drivers::packet_data_t* packet_ptr, drivers::packet_length_t len)
 {
     // 校验数据包长度
-    if (len != sizeof(pc_mcu_data_t)) {
-        LOGW_S("[UART][ERROR] invalid IMU data length");
-        return;
-    }
+    // if (len != sizeof(pc_mcu_data_t)) {
+    //     LOGW_S("[UART][ERROR] invalid IMU data length");
+    //     return;
+    // }
 
     pc_mcu_data_t* _tmp_ptr = (pc_mcu_data_t*)packet_ptr;
 
@@ -62,7 +62,7 @@ void UartDriver::on_receive_imu(drivers::packet_data_t* packet_ptr, drivers::pac
     Attitude temp_att;
     temp_att.yaw = _tmp_ptr->curr_yaw;
     temp_att.pitch = _tmp_ptr->curr_pitch;
-    temp_att.roll = 0.0f; // 当前协议中没有roll数据
+    temp_att.roll = _tmp_ptr->curr_roll;
     
     if (this->attitude_cb_) {
         this->attitude_cb_(temp_att);
@@ -78,6 +78,7 @@ void UartDriver::on_receive_imu(drivers::packet_data_t* packet_ptr, drivers::pac
         if (temp_status.robot_speed_mps < MIN_BULLET_SPEED_MPS) {
             temp_status.robot_speed_mps = MIN_BULLET_SPEED_MPS;
         }
+        temp_status.program_mode = (ProgramMode)_tmp_ptr->autoaim_mode;
         this->status_cb_(temp_status);
     }
 }
@@ -94,10 +95,10 @@ void UartDriver::on_receive_imu(drivers::packet_data_t* packet_ptr, drivers::pac
 void UartDriver::on_receive_sts(drivers::packet_data_t* packet_ptr, drivers::packet_length_t len)
 {
     // 校验数据包长度
-    if (len != sizeof(robot_data_t)) {
-        LOGW_S("[UART][ERROR] invalid robot status data length");
-        return;
-    }
+    // if (len != sizeof(robot_data_t)) {
+    //     LOGW_S("[UART][ERROR] invalid robot status data length");
+    //     return;
+    // }
     
     robot_data_t* state_ptr = (robot_data_t*)packet_ptr;
 
@@ -147,15 +148,16 @@ void UartDriver::on_receive_sts(drivers::packet_data_t* packet_ptr, drivers::pac
  * 
  * 保持原有逻辑不变
  */
-void UartDriver::transmit_cmd(float yaw, float yaw_spd, float pitch, float pitch_spd, float dist, uint8_t shoot)
+void UartDriver::transmit_cmd(float yaw, float pitch, float yaw_spd, float pitch_spd, float dist, uint8_t shoot, uint8_t target_id)
 {
     advv_detection_t data_to_send;
     data_to_send.yaw = yaw;
     data_to_send.yaw_spd = yaw_spd;
-    data_to_send.pitch = pitch;
+    data_to_send.pit = pitch;
     data_to_send.pitch_spd = pitch_spd;
     data_to_send.dist = dist;
     data_to_send.shoot = shoot;
+    data_to_send.target_id = target_id;
     
     m_serial.send(GIMAdvv_CMD_ID, (drivers::packet_data_t*)&data_to_send, sizeof(data_to_send));
 }
