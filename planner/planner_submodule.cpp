@@ -28,8 +28,8 @@ namespace plan
                 command.yaw_speed,
                 command.pitch_angle+i*command.pitch_speed*float(plan_period.count())/1e6f,
                 command.pitch_speed,
-                command.target_id,
-                command.shoot_mode
+                command.fire_enable,
+                command.target_id
             };
         }
         return commands;

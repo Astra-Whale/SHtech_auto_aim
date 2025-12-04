@@ -1,0 +1,151 @@
+/**
+ * @file CoordTransformer.cpp
+ * @brief 坐标变换模块实现 - 处理相机、IMU和世界坐标系之间的转换
+ * @author Cao Jingyan
+ * @date 2025/11/15
+ */
+
+#include "CoordTransformer.hpp"
+
+namespace predict
+{
+    /**
+     * @brief 默认构造函数 - 初始化所有变换矩阵为零矩阵
+     */
+    CoordTransformer::CoordTransformer()
+    {
+        // 初始化相机到IMU的平移向量 (3x1)
+        T_camera2imu_MAT = cv::Mat::zeros(3, 1, CV_64FC1);
+        
+        // 初始化相机到IMU的旋转矩阵 (3x3)
+        R_camera2imu_MAT = cv::Mat::zeros(3, 3, CV_64FC1);
+        
+        // 初始化相机内参矩阵 (3x3)
+        F_MAT = cv::Mat::zeros(3, 3, CV_64FC1);
+        
+        // 初始化相机畸变参数 (1x5)
+        C_MAT = cv::Mat::zeros(1, 5, CV_64FC1);
+        
+        // 将OpenCV矩阵转换为Eigen矩阵，便于后续数学运算
+        cv::cv2eigen(T_camera2imu_MAT, T_camera2imu);
+        cv::cv2eigen(R_camera2imu_MAT, R_camera2imu);
+        cv::cv2eigen(F_MAT, F);
+        cv::cv2eigen(C_MAT, C);
+    }
+
+    /**
+     * @brief 带参数构造函数 - 从yml文件加载相机参数
+     * @param camera_param yml文件路径
+     * @details 从YAML文件中读取相机内参、畸变参数和相机-IMU外参
+     */
+    CoordTransformer::CoordTransformer(const std::string camera_param)
+    {
+        // 打开相机参数文件
+        cv::FileStorage fin(camera_param, cv::FileStorage::READ);
+        
+        // 读取相机到IMU的外参（平移向量和旋转矩阵）
+        fin["T_c2i"] >> T_camera2imu_MAT;  // 相机到IMU的平移向量
+        fin["R_c2i"] >> R_camera2imu_MAT;  // 相机到IMU的旋转矩阵
+        
+        // 读取相机内参
+        fin["K"] >> F_MAT;  // 相机内参矩阵 (焦距、主点等)
+        fin["D"] >> C_MAT;  // 相机畸变参数 (径向畸变、切向畸变)
+
+        // 将OpenCV格式转换为Eigen格式，便于数学运算
+        cv::cv2eigen(T_camera2imu_MAT, T_camera2imu);
+        cv::cv2eigen(R_camera2imu_MAT, R_camera2imu);
+        cv::cv2eigen(F_MAT, F);
+        cv::cv2eigen(C_MAT, C);
+    }
+
+    /**
+     * @brief 更新世界坐标系到IMU坐标系的旋转矩阵
+     * @param q_raw 从IMU姿态得到的四元数
+     * @details 该函数在每帧更新时调用，根据IMU的实时姿态更新坐标变换矩阵
+     *          R_custom2pnp是自定义坐标系到PnP坐标系的转换矩阵
+     */
+    void CoordTransformer::update_R_world2imu(const Eigen::Quaternionf &q_raw)
+    {
+        Eigen::Quaternionf q(q_raw.matrix().transpose()); // 重建四元数
+        Eigen::Matrix3d R_T = q.matrix().cast<double>(); // 生成旋转矩阵
+
+        // 组合自定义坐标系转换和IMU旋转
+        // R_custom2pnp: 将自定义世界坐标系转换为PnP算法使用的坐标系
+        R_world2imu = R_custom2pnp * R_T;
+    }
+
+    /**
+     * @brief PnP算法获取装甲板测量值
+     * @param p 装甲板四个角点的图像像素坐标 (按顺序：左上、左下、右下、右上)
+     * @param armor_number 装甲板编号 (0,1,8为大装甲板，其他为小装甲板)
+     * @param attitude_yaw 机器人当前姿态的偏航角 (弧度)
+     * @param yaw_in_camera 输出参数：装甲板在相机坐标系中的偏航角
+     * @return Eigen::Vector4d 装甲板的测量值 [y, x, z, absolute_yaw]
+     * @details 通过PnP算法从2D图像点反推3D世界坐标，并计算装甲板朝向
+     */
+    Eigen::Vector4d CoordTransformer::pnp_get_measurement(const cv::Point2f (&p)[4], const int &armor_number, const float &attitude_yaw, float &yaw_in_camera)
+    {
+        // 根据装甲板编号选择对应的3D模型尺寸
+        std::vector<cv::Point3d> pw_cur;
+        if (armor_number == 0 || armor_number == 1 || armor_number == 8)
+            pw_cur = pw_big;    // 大装甲板
+        else
+            pw_cur = pw_small;  // 小装甲板
+
+        // 将图像点转换为PnP算法需要的格式
+        std::vector<cv::Point2d> pu(p, p + 4);
+
+        // PnP求解：从2D图像点和3D模型点求解相机位姿
+        cv::Mat rvec, tvec;  // 旋转向量和平移向量
+        cv::solvePnP(pw_cur, pu, F_MAT, C_MAT, rvec, tvec, false, cv::SOLVEPNP_IPPE);
+        
+        // === 坐标变换过程 ===
+        // 获取装甲板中心在不同坐标系中的位置
+        Pos3D pc, pw, pi;  // 相机坐标系、世界坐标系、IMU坐标系
+        
+        cv::cv2eigen(tvec, pc);  // PnP得到的是相机坐标系中的位置
+        
+        // 相机坐标系 -> IMU坐标系
+        pi = R_camera2imu * pc + T_camera2imu;
+
+        // IMU坐标系 -> 世界坐标系
+        pw = R_world2imu.transpose() * pi;
+
+        // === 计算装甲板四个角点的世界坐标 ===
+        cv::Mat mat_R;
+        Eigen::Matrix3d R;
+        cv::Rodrigues(rvec, mat_R);  // 旋转向量转旋转矩阵
+        cv::cv2eigen(mat_R, R);
+
+        Pos3D p_a_w[4];  // 装甲板四角点世界坐标
+        Pos3D p_a_c[4];  // 装甲板四角点相机坐标
+
+        // 计算每个角点的3D坐标
+        for (int i = 0; i < 4; ++i)
+        {
+            Pos3D temp(pw_cur[i].x, pw_cur[i].y, pw_cur[i].z);  // 装甲板模型坐标
+            p_a_c[i] = R * temp + pc;  // 变换到相机坐标系
+        }
+        
+        // === 计算装甲板法向量和朝向 ===
+        // 计算装甲板在相机坐标系中的方向向量
+        Pos3D armor_v_x_c, armor_v_y_c, armor_v_z_c;
+        armor_v_x_c = (p_a_c[0] - p_a_c[3]) + (p_a_c[1] - p_a_c[2]);
+        armor_v_y_c = (p_a_c[1] - p_a_c[0]) + (p_a_c[2] - p_a_c[3]);
+        armor_v_z_c = armor_v_x_c.cross(armor_v_y_c);
+
+        // 计算装甲板在相机坐标系中的偏航角
+        // 偏航轴是负Z轴，因此使用-armor_v_z_c[2]
+        // 正对装甲板的yaw_in_camera=0，绕世界坐标系z轴正方向旋转为负，相反为正
+        yaw_in_camera = atan2(armor_v_z_c[0], -armor_v_z_c[2]);
+
+        // === 组装最终测量值 ===
+        Eigen::Vector4d measurement;
+        // 测量值格式：[y坐标, x坐标, z坐标, 绝对偏航角]，该测量值对应于ekf的测量项
+        // 绝对偏航角 = 相机坐标系中的偏航角 - 机器人姿态偏航角
+        measurement << pw[1], pw[0], pw[2], yaw_in_camera - attitude_yaw;
+
+        return measurement;
+    }
+}
+

@@ -11,6 +11,7 @@
 
 // modules
 #include "common.hpp"
+#include "armor_corner_optimizer.hpp"
 
 // packages
 #include <iostream>
@@ -31,7 +32,7 @@ namespace detect
          * @brief   构造函数
          * @param[in] OnnxFileName 用于推理的 Onnx 文件路径
          */
-        DetectSubModule(const std::string& OnnxFileName);
+        DetectSubModule(const std::string& OnnxFileName, bool adjust_);
         virtual ~DetectSubModule() = default;
 
         bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
@@ -47,6 +48,9 @@ namespace detect
 
     private:
         std::unique_ptr<BackEnd> model; /*!< 推理模型指针 */
+        bool center = false;
+        bool adjust = false;
+        ArmorCornerOptimizer corner_optimizer;
     };
 }
 

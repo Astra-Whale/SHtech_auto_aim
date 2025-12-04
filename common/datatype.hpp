@@ -69,7 +69,7 @@ enum class SubModuleName : uint8_t
     ENTRYSTAGE,
     SENSOR,
     DETECT,
-    LINEARPREDICTOR,
+    MULTI_POLICY_PREDICTOR,
     PLANNER,
 
     COUNT, // 仅用于计数子模块数量
@@ -84,7 +84,7 @@ inline const char* getSubModuleName(SubModuleName module) {
         case SubModuleName::ENTRYSTAGE: return "Entry";
         case SubModuleName::SENSOR: return "Sensor";
         case SubModuleName::DETECT: return "Detect";
-        case SubModuleName::LINEARPREDICTOR: return "Predict";
+        case SubModuleName::MULTI_POLICY_PREDICTOR: return "Predict";
         case SubModuleName::PLANNER: return "Planner";
         default: return "Unknown";
     }
@@ -92,11 +92,11 @@ inline const char* getSubModuleName(SubModuleName module) {
 
 struct RobotStatus
 {
-    float robot_speed_mps = 28.0f;
+    ProgramMode program_mode = ProgramMode::AUTO_AIM;
+    float robot_speed_mps = 23.0f;
     uint16_t enemy[6];                        // 敌方哨兵0、英雄1、工程2、步兵3、步兵4、步兵5
     GameState game_state = GameState::COMMON; // 是否设计远处
     EnemyColor enemy_color = EnemyColor::RED;
-    ProgramMode program_mode = ProgramMode::AUTO_AIM;
 };
 
 struct RobotCommand
@@ -106,8 +106,8 @@ struct RobotCommand
     float yaw_speed;
     float pitch_angle;
     float pitch_speed;
-    int target_id;
-    ShootMode shoot_mode;
+    int fire_enable; // 0 is disable, 1 is enable, 2 is self-determined
+    int target_id; // 1-7: robot, 8: outpost, 9: base, 0: none
 };
 
 
@@ -122,7 +122,7 @@ inline RobotCommand command_linear_interpolation(const RobotCommand& cmd1, const
             cmd1.pitch_angle * (1-cmdTwoWeight) + cmd2.pitch_angle * cmdTwoWeight,   
             cmd1.pitch_speed * (1-cmdTwoWeight) + cmd2.pitch_speed * cmdTwoWeight,
             cmd1.target_id,
-            cmd1.shoot_mode
+            cmd1.fire_enable
         };
     return RobotCommand{
             cmd1.distance * (1-cmdTwoWeight) + cmd2.distance * cmdTwoWeight,
@@ -131,7 +131,7 @@ inline RobotCommand command_linear_interpolation(const RobotCommand& cmd1, const
             cmd1.pitch_angle * (1-cmdTwoWeight) + cmd2.pitch_angle * cmdTwoWeight,   
             cmd1.pitch_speed * (1-cmdTwoWeight) + cmd2.pitch_speed * cmdTwoWeight,
             cmd2.target_id,
-            cmd2.shoot_mode
+            cmd2.fire_enable
         };
 }
 
@@ -172,14 +172,20 @@ public:
     Eigen::Quaternionf toQuaternion()
     {
         Eigen::Quaternionf q;
+        // q = Eigen::AngleAxisf(yaw / 180 * M_PI, Eigen::Vector3f::UnitZ()) *
+        //     Eigen::AngleAxisf(pitch / 180 * M_PI, Eigen::Vector3f::UnitX());
         q = Eigen::AngleAxisf(yaw / 180 * M_PI, Eigen::Vector3f::UnitZ()) *
-            Eigen::AngleAxisf(pitch / 180 * M_PI, Eigen::Vector3f::UnitX());
+            Eigen::AngleAxisf(pitch / 180 * M_PI, Eigen::Vector3f::UnitX()) *
+            Eigen::AngleAxisf(roll / 180 * M_PI, Eigen::Vector3f::UnitY());
         return q;
     }
     void toQuaternion(Eigen::Quaternionf &q)
     {
+        // q = Eigen::AngleAxisf(yaw / 180 * M_PI, Eigen::Vector3f::UnitZ()) *
+        //     Eigen::AngleAxisf(pitch / 180 * M_PI, Eigen::Vector3f::UnitX());
         q = Eigen::AngleAxisf(yaw / 180 * M_PI, Eigen::Vector3f::UnitZ()) *
-            Eigen::AngleAxisf(pitch / 180 * M_PI, Eigen::Vector3f::UnitX());
+            Eigen::AngleAxisf(pitch / 180 * M_PI, Eigen::Vector3f::UnitX()) *
+            Eigen::AngleAxisf(roll / 180 * M_PI, Eigen::Vector3f::UnitY());
     }
 };
 
