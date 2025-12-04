@@ -499,14 +499,7 @@ namespace pipeline
     class PipelineTask : public BasicTask
     {
     public:
-        /**
-         * @brief   子模块注册器模板类
-         * @tparam T 子模块类型，必须继承自 SubModule
-         */
-        template<typename T>
-        class SubModuleRegistrar
-        {
-        public:
+
         /**
          * @brief   注册并初始化子模块（模板版本）
          * @tparam T 子模块类型，必须继承自 SubModule

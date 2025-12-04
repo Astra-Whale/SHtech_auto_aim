@@ -34,7 +34,7 @@ namespace sensor
          * @param[in] VideoSource 视频源路径
          * @param[in] flip_image 是否翻转图像
          */
-        SensorSubModule(const std::string& VideoSource, const std::string& flip_image, pipeline::bridge::SensorFromSerialAttitudeBridge attitude_bridge, pipeline::bridge::SensorFromSerialRobotStatusBridge status_bridge); 
+        SensorSubModule(const std::string& VideoSource, const std::string& flip_image, pipeline::bridge::SensorFromSerialAttitudeBridge &attitude_bridge, pipeline::bridge::SensorFromSerialRobotStatusBridge &status_bridge); 
         virtual ~SensorSubModule();
 
         bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
@@ -56,8 +56,8 @@ namespace sensor
         // 状态跟踪
         fps_counter total_fps{"sensor_fps"};    /*!< FPS计数器 */
 
-        pipeline::bridge::SensorFromSerialAttitudeBridge attitude_bridge; /*!< 串口到传感器的姿态消息桥接 */
-        pipeline::bridge::SensorFromSerialRobotStatusBridge status_bridge; /*!< 串口到传感器的状态消息桥接 */
+        pipeline::bridge::SensorFromSerialAttitudeBridge &attitude_bridge; /*!< 串口到传感器的姿态消息桥接 */
+        pipeline::bridge::SensorFromSerialRobotStatusBridge &status_bridge; /*!< 串口到传感器的状态消息桥接 */
     };
 }
 
