@@ -320,7 +320,7 @@ namespace pipeline
     class BasicTask
     {
     public:
-        BasicTask() : _debugprint(false), _imgshow(false), _should_run(false), _should_terminate(false) {}
+        BasicTask() : _debugprint(false), _filelog(false), _imgshow(false), _should_run(false), _should_terminate(false) {}
         virtual ~BasicTask()
         {
             terminate();
