@@ -3,13 +3,15 @@
 // Event-driven architecture with dependency injection
 //
 
-#include "timed_serial_new.hpp"
+#include "timed_serial.hpp"
 
 namespace hardware
 {
     // TimedSerial 实现
     TimedSerial::TimedSerial(std::unique_ptr<SerialInterface> driver_impl, 
-                                   pipeline::bridge::PlannerToSerialBridge &planner_bridge) 
+                                   pipeline::bridge::PlannerToSerialBridge &planner_bridge,
+                                   pipeline::bridge::SensorFromSerialAttitudeBridge &attitude_bridge,
+                                   pipeline::bridge::SensorFromSerialRobotStatusBridge &status_bridge) 
         : BasicTask(), 
           driver_(std::move(driver_impl)), 
           planner_bridge_(planner_bridge),
@@ -23,12 +25,12 @@ namespace hardware
             this->handle_planner_message(msg);
         });
 
-        attitude_bridge_.set_provider([this](const Attitude& att) {
-            this->handle_attitude_get(att);
+        attitude_bridge_.set_provider([this]() {
+            return pipeline::bridge::SensorFromSerialAttitudeMessage{this->handle_attitude_get()}; 
         });
 
-        status_bridge_.set_provider([this](const RobotStatus& sts) {
-            this->handle_robotstatus_get(sts);
+        status_bridge_.set_provider([this]() {
+            return pipeline::bridge::SensorFromSerialRobotStatusMessage{this->handle_robotstatus_get()};
         });
 
         // 注册驱动层的两个独立回调
@@ -44,7 +46,7 @@ namespace hardware
         if (!driver_->init())
         {
             LOGE_S("[TimedSerial] Failed to initialize serial driver");
-            std::throw std::runtime_error("TimedSerial driver initialization failed");
+            throw std::runtime_error("TimedSerial driver initialization failed");
         }
         else
         {
@@ -86,6 +88,18 @@ namespace hardware
             LOGM_S("[TimedSerial] Attitude updated: yaw=%.2f, pitch=%.2f", 
                    att.yaw, att.pitch);
         }
+    }
+
+    Attitude TimedSerial::handle_attitude_get()
+    {
+        std::lock_guard<std::mutex> lock(sensor_mutex_);
+        return latest_attitude_;
+    }
+
+    RobotStatus TimedSerial::handle_robotstatus_get()
+    {
+        std::lock_guard<std::mutex> lock(sensor_mutex_);
+        return latest_robot_status_;
     }
 
     /**

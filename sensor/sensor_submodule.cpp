@@ -20,8 +20,8 @@ namespace sensor
     // SensorSubModule 实现
     SensorSubModule::SensorSubModule(const std::string &VideoSource, 
                                     const std::string &flip_image, 
-                                    pipeline::bridge::SensorFromSerialAttitudeBridge attitude_bridge, 
-                                    pipeline::bridge::SensorFromSerialRobotStatusBridge status_bridge) 
+                                    pipeline::bridge::SensorFromSerialAttitudeBridge& attitude_bridge, 
+                                    pipeline::bridge::SensorFromSerialRobotStatusBridge& status_bridge) 
         : SubModule(SubModuleName::SENSOR), attitude_bridge(attitude_bridge), status_bridge(status_bridge)
     {
         LOGM_S("[sensor_submodule] constructing with video: %s", VideoSource.c_str());

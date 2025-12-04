@@ -33,6 +33,8 @@
 #ifndef COMMON_MESSAGE_BRIDGE_HPP
 #define COMMON_MESSAGE_BRIDGE_HPP
 
+#include "common.hpp"
+
 #include <functional>
 #include <array>
 #include "datatype.hpp"
