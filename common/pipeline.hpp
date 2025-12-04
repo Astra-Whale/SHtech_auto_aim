@@ -8,7 +8,7 @@
 #define COMMON_pipeline_H
 
 //submodules
-#include "common.hpp"
+//#include "common.hpp"
 
 //packages
 #include <opencv2/opencv.hpp>
@@ -20,6 +20,11 @@
 #include <memory>
 #include <stdexcept>
 #include <type_traits>
+
+enum class SubModuleName : uint8_t;
+struct ThreadDataPack;
+class BasicTask;
+
 /**
  * @brief   用于安全释放指针的函数类
  */
@@ -313,7 +318,7 @@ namespace pipeline
     class BasicTask
     {
     public:
-        BasicTask() : _debug(false), _show(false), _should_run(false), _should_terminate(false) {}
+        BasicTask() : _debugprint(false), _imgshow(false), _should_run(false), _should_terminate(false) {}
         virtual ~BasicTask()
         {
             terminate();
@@ -385,20 +390,19 @@ namespace pipeline
         }
 
         /**
-         * @brief   设置是否展示调试画面
+         * @brief   设置是否打印调试信息
          */
-        virtual void setshow(const bool &show)
-        {
-            _show = show;
-        }
+        virtual void set_debug_print(const bool &debugprint) { _debugprint = debugprint; }
 
         /**
-         * @brief   设置是否显示调试信息
+         * @brief   设置是否展示调试画面
          */
-        virtual void setdebug(const bool &debug)
-        {
-            _debug = debug;
-        }
+        virtual void set_img_show(const bool &imgshow) { _imgshow = imgshow; }
+
+        /**
+         * @brief   设置是否向文件写入调试信息
+         */
+        virtual void set_file_log(const bool &filelog) { _filelog = filelog; }
 
         /**
          * @brief   任务是否应该保持活跃（既要运行且未被终止）
@@ -432,8 +436,9 @@ namespace pipeline
             });
             return _should_run && !_should_terminate;  // 只有在应该运行且未终止时返回true
         }
-        bool _debug;            /*!< 标记是否显示调试信息 */
-        bool _show;             /*!< 标记是否展示运行结果 */
+        bool _debugprint;            /*!< 标记是否显示调试信息 */
+        bool _filelog;              /*!< 标记是否向文件写入调试信息 */
+        bool _imgshow;             /*!< 标记是否展示运行结果 */
         bool _should_run;       /*!< 外部控制：任务是否应该运行 */
         bool _should_terminate; /*!< 外部控制：任务是否应该被彻底终止 */
         
@@ -449,7 +454,7 @@ namespace pipeline
     class SubModule
     {
     public:
-        SubModule(SubModuleName name) : _debug(false), _show(false), submodule_name(name) {}
+        SubModule(SubModuleName name) : _debugprint(false), _imgshow(false), submodule_name(name) {}
         virtual ~SubModule() = default;
 
         // 禁用复制，只允许移动
@@ -458,17 +463,20 @@ namespace pipeline
         SubModule(SubModule&&) = default;
         SubModule& operator=(SubModule&&) = default;
 
-
-
         /**
-         * @brief   设置是否显示调试信息
+         * @brief   设置是否打印调试信息
          */
-        virtual void setdebug(const bool &debug) { _debug = debug; }
+        virtual void set_debug_print(const bool &debugprint) { _debugprint = debugprint; }
 
         /**
          * @brief   设置是否展示调试画面
          */
-        virtual void setshow(const bool &show) { _show = show; }
+        virtual void set_img_show(const bool &imgshow) { _imgshow = imgshow; }
+
+        /**
+         * @brief   设置是否向文件写入调试信息
+         */
+        virtual void set_file_log(const bool &filelog) { _filelog = filelog; }
 
         /**
          * @brief   获取子模块名称（枚举类型)
@@ -487,8 +495,9 @@ namespace pipeline
                            const BasicTask* parent) = 0;
 
     protected:
-        bool _debug;  /*!<标记是否显示调试信息*/
-        bool _show;   /*!<标记是否展示运行结果*/
+        bool _debugprint;   /*!<标记是否显示调试信息*/
+        bool _filelog;      /*!< 标记是否向文件写入调试信息 */
+        bool _imgshow;      /*!<标记是否展示运行结果*/
         SubModuleName submodule_name; /*!< 子模块名称 */
     };
 
@@ -554,14 +563,14 @@ namespace pipeline
         /**
          * @brief   设置调试信息显示（级联到所有子模块）
          */
-        virtual void setdebug(const bool &debug) override
+        virtual void set_debug_print(const bool &debug) override
         {
-            BasicTask::setdebug(debug);
+            BasicTask::set_debug_print(debug);
             for (auto& submodule : submodules)
             {
                 if(submodule)
                 {
-                    submodule->setdebug(debug);
+                    submodule->set_debug_print(debug);
                 }
             }
         }
@@ -569,14 +578,14 @@ namespace pipeline
         /**
          * @brief   设置结果展示（级联到所有子模块）
          */
-        virtual void setshow(const bool &show) override
+        virtual void set_img_show(const bool &show) override
         {
-            BasicTask::setshow(show);
+            BasicTask::set_img_show(show);
             for (auto& submodule : submodules)
             {
                 if(submodule)
                 {
-                    submodule->setshow(show);
+                    submodule->set_img_show(show);
                 }
             }
         }

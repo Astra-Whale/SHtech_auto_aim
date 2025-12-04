@@ -8,13 +8,13 @@
 #ifndef COMMON_ROBOT_H
 #define COMMON_ROBOT_H
 
-#include "common.hpp"
 
 // packages
 #include <cstdint>
 #include <array>
 #include <chrono>
 #include <Eigen/Dense>
+#include <opencv2/opencv.hpp>
 
 enum class EnemyColor : uint8_t
 {

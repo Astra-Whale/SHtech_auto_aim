@@ -33,11 +33,13 @@
 #ifndef COMMON_MESSAGE_BRIDGE_HPP
 #define COMMON_MESSAGE_BRIDGE_HPP
 
-#include "common.hpp"
-
 #include <functional>
 #include <array>
+#include <chrono>
+#include <Eigen/Dense>
+
 #include "datatype.hpp"
+#include "log/log.hpp"
 
 namespace pipeline {
 namespace bridge {
