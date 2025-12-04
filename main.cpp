@@ -290,9 +290,10 @@ bool init(void)
     planner_submodule_registered = predict_composite->register_submodule_with_params<plan::PlannerSubModule>(*planner_to_serial_bridge);
 
     // 设置各个任务的调试和显示选项
-    timed_serial->set_debug_print(display["timedserial_debug"]);
-    timed_serial->set_img_show(display["timedserial_show"]);
-    timed_serial->set_file_log(display["timedserial_filelog"]);
+    timed_serial->set_debug_print(display["timed_serial_debug"]);
+    std::cout<<"display timedserial_debug:"<<display["timedserial_debug"]<<std::endl;
+    timed_serial->set_img_show(display["timed_serial_show"]);
+    timed_serial->set_file_log(display["timed_serial_filelog"]);
 
     sensor_composite->set_debug_print(display["sensor_debug"]);
     sensor_composite->set_img_show(display["sensor_show"]);

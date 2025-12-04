@@ -214,7 +214,7 @@ namespace hardware
                     auto read_time_cost = std::chrono::high_resolution_clock::now() - start_time;
                     if(_debugprint)
                         if(read_time_cost > std::chrono::microseconds(500))
-                            LOGM_S("[timedserial_new] Cost time: %lld us", 
+                            LOGM_S("[timedserial] Cost time: %lld us", 
                                    (long long)std::chrono::duration_cast<std::chrono::microseconds>(read_time_cost).count());
                     
                     driver_->transmit_cmd(
@@ -242,7 +242,7 @@ namespace hardware
                         LOGW_S("[TimedSerial] No new command to send");
                 }
 
-                if (true || _debugprint)
+                if (_debugprint)
                 {
                     CNT_FPS(total_fps, {});
                 }
@@ -264,7 +264,7 @@ namespace hardware
                 // LOGM_F("[timedserial_new]%llu start time: %lld|last time: %lld", frame_index++,
                 //        static_cast<long long>(std::chrono::duration_cast<std::chrono::microseconds>(start_time.time_since_epoch()).count()),
                 //        static_cast<long long>(std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count())
-                );
+                //);
             }
             // basictask框架级实现：工作循环结束（被stop），回到等待状态
         }
