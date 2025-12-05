@@ -22,7 +22,7 @@ namespace detect
       adjust(adjust_),
       corner_optimizer(adjust=adjust_)
     {
-        LOGM_S("[detect_submodule] constructing with model: %s", OnnxFileName.c_str());
+        LOGM_S("[detect] constructing with model: %s", OnnxFileName.c_str());
         #if INFERENCE_BACKEND_TYPE == 1
             model.reset(new ONNX(OnnxFileName));
         #elif INFERENCE_BACKEND_TYPE == 2
@@ -33,7 +33,7 @@ namespace detect
             #error "Invalid INFERENCE_BACKEND_TYPE"
         #endif
         
-        LOGM_S("[detect_submodule] model loaded");
+        LOGM_S("[detect] model loaded");
     }
 
     bool DetectSubModule::should_skip(std::shared_ptr<ThreadDataPack> data) const
@@ -95,7 +95,7 @@ namespace detect
 
                 // Optimize corners using our ArmorCornerOptimizer
                 std::vector<cv::Point2f> optimized_corners =
-                    corner_optimizer.optimizeCorners(data->frame, bbox.pts, _show);
+                    corner_optimizer.optimizeCorners(data->frame, bbox.pts, _imgshow);
 
                 // if (optimized_corners.empty()) {
 
@@ -135,7 +135,7 @@ namespace detect
             // }
 
             auto t_opt_end = std::chrono::steady_clock::now(); 
-            if (_debug)
+            if (_debugprint)
             {
                 LOGM_S("[detect]Info: corner optimization took %.2lfms",
                         std::chrono::duration_cast<std::chrono::duration<double>>(t_opt_end - t_opt_start).count() * 1000);
@@ -149,7 +149,7 @@ namespace detect
         static std::string output_dir = "./frames/"; // 图片保存目录
         
         // 显示结果（如果需要）
-        if (_show)
+        if (_imgshow)
         {
             static const cv::Scalar colors[3] = {{255, 0, 0}, {0, 0, 255}, {255, 255, 255}};
             cv::Mat im2show = data->frame.clone();
@@ -188,17 +188,17 @@ namespace detect
         }
 
         // 调试信息
-        if (_debug)
+        if (_debugprint)
         {
-            LOGM_S("[detect_submodule]Info: detected %ld objects", data->bboxes.size());
+            LOGM_S("[detect] Info: detected %ld objects", data->bboxes.size());
             for (const auto &b : data->bboxes)
             {
-                LOGM_S("[detect_submodule]Detect_Data: colorid: %d, tag_id: %d", b.color_id, b.tag_id);
+                LOGM_S("[detect] Detect_Data: colorid: %d, tag_id: %d", b.color_id, b.tag_id);
             }
         }
         
         auto t4 = std::chrono::steady_clock::now();
-        if(_debug)
+        if(_debugprint)
             LOGM_S(
                 "DetectSubModule Inference %.2lfms Show %.2lfms", 
                 std::chrono::duration_cast<std::chrono::duration<double>>(t3 - t2).count()*1000,

@@ -115,8 +115,9 @@ public:
     {
         // Mock driver does nothing on transmit
         // Optionally log for debugging
+        int shoot_flag = static_cast<int>(shoot);
         if (false) {  // Set to true for verbose debugging
-            LOGM_S("[MockDriver] transmit_cmd called (no-op): yaw=%.2f, pitch=%.2f", yaw, pitch);
+            LOGM_S("[MockDriver] yaw=%.2f, yaw_spd=%.2f, pitch=%.2f,pitch_spd=%.2f, dist=%.2f, shoot=%d", yaw,yaw_spd, pitch,pitch_spd, dist, shoot_flag);
         }
     }
 

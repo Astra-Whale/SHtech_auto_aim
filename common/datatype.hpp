@@ -8,13 +8,13 @@
 #ifndef COMMON_ROBOT_H
 #define COMMON_ROBOT_H
 
-#include "common.hpp"
 
 // packages
 #include <cstdint>
 #include <array>
 #include <chrono>
 #include <Eigen/Dense>
+#include <opencv2/opencv.hpp>
 
 enum class EnemyColor : uint8_t
 {
@@ -89,6 +89,8 @@ inline const char* getSubModuleName(SubModuleName module) {
         default: return "Unknown";
     }
 }
+
+constexpr float INF_BALL_SPEED = 24.0f; // 步兵最大弹速 m/s
 
 struct RobotStatus
 {

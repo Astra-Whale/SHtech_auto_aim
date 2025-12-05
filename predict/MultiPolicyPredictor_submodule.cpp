@@ -65,7 +65,7 @@ namespace predict
         auto t2 = std::chrono::steady_clock::now();
 
         // 调试信息
-        if (_debug)
+        if (_debugprint)
         {
             // auto &send = data->robotcommand;
             // LOGM_S("[MultiPolicyPredictorSubModule] pitch %6.2f, yaw %6.2f, dist %4.1f",
@@ -74,7 +74,7 @@ namespace predict
         }
         
         // 显示结果（如果需要）
-        if (_show)
+        if (_imgshow)
         {
             // 预测模块的显示逻辑（如果需要的话）
         }
