@@ -83,10 +83,10 @@ namespace hardware
         std::lock_guard<std::mutex> lock(sensor_mutex_);
         latest_attitude_ = att;
         
-        if (_debug)
+        if (_debugprint)
         {
-            LOGM_S("[TimedSerial] Attitude updated: yaw=%.2f, pitch=%.2f", 
-                   att.yaw, att.pitch);
+            // LOGM_S("[TimedSerial] Attitude updated: yaw=%.2f, pitch=%.2f", 
+            //        att.yaw, att.pitch);
         }
     }
 
@@ -124,17 +124,17 @@ namespace hardware
         latest_robot_status_ = sts;
         
         // 如果新数据的射速是默认值，且我们已有更好的值，则恢复
-        constexpr float DEFAULT_SPEED = 24.0f;
+        constexpr float DEFAULT_SPEED = INF_BALL_SPEED; // 步兵最大弹速常量 m/s
         if (sts.robot_speed_mps == DEFAULT_SPEED && current_speed != DEFAULT_SPEED)
         {
             latest_robot_status_.robot_speed_mps = current_speed;
         }
         
-        if (_debug)
+        if (_debugprint)
         {
-            LOGM_S("[TimedSerial] Status updated: enemy_color=%d, speed=%.2f", 
-                   static_cast<int>(latest_robot_status_.enemy_color), 
-                   latest_robot_status_.robot_speed_mps);
+            // LOGM_S("[TimedSerial] Status updated: enemy_color=%d, speed=%.2f", 
+            //        static_cast<int>(latest_robot_status_.enemy_color), 
+            //        latest_robot_status_.robot_speed_mps);
         }
     }
 
@@ -200,9 +200,9 @@ namespace hardware
 
                 if (!driver_)
                 {
-                    if (_debug)
+                    if (_debugprint)
                     {
-                        LOGW_S("[TimedSerial] Driver not available");
+                        LOGE_S("[TimedSerial] Driver not available");
                     }
                     std::this_thread::sleep_for(std::chrono::milliseconds(2000));
                     continue;
@@ -212,9 +212,9 @@ namespace hardware
                 if (read_latest_command_and_attitude())
                 {
                     auto read_time_cost = std::chrono::high_resolution_clock::now() - start_time;
-                    if(_debug)
+                    if(_debugprint)
                         if(read_time_cost > std::chrono::microseconds(500))
-                            LOGM_S("[timedserial_new] Cost time: %lld us", 
+                            LOGM_S("[timedserial] Cost time: %lld us", 
                                    (long long)std::chrono::duration_cast<std::chrono::microseconds>(read_time_cost).count());
                     
                     driver_->transmit_cmd(
@@ -226,7 +226,7 @@ namespace hardware
                         command_cache_.fire_enable,
                         command_cache_.target_id);
 
-                    if (false && _debug)
+                    if (_debugprint)
                     {
                         LOGM_S("[TimedSerial][transmit] p-m:%6.2f | p-s:%6.2f | ps-s:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f",
                                attitude_cache_.pitch,
@@ -239,11 +239,11 @@ namespace hardware
                 }
                 else
                 {
-                    if (_debug)
-                        LOGM_S("[TimedSerial] No new command to send");
+                    if (_debugprint)
+                        LOGW_S("[TimedSerial] No new command to send");
                 }
 
-                if (true || _debug)
+                if (_debugprint)
                 {
                     CNT_FPS(total_fps, {});
                 }
@@ -262,10 +262,10 @@ namespace hardware
                            (long long)std::chrono::duration_cast<std::chrono::microseconds>(-sleep_duration).count());
                 }
                 
-                LOGM_F("[timedserial_new]%llu start time: %lld|last time: %lld", frame_index++,
-                       static_cast<long long>(std::chrono::duration_cast<std::chrono::microseconds>(start_time.time_since_epoch()).count()),
-                       static_cast<long long>(std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count())
-                );
+                // LOGM_F("[timedserial_new]%llu start time: %lld|last time: %lld", frame_index++,
+                //        static_cast<long long>(std::chrono::duration_cast<std::chrono::microseconds>(start_time.time_since_epoch()).count()),
+                //        static_cast<long long>(std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count())
+                //);
             }
             // basictask框架级实现：工作循环结束（被stop），回到等待状态
         }
