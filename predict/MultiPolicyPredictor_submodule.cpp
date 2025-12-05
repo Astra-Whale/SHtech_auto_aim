@@ -115,8 +115,6 @@ namespace predict
         // 更新坐标变换矩阵（根据IMU姿态数据）
         coord_transformer.update_R_world2imu(q_raw);
 
-        LOGT_S();
-
         bool show_armor = false; // 控制是否在可视化中显示装甲板边界框
 
         // === 根据跟踪器状态执行不同逻辑 ===
@@ -268,6 +266,8 @@ namespace predict
      */
     void MultiPolicyPredictorSubModule::output_data_to_plot(const Target &target, const Plan &plan) 
     {
+        LOGT_S();
+
         // cout << target.tracked_measurement(0, 0) << std::endl;
         // cout << target.tracked_measurement(1, 0) << std::endl;
         // cout << target.tracked_measurement(2, 0) << std::endl;
@@ -435,7 +435,7 @@ namespace predict
             cv::line(im2show, tracked_armor.pts[1], tracked_armor.pts[2], colors[2], 1);
             cv::line(im2show, tracked_armor.pts[2], tracked_armor.pts[3], colors[2], 1);
             cv::line(im2show, tracked_armor.pts[3], tracked_armor.pts[0], colors[2], 1); // white
-            
+
             cv::putText(im2show, std::to_string(tracked_armor.tag_id), tracked_armor.pts[0], cv::FONT_HERSHEY_SIMPLEX, 1, colors[tracked_armor.color_id]);
 
         }

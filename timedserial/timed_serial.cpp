@@ -253,9 +253,12 @@ namespace hardware
                 if (sleep_duration > std::chrono::milliseconds(0))
                 {
                     std::this_thread::sleep_for(sleep_duration);
+                    // LOGW_S("[TimedSerial] sending on time, slept");
                 }
                 else
                 {
+                    // LOGW_S("[TimedSerial] sending cost %lld ms", 
+                    //     (long long)std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count());
                     LOGW_S("[TimedSerial] sending overrun by %lld ms", 
                            (long long)std::chrono::duration_cast<std::chrono::microseconds>(-sleep_duration).count());
                     LOGW_F("[TimedSerial] sending overrun by %lld us", 

@@ -185,4 +185,4 @@ if __name__ == "__main__":
     cpp_path = "./build/auto-aim"  # 修改为你的路径
 
     plotter = RealTimePlotter(cpp_path, time_window=15.0)
-    plotter.run(refresh_rate=0.5)  # 每0.5秒刷新一次绘图
+    plotter.run(refresh_rate=3)  # 每0.5秒刷新一次绘图
