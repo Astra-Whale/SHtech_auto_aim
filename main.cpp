@@ -357,8 +357,8 @@ int main(void)
 
     const int max_mem = 4;
     // 使用新的类型别名：cap2det 采用零缓冲握手机制，其他采用有缓冲队列
-    // pipeline::AutoAimHandshake cap2det(0);  // 零缓冲握手
-    pipeline::AutoAimQueue cap2det(1);
+    pipeline::AutoAimHandshake cap2det(0);  // 零缓冲握手
+    // pipeline::AutoAimQueue cap2det(1);
     pipeline::AutoAimQueue det2pre(2);      // 有缓冲队列
     pipeline::AutoAimQueue pre2cap(max_mem + 1);  // 有缓冲队列
     for (int i = 0; i < max_mem; i++)

@@ -59,8 +59,8 @@ namespace detect
         auto t2 = std::chrono::steady_clock::now();
 
         // 执行推理
-        (*model)(data->frame, data->bboxes);
-        
+        (*model)(input_frame, output_bboxes);
+
         auto t3 = std::chrono::steady_clock::now();
 
         if (center)
