@@ -129,64 +129,61 @@ ONNX::~ONNX()
 
 void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
 {
-//     auto t1 = std::chrono::steady_clock::now();
     // pre-process [bgr2rgb & resize]
     det.clear();
     cv::Mat x;
     cv::Mat preprocessedImage;
-    float fx = (float)src.cols / 640.f, fy = (float)src.rows / 384.f;
-    // 废弃的预处理代码
-    // cv::cvtColor(src, x, cv::COLOR_BGR2RGB);
-    // if (src.cols != 640 || src.rows != 384)
-    // {
-    //     cv::resize(x, x, {640, 384});
-    // }
-    // x.convertTo(x, CV_32F, 1.0 / 255);
+    float fx = (float)src.cols / 640.f, fy = (float)src.rows / 512.f;
+    cv::cvtColor(src, x, cv::COLOR_BGR2RGB);
+    if (src.cols != 640 || src.rows != 512)
+    {
+        cv::resize(x, x, {640, 512});
+    }
+    x.convertTo(x, CV_32F, 1.0 / 255);
 
-    // // step 8: Convert the image to CHW RGB float format.
-    // // HWC to CHW
-    // cv::dnn::blobFromImage(x, preprocessedImage);
-
-    cv::dnn::blobFromImage(
-        src, 
-        preprocessedImage, 
-        1.0 / 255.0,          // 归一化（等同于你的 convertTo）
-        cv::Size(640, 384),   // 自动缩放
-        cv::Scalar(),         // 不减均值
-        false                  // swapRB: BGR→RGB（关键！）
-    );
-
-
+    // step 8: Convert the image to CHW RGB float format.
+    // HWC to CHW
+    cv::dnn::blobFromImage(x, preprocessedImage);
     inputTensorValues.assign(preprocessedImage.begin<float>(), preprocessedImage.end<float>());
 
+    
     migraphx::program_parameters prog_params;
     auto param_shapes = net.get_parameter_shapes();
     auto input        = param_shapes.names().front();
     // create argument for the parameter
     prog_params.add(input, migraphx::argument(param_shapes[input], inputTensorValues.data()));
-
-    
-    // auto t2 = std::chrono::steady_clock::now();
     // run inference
     auto outputs = net.eval(prog_params);
 
-    // auto t3 = std::chrono::steady_clock::now();
-
     std::vector<bbox_t> candidates;
     float* out = reinterpret_cast<float*>(outputs[0].data());
-    for (size_t i = 0; i < 15120; i++)
+    int stride = 8, x_center = 0, y_center = 0;
+    for (size_t i = 0; i < 6720; i++)
     {
-        const float* box_buffer = out+20*i;
-        if (box_buffer[8] < inv_sigmoid(KEEP_THRES))
-            continue;
-        candidates.emplace_back();
-        auto &box = candidates.back();
-        memcpy(&box.pts, box_buffer, 8 * sizeof(float));
-        for (auto &pt : box.pts)
-            pt.x *= fx, pt.y *= fy;
-        box.confidence = sigmoid(box_buffer[8]);
-        box.color_id = argmax(box_buffer + 9, 4);
-        box.tag_id = argmax(box_buffer + 13, 7);
+        const float* box_buffer = out+21*i;
+        if (box_buffer[8] >= KEEP_THRES)
+        {    
+            candidates.emplace_back();
+            auto &box = candidates.back();
+            memcpy(&box.pts, box_buffer, 8 * sizeof(float));
+            std::swap(box.pts[2],box.pts[3]);   // 2025、04、10系列的新模型具有和旧模型不同的角点顺序：模型输出为：左上，左下，右上，右下。现将其调整为与旧的一致：左上，左下，右下，右上
+            for (auto &pt : box.pts)
+            {
+                pt.x = pt.x * 2 * stride + x_center;
+                pt.y = pt.y * 2 * stride + y_center;
+                pt.x *= fx;
+                pt.y *= fy;
+            }
+            box.confidence = box_buffer[8];
+            box.tag_id = argmax(box_buffer + 9, 8);
+            box.color_id = argmax(box_buffer + 17, 2);
+            int armor_size = argmax(box_buffer + 19, 2);
+        }
+        x_center += stride;
+        x_center = (x_center == 640)?0:x_center;
+        y_center += x_center == 0 ? stride:0;
+        y_center = (y_center == 512)?0:y_center;
+        stride *= x_center ==0 && y_center == 0? 2 : 1;
     }
     std::sort(candidates.begin(), candidates.end(), std::greater<bbox_t>());
     // post-process [nms]
@@ -207,13 +204,4 @@ void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
         }
         det.push_back(box1);
     }
-
-    // auto t4 = std::chrono::steady_clock::now();
-
-    // auto pre_time = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
-    // auto infer_time = std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count();
-    // auto post_time = std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count();
-
-    // printf("[ONNX] Pre: %ld us|Infer: %ld us|Post: %ld us\n",
-    //        pre_time, infer_time, post_time);
 }
