@@ -92,17 +92,13 @@ namespace predict
 
         // === 射击决策参数 ===
         /// @brief 轨迹跟踪一致性阈值 (弧度)
-        const double same_trace_threshold = 0.03; // 0.01;
+        const double same_trace_threshold = 0.03;
         
         /// @brief 射击精度阈值 (弧度) - 约等于atan(0.05/0.4)
         const double fire_threshold = 0.125;
 
         /// @brief 位置变化阈值 (米)，用于检测装甲板切换
         const double same_position_threshold = 0.2;
-
-        // TODO: put into config
-        const double pitch_comp = -0.051;
-        const double yaw_comp = 0;
 
         // TODO: estimate shoot start delay
 
@@ -116,6 +112,12 @@ namespace predict
 
         /// @brief 射击时机偏移（MPC步数）(与shoot_latency配合使用)
         int shoot_offset = 2;
+
+        double pitch_comp = -0.051;
+
+        double yaw_comp = 0;
+
+        bool disable_vehicle_center_shoot_mode = true;
 
         /// @brief 调试模式标志
         bool debug;
@@ -240,7 +242,8 @@ namespace predict
          * @param shoot_latency_ 发射延迟时间 (s)
          * @param debug_ 调试模式标志
          */
-        explicit Planner(double comm_latency_, double shoot_latency_, bool debug_);
+        explicit Planner(double comm_latency_, double shoot_latency_,double pitch_comp_, double yaw_comp_, 
+                        bool disable_vehicle_center_shoot_mode_, bool debug_);
 
         /**
          * @brief 重置规划器状态

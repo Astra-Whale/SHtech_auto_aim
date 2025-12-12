@@ -32,6 +32,20 @@ namespace detect
         #else
             #error "Invalid INFERENCE_BACKEND_TYPE"
         #endif
+
+        if (adjust) {
+            // 创建窗口
+            cv::namedWindow("detector trackbar", cv::WINDOW_AUTOSIZE);
+        
+            // 👇 创建滑动条
+            cv::createTrackbar(
+                "Binary Threshold",           // 滑动条名称
+                "detector trackbar",        // 所属窗口名
+                &binary_thres,      // 关联的整型变量（实时更新）
+                255,                   // 最大值
+                0      // 回调函数
+            );
+        }
         
         LOGM_S("[detect] model loaded");
     }
@@ -75,6 +89,24 @@ namespace detect
             }
         }
         data->bboxes = output_bboxes;
+
+        if (adjust) {
+            corner_optimizer.setBinaryThreshold(binary_thres);
+        }
+        else {
+            if (data->robotstatus.enemy_color == EnemyColor::RED) {
+                corner_optimizer.setBinaryThreshold(bin_threshold_for_red);
+            }
+            else if (data->robotstatus.enemy_color == EnemyColor::BLUE) {
+                corner_optimizer.setBinaryThreshold(bin_threshold_for_blue);
+            }
+            else {
+                corner_optimizer.setBinaryThreshold(bin_threshold_for_blue);
+    
+                LOGW_S("[detect] Warning: enemy color not set, using default binary threshold");
+                LOGW_F("[detect] Warning: enemy color not set, using default binary threshold");
+            }
+        }
 
         std::vector<bbox_t> optimized_bboxes;
         // Corner optimization

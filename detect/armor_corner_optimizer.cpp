@@ -13,20 +13,6 @@ namespace detect
                                               const YoloModelCharacteristics &yolo_params)
   : binary_thres(bin_thres), light_params(light_params), yolo_params(yolo_params), adjust(adjust_)
   {
-    if (adjust) {
-      // 创建窗口
-      cv::namedWindow("detector trackbar", cv::WINDOW_AUTOSIZE);
-
-      // 👇 创建滑动条
-      cv::createTrackbar(
-          "Binary Threshold",           // 滑动条名称
-          "detector trackbar",        // 所属窗口名
-          &binary_thres,      // 关联的整型变量（实时更新）
-          255,                   // 最大值
-          0      // 回调函数
-      );
-    }
-
   }
   
   std::vector<cv::Point2f> ArmorCornerOptimizer::optimizeCorners(
@@ -435,8 +421,10 @@ namespace detect
     // }
     
     cv::Mat green_channel;
-    cv::cvtColor(roi_img, green_channel, cv::COLOR_RGB2GRAY);
-    img_grey = green_channel;
+    // cv::cvtColor(roi_img, green_channel, cv::COLOR_RGB2GRAY);
+    // img_grey = green_channel;
+
+    cv::extractChannel(roi_img, green_channel, 1);
 
     // Calculate the light bar area: length × (length/4) considering 4:1 ratio
     float light_area = light_length * (light_length / 4.0f);

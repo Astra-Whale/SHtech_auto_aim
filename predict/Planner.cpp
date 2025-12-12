@@ -22,11 +22,15 @@ namespace predict
      * @param debug_ 调试模式标志
      * @details 初始化MPC求解器和默认参数
      */
-    Planner::Planner(double comm_latency_, double shoot_latency_, bool debug_)
+    Planner::Planner(double comm_latency_, double shoot_latency_, double pitch_comp_, double yaw_comp_, 
+                        bool disable_vehicle_center_shoot_mode_, bool debug_)
     : armor_jump_tp(std::chrono::high_resolution_clock::now()),
       armor_jump(false),
       comm_latency(comm_latency_),
       shoot_latency(shoot_latency_),
+      pitch_comp(pitch_comp_),
+      yaw_comp(yaw_comp_),
+      disable_vehicle_center_shoot_mode(disable_vehicle_center_shoot_mode_),
       debug(debug_)
     {
         shoot_offset = static_cast<int>(shoot_latency / DT);
@@ -195,6 +199,7 @@ namespace predict
             target_yaw_raw = traj(0, HALF_HORIZON) + yaw0;
             target_pitch_raw = traj(2, HALF_HORIZON);
 
+            // TODO: 用闭式求解
             // === 求解偏航轴MPC ===
             Eigen::VectorXd x0(2);
             x0 << traj(0, 0), traj(1, 0);
@@ -574,13 +579,17 @@ namespace predict
      */
     void Planner::update_aimed_target_type(const Target &target, double rotation_speed)
     {
-        // TODO: 旋转速度阈值需要根据实际情况调整
         // 根据旋转速度选择不同的云台目标模型
         if (target.predictor_state == TrackingState::TRACKING) {
             if (plan.aimed_target_type == AimedTargetType::NONE || plan.aimed_target_type == AimedTargetType::ARMOR_WITH_NO_MODEL) {
                 // 从无目标或无模型状态转换
                 if (rotation_speed > medium_rotation_upper_bound) {
-                    plan.aimed_target_type = AimedTargetType::VEHICLE_CENTER_WITH_VEHICLE_MODEL;
+                    if (disable_vehicle_center_shoot_mode) {
+                        plan.aimed_target_type = AimedTargetType::ARMOR_WITH_VEHICLE_MODEL;
+                    }
+                    else {
+                        plan.aimed_target_type = AimedTargetType::VEHICLE_CENTER_WITH_VEHICLE_MODEL;
+                    }
                 }
                 else if (rotation_speed > slow_rotation_upper_bound) {
                     plan.aimed_target_type = AimedTargetType::ARMOR_WITH_VEHICLE_MODEL;
@@ -598,7 +607,12 @@ namespace predict
             else if (plan.aimed_target_type == AimedTargetType::ARMOR_WITH_VEHICLE_MODEL) {
                 // 从整车模型状态转换：可以向上或向下
                 if (rotation_speed > medium_rotation_upper_bound) {
-                    plan.aimed_target_type = AimedTargetType::VEHICLE_CENTER_WITH_VEHICLE_MODEL;
+                    if (disable_vehicle_center_shoot_mode) {
+                        plan.aimed_target_type = AimedTargetType::ARMOR_WITH_VEHICLE_MODEL;
+                    }
+                    else {
+                        plan.aimed_target_type = AimedTargetType::VEHICLE_CENTER_WITH_VEHICLE_MODEL;
+                    }
                 }
                 else if (rotation_speed < medium_rotation_lower_bound) {
                     plan.aimed_target_type = AimedTargetType::ARMOR_WITH_ARMOR_MODEL;
@@ -610,6 +624,12 @@ namespace predict
                     plan.aimed_target_type = AimedTargetType::ARMOR_WITH_VEHICLE_MODEL;
                 }
             }
+
+            if (target.vehicle_model_trust == false && 
+                (plan.aimed_target_type == AimedTargetType::VEHICLE_CENTER_WITH_VEHICLE_MODEL 
+                    || plan.aimed_target_type == AimedTargetType::ARMOR_WITH_VEHICLE_MODEL)) {
+                plan.aimed_target_type = AimedTargetType::ARMOR_WITH_ARMOR_MODEL;
+            }
         }
         else if (target.predictor_state == TrackingState::DETECTING) {
             // 检测阶段：使用最简单的无模型预测
@@ -618,7 +638,12 @@ namespace predict
         else if (target.predictor_state == TrackingState::TEMP_LOST) {
             // 暂时丢失阶段：根据上次的旋转速度选择合适策略
             if (rotation_speed > medium_rotation_upper_bound) {
-                plan.aimed_target_type = AimedTargetType::VEHICLE_CENTER_WITH_VEHICLE_MODEL;
+                if (disable_vehicle_center_shoot_mode) {
+                    plan.aimed_target_type = AimedTargetType::ARMOR_WITH_VEHICLE_MODEL;
+                }
+                else {
+                    plan.aimed_target_type = AimedTargetType::VEHICLE_CENTER_WITH_VEHICLE_MODEL;
+                }
             }
             else if (rotation_speed > slow_rotation_upper_bound) {
                 plan.aimed_target_type = AimedTargetType::ARMOR_WITH_VEHICLE_MODEL;

@@ -26,6 +26,7 @@ namespace predict
       detecting_counter(0),
       temp_lost_counter(0),
       yaw_speed_diverge_counter(0),
+      rotate_counter(0),
       debug(debug_),
       adjust(adjust_)
     {
@@ -69,6 +70,9 @@ namespace predict
 
         // 初始使用装甲板模型
         target.updating_model_type = UpdatingModelType::ARMOR_MODEL;
+
+        rotate_counter = 0;
+        target.vehicle_model_trust = false;
 
         return target;
     }
@@ -132,6 +136,7 @@ namespace predict
             else {
                 //装甲板跳变，重置滤波器
                 reset_yaw_kf();
+
                 if (debug)
                     std::cout << "[predict] yaw kf reset" << std::endl;
             }
@@ -164,6 +169,7 @@ namespace predict
                     reset_armor_y_kf();
                     reset_armor_x_kf();
                     reset_armor_z_kf();
+
                     if (debug)
                         std::cout << "[predict] armor state kf reset" << std::endl;
                 }
@@ -173,6 +179,7 @@ namespace predict
                 reset_armor_y_kf();
                 reset_armor_x_kf();
                 reset_armor_z_kf();
+
                 if (debug)
                     std::cout << "[predict] vehicle model update only" << std::endl;
             }
@@ -197,8 +204,20 @@ namespace predict
                     // 切换装甲板计数器
                     target.ab_counter = 1 - target.ab_counter;
 
+                    if (rotate_counter < least_rotate_count) {
+                        rotate_counter++;
+                    }
+
+                    if (rotate_counter < least_rotate_count) {
+                        target.vehicle_model_trust = false;
+                    }
+                    else {
+                        target.vehicle_model_trust = true;
+                    }
+
                     // 重置EKF状态
                     whole_state_ekf.reset(target.tracked_state);
+
                     if (debug)
                         cout << "[predict] armor jump" << std::endl;
                 }
@@ -209,6 +228,7 @@ namespace predict
                 // 检查EKF是否发散
                 if (check_ekf_divergence(attitude_yaw)) {
                     reset_whole_state_ekf();
+
                     if (debug)
                         cout << "[predict] vehicle model converge" << endl;
                 }
@@ -216,6 +236,7 @@ namespace predict
             else {
                 // 仅使用装甲板模型时，重置整车模型
                 reset_whole_state_ekf();
+
                 if (debug)
                     cout << "[predict] armor model update only" << endl;
             }
@@ -250,6 +271,7 @@ namespace predict
         target.another_r = 0.26;  // 另一对装甲板的默认半径 (米)
         target.ab_counter = 0;    // 装甲板切换计数器
         target.updating_model_type = UpdatingModelType::ARMOR_MODEL;
+        target.vehicle_model_trust = false;
     }
 
     /**
@@ -476,6 +498,7 @@ namespace predict
             return Q;
         };
 
+        // TODO: 噪声从ypd投影到xyz
         // === 观测噪声协方差矩阵 ===
         auto update_R_ = [this](const Eigen::Matrix<double, 4, 1> & x) {
             Eigen::Matrix<double, 4, 4> R;
@@ -706,6 +729,8 @@ namespace predict
         target.dz = 0;
         target.ab_counter = 0;
         yaw_speed_diverge_counter = 0;
+        rotate_counter = 0;
+        target.vehicle_model_trust = false;
     }
 
     /**

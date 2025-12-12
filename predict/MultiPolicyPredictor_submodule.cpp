@@ -27,6 +27,7 @@ namespace predict
      * @details 初始化坐标变换器、跟踪器和规划器，设置各种显示和调试选项
      */ 
     MultiPolicyPredictorSubModule::MultiPolicyPredictorSubModule(const std::string camera_param, int comm_latency_, int shoot_latency_,
+                                                                    double pitch_comp, double yaw_comp, bool disable_vehicle_center_shoot_mode,
                                                                     bool debug_, bool show_, bool plot_, bool adjust_)
     : SubModule(SubModuleName::MULTI_POLICY_PREDICTOR),
       debug(debug_),
@@ -35,11 +36,11 @@ namespace predict
       adjust(adjust_),
       coord_transformer(camera_param),
       tracker(debug_, adjust_),
-      planner(comm_latency_ / 1e3, shoot_latency_ / 1e3, debug_)
+      planner(comm_latency_ / 1e3, shoot_latency_ / 1e3, pitch_comp, yaw_comp, disable_vehicle_center_shoot_mode, debug_)
     {
         LOGM_S("[MultiPolicyPredictorSubModule] constructing with camera_param: %s, latency: %d", 
                camera_param.c_str(), comm_latency_);
-        
+
         LOGM_S("[MultiPolicyPredictorSubModule] construction completed");
     }
 
@@ -117,6 +118,7 @@ namespace predict
 
         bool show_armor = false; // 控制是否在可视化中显示装甲板边界框
 
+        // TODO: 多个跟踪器实例
         // === 根据跟踪器状态执行不同逻辑 ===
         if (tracker.get_tracker_state() == TrackingState::IDLE) {
             // === 空闲状态：寻找新目标或重置系统 ===
@@ -129,29 +131,53 @@ namespace predict
             }
             else {
                 // 检测到装甲板，开始新的跟踪
-                // TODO: 添加装甲板筛选逻辑
-                // TODO: 添加车辆选择逻辑
-                tracked_armor = detected_armors.front();
+                vector<bbox_t> candidate_armors;
+                for (const auto &armor : detected_armors) {
+                    if (armor.color_id == (robot_status.enemy_color==EnemyColor::BLUE)) {
+                        candidate_armors.push_back(armor);
+                    }
+                }
 
-                show_armor = true;
+                bool find_target = false;
 
-                // 通过PnP算法获取装甲板的3D位置和姿态
-                float yaw_in_camera;
-                tracked_measurement = coord_transformer.pnp_get_measurement(tracked_armor.pts, tracked_armor.tag_id, 
-                                                                            attitude_yaw, yaw_in_camera);
-                
-                // 重置跟踪器并初始化目标
-                auto &target = tracker.reset_target(tracked_measurement, tp);
-                
-                // 初始化规划器
-                planner.aim_target_init();
-                
-                // 生成初始预测计划
-                auto &plan = planner.make_plan(target, coord_transformer, robot_status.robot_speed_mps,
-                             attitude_yaw, attitude_pitch, tp);
+                if (candidate_armors.empty()) {
+                    if (debug)
+                        std::cout << "[predict] no candidate armor found" << std::endl;
+                }
+                else {
+                    // TODO: 添加车辆选择逻辑
+                    tracked_armor = candidate_armors.front();
+                    find_target = true;
+                }
 
-                if (debug)
-                    std::cout << "[predict] start tracking" << std::endl;
+                if (!find_target) {
+                    // 没有检测到装甲板，重置规划器
+                    planner.planner_reset();
+
+                    if (debug)
+                        std::cout << "[predict] no valid target found" << std::endl;
+                }
+                else {
+                    show_armor = true;
+
+                    // 通过PnP算法获取装甲板的3D位置和姿态
+                    float yaw_in_camera;
+                    tracked_measurement = coord_transformer.pnp_get_measurement(tracked_armor.pts, tracked_armor.tag_id, 
+                                                                                attitude_yaw, yaw_in_camera);
+                    
+                    // 重置跟踪器并初始化目标
+                    auto &target = tracker.reset_target(tracked_measurement, tp);
+                    
+                    // 初始化规划器
+                    planner.aim_target_init();
+                    
+                    // 生成初始预测计划
+                    auto &plan = planner.make_plan(target, coord_transformer, robot_status.robot_speed_mps,
+                                attitude_yaw, attitude_pitch, tp);
+
+                    if (debug)
+                        std::cout << "[predict] start tracking" << std::endl;
+                }
             }
         }
         else {
@@ -194,8 +220,6 @@ namespace predict
 
             if (debug)
                 std::cout << "[predict] same id armor count: " << same_id_armor_count << std::endl;
-
-            // cout << same_id_armor_count << endl;
 
             // 更新跟踪目标（如果找到同ID装甲板）
             if (same_id_armor_count) {
@@ -303,6 +327,8 @@ namespace predict
         cout << target.tracked_state(6, 0) << std::endl;
         cout << target.tracked_state(7, 0) << std::endl;
         cout << target.tracked_state(8, 0) << std::endl;
+
+        // cout << target.vehicle_model_trust << std::endl;
 
         // cout << plan.aimed_armor_pos(0, 0) << endl;
         // cout << plan.aimed_armor_pos(1, 0) << endl;
