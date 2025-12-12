@@ -141,6 +141,9 @@ namespace predict
 
         /// @brief 装甲板切换计数器（0或1，标识当前跟踪的装甲板）
         int ab_counter;
+
+        /// @brief 整车模型可信标志
+        bool vehicle_model_trust;
         
         /// @brief 整车状态向量 [y, vy, x, vx, z, vz, yaw, vyaw, r] (9x1)
         /// @details y,x,z: 车辆中心位置；vy,vx,vz: 速度；yaw,vyaw: 装甲板偏航角和角速度；r: 旋转半径

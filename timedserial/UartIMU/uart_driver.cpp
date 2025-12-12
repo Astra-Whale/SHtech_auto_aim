@@ -105,13 +105,6 @@ void UartDriver::on_receive_sts(drivers::packet_data_t* packet_ptr, drivers::pac
     // 构造临时的 RobotStatus 对象
     RobotStatus temp_status;
     
-    // 保持原有的射速（如果已设置）或使用默认值
-    // 注意：实际的 robot_speed_mps 由 on_receive_imu 提供
-    // 这里保持默认值，业务层负责合并数据
-    if (temp_status.robot_speed_mps < MIN_BULLET_SPEED_MPS) {
-        temp_status.robot_speed_mps = MIN_BULLET_SPEED_MPS;
-    }
-    
     // 根据 robot_id 判断己方颜色，从而确定敌方颜色
     // 1-20: 红方机器人，敌方是蓝色
     // 100+: 蓝方机器人，敌方是红色
@@ -136,7 +129,7 @@ void UartDriver::on_receive_sts(drivers::packet_data_t* packet_ptr, drivers::pac
     else {
         temp_status.enemy_color = EnemyColor::GRAY;
     }
-    
+
     // 触发回调
     if (this->status_cb_) {
         this->status_cb_(temp_status);

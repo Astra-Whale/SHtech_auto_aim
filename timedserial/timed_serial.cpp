@@ -99,6 +99,7 @@ namespace hardware
     RobotStatus TimedSerial::handle_robotstatus_get()
     {
         std::lock_guard<std::mutex> lock(sensor_mutex_);
+
         return latest_robot_status_;
     }
 
@@ -118,16 +119,18 @@ namespace hardware
     {
         std::lock_guard<std::mutex> lock(sensor_mutex_);
         
-        // 智能合并：如果新数据的射速有效（来自IMU包），则更新；
+        // 智能合并：如果新数据的射速来自IMU包，则更新；
         // 否则保留已有值（避免被裁判系统包的默认值覆盖）
         float current_speed = latest_robot_status_.robot_speed_mps;
-        latest_robot_status_ = sts;
-        
-        // 如果新数据的射速是默认值，且我们已有更好的值，则恢复
-        constexpr float DEFAULT_SPEED = INF_BALL_SPEED; // 步兵最大弹速常量 m/s
-        if (sts.robot_speed_mps == DEFAULT_SPEED && current_speed != DEFAULT_SPEED)
+
+        constexpr float DEFAULT_SPEED = INF_BALL_SPEED;
+        if (sts.robot_speed_mps == DEFAULT_SPEED)
         {
+            latest_robot_status_ = sts;
             latest_robot_status_.robot_speed_mps = current_speed;
+        }
+        else {
+            latest_robot_status_.robot_speed_mps = sts.robot_speed_mps;
         }
         
         if (_debugprint)
@@ -228,13 +231,15 @@ namespace hardware
 
                     if (_debugprint)
                     {
-                        LOGM_S("[TimedSerial][transmit] p-m:%6.2f | p-s:%6.2f | ps-s:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f",
+                        LOGM_S("[TimedSerial][transmit] p-m:%6.2f | p-s:%6.2f | ps-s:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f | shoot_s:%6.2f | enemy:%d",
                                attitude_cache_.pitch,
                                attitude_cache_.pitch + command_cache_.pitch_angle,
                                command_cache_.pitch_speed,
                                attitude_cache_.yaw,
                                attitude_cache_.yaw + command_cache_.yaw_angle,
-                               command_cache_.yaw_speed);
+                               command_cache_.yaw_speed,
+                               latest_robot_status_.robot_speed_mps,
+                               latest_robot_status_.enemy_color==EnemyColor::RED);
                     }
                 }
                 else

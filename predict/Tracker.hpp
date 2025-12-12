@@ -84,6 +84,9 @@ namespace predict
         /// @brief 整车模型适用阈值 (弧度/秒)，高于此速度使用整车模型
         const double vehicle_model_threshold = 2.7;
 
+        /// @brief 最少旋转计数阈值，低于此值不信任整车模型
+        const int least_rotate_count = 3;
+
     private:
         // === 配置参数 ===
         /// @brief 调试模式标志
@@ -173,6 +176,9 @@ namespace predict
         
         /// @brief 暂时丢失计数器
         int temp_lost_counter;
+
+        /// @brief 目标旋转计数器
+        int rotate_counter;
 
     private:
         /**

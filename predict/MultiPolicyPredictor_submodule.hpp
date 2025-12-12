@@ -58,6 +58,7 @@ namespace predict
          * @details 初始化所有核心组件，设置配置参数
          */
         MultiPolicyPredictorSubModule(const std::string camera_param, int comm_latency_, int shoot_latency_,
+                                        double pitch_comp, double yaw_comp, bool disable_vehicle_center_shoot_mode,
                                         bool debug_, bool show_, bool plot_, bool adjust_);
         virtual ~MultiPolicyPredictorSubModule() = default;
 

@@ -90,12 +90,12 @@ inline const char* getSubModuleName(SubModuleName module) {
     }
 }
 
-constexpr float INF_BALL_SPEED = 24.0f; // 步兵最大弹速 m/s
+constexpr float INF_BALL_SPEED = 30.0f; // 步兵弹速默认值 m/s
 
 struct RobotStatus
 {
     ProgramMode program_mode = ProgramMode::AUTO_AIM;
-    float robot_speed_mps = 23.0f;
+    float robot_speed_mps = INF_BALL_SPEED;
     uint16_t enemy[6];                        // 敌方哨兵0、英雄1、工程2、步兵3、步兵4、步兵5
     GameState game_state = GameState::COMMON; // 是否设计远处
     EnemyColor enemy_color = EnemyColor::RED;
@@ -142,7 +142,7 @@ struct bbox_t
 {
     cv::Point2f pts[4]; // [pt0, pt1, pt2, pt3]
     float confidence;
-    int color_id; // 0: blue, 1: red, 2: gray
+    int color_id; // 0: red, 1: blue, 2: gray
     int tag_id;   // 0: guard, 1-5: number, 6: base
 
     bool operator==(const bbox_t &a) const
