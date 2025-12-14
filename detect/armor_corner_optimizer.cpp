@@ -109,8 +109,6 @@ namespace detect
       cv::Mat right_grey;
       cv::Mat img_grey;
 
-      // cv::cvtColor(input, img_grey, cv::COLOR_RGB2GRAY);
-
       // Rest of the processing remains the same
       cv::Mat left_binary = preprocessImage(input, left_roi,left_length, left_grey);
       cv::Mat right_binary = preprocessImage(input, right_roi,right_length, right_grey);
@@ -421,10 +419,10 @@ namespace detect
     // }
     
     cv::Mat green_channel;
-    // cv::cvtColor(roi_img, green_channel, cv::COLOR_RGB2GRAY);
-    // img_grey = green_channel;
+    cv::cvtColor(roi_img, green_channel, cv::COLOR_RGB2GRAY);
+    img_grey = green_channel;
 
-    cv::extractChannel(roi_img, green_channel, 1);
+    // cv::extractChannel(roi_img, green_channel, 1);
 
     // Calculate the light bar area: length × (length/4) considering 4:1 ratio
     float light_area = light_length * (light_length / 4.0f);
@@ -463,12 +461,6 @@ namespace detect
     // Apply threshold
     cv::Mat binary_img;
     cv::threshold(green_channel, binary_img, binary_thres, 255, cv::THRESH_BINARY);
-    
-    // Morphological operation for noise removal
-    // if (roi.width > 10 && roi.height > 10) {
-    //   cv::Mat element = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
-    //   cv::morphologyEx(binary_img, binary_img, cv::MORPH_CLOSE, element);
-    // }
     
     return binary_img;
   }

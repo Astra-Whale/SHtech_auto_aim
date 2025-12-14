@@ -59,7 +59,7 @@ namespace predict
          */
         MultiPolicyPredictorSubModule(const std::string camera_param, int comm_latency_, int shoot_latency_,
                                         double pitch_comp, double yaw_comp, bool disable_vehicle_center_shoot_mode,
-                                        bool debug_, bool show_, bool plot_, bool adjust_);
+                                        bool debug_, bool show_, bool plot_, bool adjust_, bool transformer_adjust_);
         virtual ~MultiPolicyPredictorSubModule() = default;
 
         bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;

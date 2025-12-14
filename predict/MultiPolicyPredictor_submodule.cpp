@@ -28,13 +28,13 @@ namespace predict
      */ 
     MultiPolicyPredictorSubModule::MultiPolicyPredictorSubModule(const std::string camera_param, int comm_latency_, int shoot_latency_,
                                                                     double pitch_comp, double yaw_comp, bool disable_vehicle_center_shoot_mode,
-                                                                    bool debug_, bool show_, bool plot_, bool adjust_)
+                                                                    bool debug_, bool show_, bool plot_, bool adjust_, bool transformer_adjust_)
     : SubModule(SubModuleName::MULTI_POLICY_PREDICTOR),
       debug(debug_),
       show(show_),
       plot(plot_),
       adjust(adjust_),
-      coord_transformer(camera_param),
+      coord_transformer(camera_param, transformer_adjust_),
       tracker(debug_, adjust_),
       planner(comm_latency_ / 1e3, shoot_latency_ / 1e3, pitch_comp, yaw_comp, disable_vehicle_center_shoot_mode, debug_)
     {
@@ -162,7 +162,7 @@ namespace predict
 
                     // 通过PnP算法获取装甲板的3D位置和姿态
                     float yaw_in_camera;
-                    tracked_measurement = coord_transformer.pnp_get_measurement(tracked_armor.pts, tracked_armor.tag_id, 
+                    tracked_measurement = coord_transformer.pnp_get_measurement(tracked_armor.pts, tracked_armor.tag_id, tracked_armor.color_id,
                                                                                 attitude_yaw, yaw_in_camera);
                     
                     // 重置跟踪器并初始化目标
@@ -197,17 +197,15 @@ namespace predict
                     // 找到同ID装甲板，进行PnP解算
                     float yaw_in_camera;
                     Eigen::Matrix<double, 4, 1> measured_measurement = coord_transformer.pnp_get_measurement(
-                        armor.pts, armor.tag_id, attitude_yaw, yaw_in_camera);
+                                                                    armor.pts, armor.tag_id, tracked_armor.color_id,attitude_yaw, yaw_in_camera);
                     
                     // 计算位置变化
                     Eigen::Matrix<double, 3, 1> measured_pw(measured_measurement(1, 0), measured_measurement(0, 0), measured_measurement(2, 0));
                     Eigen::Matrix<double, 3, 1> tracked_pw(tracked_measurement(1, 0), tracked_measurement(0, 0), tracked_measurement(2, 0));
 
-                    if (true) { // (abs(yaw_in_camera) < max_yaw_accept) {
-                        same_id_armor_count++;
-                        show_armor = true;
-                    }
-                    
+                    same_id_armor_count++;
+                    show_armor = true;
+
                     // 选择位置变化最小的装甲板作为跟踪目标
                     double pw_diff = (tracked_pw - measured_pw).norm();
                     if (pw_diff < min_position_diff) {
@@ -318,15 +316,15 @@ namespace predict
         // cout << target.armor_z_state(0, 0) << endl;
         // cout << target.armor_z_state(1, 0) << endl;
         
-        cout << target.tracked_state(0, 0) << std::endl;
-        cout << target.tracked_state(1, 0) << std::endl;
-        cout << target.tracked_state(2, 0) << std::endl;
-        cout << target.tracked_state(3, 0) << std::endl;
-        cout << target.tracked_state(4, 0) << std::endl;
-        cout << target.tracked_state(5, 0) << std::endl;
-        cout << target.tracked_state(6, 0) << std::endl;
-        cout << target.tracked_state(7, 0) << std::endl;
-        cout << target.tracked_state(8, 0) << std::endl;
+        // cout << target.tracked_state(0, 0) << std::endl;
+        // cout << target.tracked_state(1, 0) << std::endl;
+        // cout << target.tracked_state(2, 0) << std::endl;
+        // cout << target.tracked_state(3, 0) << std::endl;
+        // cout << target.tracked_state(4, 0) << std::endl;
+        // cout << target.tracked_state(5, 0) << std::endl;
+        // cout << target.tracked_state(6, 0) << std::endl;
+        // cout << target.tracked_state(7, 0) << std::endl;
+        // cout << target.tracked_state(8, 0) << std::endl;
 
         // cout << target.vehicle_model_trust << std::endl;
 
