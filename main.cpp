@@ -287,7 +287,7 @@ bool init(void)
         info["camera_para"], atoi(info["latency"].c_str()), atoi(info["shoot_latency"].c_str()), 
         atof(info["pitch_comp"].c_str()), atof(info["yaw_comp"].c_str()), 
         display["disable_vehicle_center_shoot_mode"],
-        display["predic_debug"], display["predic_show"], display["predic_plot"], display["predic_adjust"]
+        display["predic_debug"], display["predic_show"], display["predic_plot"], display["predic_adjust"], display["transformer_adjust"]
         );
 
     planner_submodule_registered = predict_composite->register_submodule_with_params<plan::PlannerSubModule>(*planner_to_serial_bridge);

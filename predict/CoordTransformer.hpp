@@ -51,11 +51,17 @@ namespace predict
      *          角点顺序：左上、左下、右下、右上
      *          尺寸：13.5cm × 5.6cm
      */
-    const std::vector<cv::Point3d> pw_small = {
+    const std::vector<cv::Point3d> pw_blue_small = {
                 {-0.0675, -0.028, 0.},  // 左上角点
                 {-0.0675, 0.028, 0.},   // 左下角点
                 {0.0675, 0.028, 0.},    // 右下角点
                 {0.0675, -0.028, 0.}};  // 右上角点
+
+    const std::vector<cv::Point3d> pw_red_small = {
+                {-0.066, -0.024, 0.},  // 左上角点
+                {-0.066, 0.024, 0.},   // 左下角点
+                {0.066, 0.024, 0.},    // 右下角点
+                {0.066, -0.024, 0.}};  // 右上角点
     
     /**
      * @brief 大装甲板的3D模型坐标点
@@ -63,7 +69,13 @@ namespace predict
      *          角点顺序：左上、左下、右下、右上
      *          尺寸：23.0cm × 5.8cm
      */
-    const std::vector<cv::Point3d> pw_big = {
+    const std::vector<cv::Point3d> pw_blue_big = {
+                {-0.115, -0.029, 0.},   // 左上角点
+                {-0.115, 0.029, 0.},    // 左下角点
+                {0.115, 0.029, 0.},     // 右下角点
+                {0.115, -0.029, 0.}};   // 右上角点
+
+    const std::vector<cv::Point3d> pw_red_big = {
                 {-0.115, -0.029, 0.},   // 左上角点
                 {-0.115, 0.029, 0.},    // 左下角点
                 {0.115, 0.029, 0.},     // 右下角点
@@ -82,6 +94,10 @@ namespace predict
     class CoordTransformer
     {
     private:
+        // === 配置参数 ===
+        /// @brief 调试模式标志 - 控制调试信息输出
+        bool adjust;
+
         // === 坐标变换参数 (Eigen格式，用于数学计算) ===
         /// @brief 相机到IMU的平移向量 [3x1]
         Eigen::Vector3d T_camera2imu;
@@ -110,12 +126,16 @@ namespace predict
 
         /// @brief 世界坐标系到IMU坐标系的旋转矩阵 - 由IMU姿态实时更新
         Eigen::Matrix3d R_world2imu; 
+
+        // === 装甲板模型尺寸 (毫米) (支持实时调参) ===
+        int pw_length = 135; // 小装甲板长度，单位毫米
+        int pw_width = 56; // 小装甲板宽度，单位毫米
                       
     public:
         /**
          * @brief 默认构造函数
          */
-        explicit CoordTransformer();
+        explicit CoordTransformer(bool adjust_);
         
         /**
          * @brief 带参数构造函数
@@ -127,7 +147,7 @@ namespace predict
          *          - K: 相机内参矩阵
          *          - D: 相机畸变参数
          */
-        explicit CoordTransformer(const std::string camera_param);
+        explicit CoordTransformer(const std::string camera_param,  bool adjust_);
 
         /**
          * @brief 更新世界坐标系到IMU坐标系的旋转矩阵
@@ -149,7 +169,7 @@ namespace predict
          * @details 通过PnP算法从2D像素点反推装甲板的3D位置和姿态
          *          包括坐标变换、法向量计算和角度解算
          */
-        Eigen::Vector4d pnp_get_measurement(const cv::Point2f (&p)[4], const int &armor_number, const float &attitude_yaw, float &yaw_in_camera);
+        Eigen::Vector4d pnp_get_measurement(const cv::Point2f (&p)[4], const int &armor_number, const int &color_id, const float &attitude_yaw, float &yaw_in_camera);
 
         // === 坐标变换内联函数 ===
         /**

@@ -21,8 +21,8 @@
 
 namespace detect
 {
-    const int bin_threshold_for_blue = 104;
-    const int bin_threshold_for_red = 44;
+    const int bin_threshold_for_blue = 70;
+    const int bin_threshold_for_red = 93;
 
     /**
      * @brief   检测子模块

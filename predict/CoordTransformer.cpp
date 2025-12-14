@@ -12,7 +12,7 @@ namespace predict
     /**
      * @brief 默认构造函数 - 初始化所有变换矩阵为零矩阵
      */
-    CoordTransformer::CoordTransformer()
+    CoordTransformer::CoordTransformer(bool adjust_)
     {
         // 初始化相机到IMU的平移向量 (3x1)
         T_camera2imu_MAT = cv::Mat::zeros(3, 1, CV_64FC1);
@@ -31,6 +31,15 @@ namespace predict
         cv::cv2eigen(R_camera2imu_MAT, R_camera2imu);
         cv::cv2eigen(F_MAT, F);
         cv::cv2eigen(C_MAT, C);
+
+        adjust = adjust_;
+
+        if (adjust) {
+            cv::namedWindow("transformer trackbar", cv::WINDOW_AUTOSIZE);
+        
+            cv::createTrackbar("pw_length", "transformer trackbar", &pw_length, 250, 0);
+            cv::createTrackbar("pw_width", "transformer trackbar", &pw_width, 250, 0);
+        }
     }
 
     /**
@@ -38,7 +47,7 @@ namespace predict
      * @param camera_param yml文件路径
      * @details 从YAML文件中读取相机内参、畸变参数和相机-IMU外参
      */
-    CoordTransformer::CoordTransformer(const std::string camera_param)
+    CoordTransformer::CoordTransformer(const std::string camera_param, bool adjust_)
     {
         // 打开相机参数文件
         cv::FileStorage fin(camera_param, cv::FileStorage::READ);
@@ -56,6 +65,15 @@ namespace predict
         cv::cv2eigen(R_camera2imu_MAT, R_camera2imu);
         cv::cv2eigen(F_MAT, F);
         cv::cv2eigen(C_MAT, C);
+
+        adjust = adjust_;
+
+        if (adjust) {
+            cv::namedWindow("transformer trackbar", cv::WINDOW_AUTOSIZE);
+        
+            cv::createTrackbar("pw_length", "transformer trackbar", &pw_length, 250, 0);
+            cv::createTrackbar("pw_width", "transformer trackbar", &pw_width, 250, 0);
+        }
     }
 
     /**
@@ -83,14 +101,36 @@ namespace predict
      * @return Eigen::Vector4d 装甲板的测量值 [y, x, z, absolute_yaw]
      * @details 通过PnP算法从2D图像点反推3D世界坐标，并计算装甲板朝向
      */
-    Eigen::Vector4d CoordTransformer::pnp_get_measurement(const cv::Point2f (&p)[4], const int &armor_number, const float &attitude_yaw, float &yaw_in_camera)
+    Eigen::Vector4d CoordTransformer::pnp_get_measurement(const cv::Point2f (&p)[4], const int &armor_number, const int &color_id, const float &attitude_yaw, float &yaw_in_camera)
     {
         // 根据装甲板编号选择对应的3D模型尺寸
         std::vector<cv::Point3d> pw_cur;
-        if (armor_number == 0 || armor_number == 1 || armor_number == 8)
-            pw_cur = pw_big;    // 大装甲板
-        else
-            pw_cur = pw_small;  // 小装甲板
+        if (adjust) {
+            double pw_x = pw_length / 1000.0 / 2.0;
+            double pw_y = pw_width / 1000.0 / 2.0;
+
+            std::vector<cv::Point3d> pw_temp = {
+                {-pw_x, -pw_y, 0.},  // 左上角点
+                {-pw_x, pw_y, 0.},   // 左下角点
+                {pw_x, pw_y, 0.},    // 右下角点
+                {pw_x, -pw_y, 0.}};  // 右上角点
+
+            pw_cur = pw_temp;
+        }
+        else {
+            if (color_id == 0) {
+                if (armor_number == 0 || armor_number == 1 || armor_number == 8)
+                    pw_cur = pw_red_big;    // 大装甲板
+                else
+                    pw_cur = pw_red_small;  // 小装甲板
+            }
+            else {
+                if (armor_number == 0 || armor_number == 1 || armor_number == 8)
+                    pw_cur = pw_blue_big;    // 大装甲板
+                else
+                    pw_cur = pw_blue_small;  // 小装甲板
+            }
+        }
 
         // 将图像点转换为PnP算法需要的格式
         std::vector<cv::Point2d> pu(p, p + 4);
