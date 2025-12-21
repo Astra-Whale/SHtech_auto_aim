@@ -539,22 +539,22 @@ namespace predict
         cv::namedWindow("predictor trackbar", cv::WINDOW_AUTOSIZE);
 
         // 过程噪声参数调整滑动条
-        cv::createTrackbar("p_coord_mant", "predictor trackbar", &p_coord_mant, 99, 0);
-        cv::createTrackbar("p_coord_exp", "predictor trackbar", &p_coord_exp, 20, 0);
-        cv::createTrackbar("p_yaw_mant", "predictor trackbar", &p_yaw_mant, 99, 0);
-        cv::createTrackbar("p_yaw_exp", "predictor trackbar", &p_yaw_exp, 20, 0);
-        cv::createTrackbar("p_r_mant", "predictor trackbar", &p_r_mant, 99, 0);
-        cv::createTrackbar("p_r_exp", "predictor trackbar", &p_r_exp, 20, 0);
+        // cv::createTrackbar("p_coord_mant", "predictor trackbar", &p_coord_mant, 99, 0);
+        // cv::createTrackbar("p_coord_exp", "predictor trackbar", &p_coord_exp, 20, 0);
+        // cv::createTrackbar("p_yaw_mant", "predictor trackbar", &p_yaw_mant, 99, 0);
+        // cv::createTrackbar("p_yaw_exp", "predictor trackbar", &p_yaw_exp, 20, 0);
+        // cv::createTrackbar("p_r_mant", "predictor trackbar", &p_r_mant, 99, 0);
+        // cv::createTrackbar("p_r_exp", "predictor trackbar", &p_r_exp, 20, 0);
 
-        // 以下观测噪声参数滑动条已被注释
-        // cv::createTrackbar("r_xcoord_mant", "predictor trackbar", &r_xcoord_mant, 99, 0);
-        // cv::createTrackbar("r_xcoord_exp", "predictor trackbar", &r_xcoord_exp, 20, 0);
-        // cv::createTrackbar("r_ycoord_mant", "predictor trackbar", &r_ycoord_mant, 99, 0);
-        // cv::createTrackbar("r_ycoord_exp", "predictor trackbar", &r_ycoord_exp, 20, 0);
-        // cv::createTrackbar("r_zcoord_mant", "predictor trackbar", &r_zcoord_mant, 99, 0);
-        // cv::createTrackbar("r_zcoord_exp", "predictor trackbar", &r_zcoord_exp, 20, 0);
-        // cv::createTrackbar("r_yaw_mant", "predictor trackbar", &r_yaw_mant, 99, 0);
-        // cv::createTrackbar("r_yaw_exp", "predictor trackbar", &r_yaw_exp, 20, 0);
+        // 观测噪声参数滑动条
+        cv::createTrackbar("r_xcoord_mant", "predictor trackbar", &r_xcoord_mant, 99, 0);
+        cv::createTrackbar("r_xcoord_exp", "predictor trackbar", &r_xcoord_exp, 20, 0);
+        cv::createTrackbar("r_ycoord_mant", "predictor trackbar", &r_ycoord_mant, 99, 0);
+        cv::createTrackbar("r_ycoord_exp", "predictor trackbar", &r_ycoord_exp, 20, 0);
+        cv::createTrackbar("r_zcoord_mant", "predictor trackbar", &r_zcoord_mant, 99, 0);
+        cv::createTrackbar("r_zcoord_exp", "predictor trackbar", &r_zcoord_exp, 20, 0);
+        cv::createTrackbar("r_yaw_mant", "predictor trackbar", &r_yaw_mant, 99, 0);
+        cv::createTrackbar("r_yaw_exp", "predictor trackbar", &r_yaw_exp, 20, 0);
 
         // 装甲板模型KF参数调整滑动条
         cv::createTrackbar("kf_yaw_mant", "predictor trackbar", &kf_yaw_mant, 99, 0);
