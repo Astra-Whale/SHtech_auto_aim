@@ -146,9 +146,13 @@ namespace detect
                         bbox.pts[i] = optimized_corners[i];
                     }
 
+                    bbox.source = DetectionSource::TRADITIONAL;
+
                     optimized_bboxes.push_back(bbox);
                 }
                 else {
+                    bbox.source = DetectionSource::NEURAL_NETWORK;
+
                     optimized_bboxes.push_back(bbox);
                 }
             }

@@ -58,10 +58,10 @@ namespace predict
                 {0.0675, -0.028, 0.}};  // 右上角点
 
     const std::vector<cv::Point3d> pw_red_small = {
-                {-0.066, -0.024, 0.},  // 左上角点
-                {-0.066, 0.024, 0.},   // 左下角点
-                {0.066, 0.024, 0.},    // 右下角点
-                {0.066, -0.024, 0.}};  // 右上角点
+                {-0.0675, -0.024, 0.},  // 左上角点
+                {-0.0675, 0.024, 0.},   // 左下角点
+                {0.0675, 0.024, 0.},    // 右下角点
+                {0.0675, -0.024, 0.}};  // 右上角点
     
     /**
      * @brief 大装甲板的3D模型坐标点
@@ -129,7 +129,7 @@ namespace predict
 
         // === 装甲板模型尺寸 (毫米) (支持实时调参) ===
         int pw_length = 135; // 小装甲板长度，单位毫米
-        int pw_width = 56; // 小装甲板宽度，单位毫米
+        int pw_width = 48; // 小装甲板宽度，单位毫米
                       
     public:
         /**
@@ -159,18 +159,17 @@ namespace predict
 
         /**
          * @brief PnP算法获取装甲板测量值
-         * @param p 装甲板四个角点的图像像素坐标数组 [4] (按顺序：左上、左下、右下、右上)
-         * @param armor_number 装甲板编号 (0,1,8=大装甲板，其他=小装甲板)
-         * @param attitude_yaw 机器人当前姿态偏航角 (弧度)
-         * @param yaw_in_camera [输出] 装甲板在相机坐标系中的偏航角 (弧度)
-         * @return Eigen::Vector4d 装甲板测量值 [y, x, z, absolute_yaw]
-         *         - x,y,z: 装甲板中心在世界坐标系中的位置 (米)
-         *         - absolute_yaw: 装甲板绝对偏航角 = 相机系偏航角 - 机器人偏航角
-         * @details 通过PnP算法从2D像素点反推装甲板的3D位置和姿态
-         *          包括坐标变换、法向量计算和角度解算
+         * @param p 装甲板四个角点的图像像素坐标 (按顺序：左上、左下、右下、右上)
+         * @param armor_number 装甲板编号 (0,1,8为大装甲板，其他为小装甲板)
+         * @param attitude_yaw 机器人当前姿态的偏航角 (弧度)
+         * @param yaw_in_camera 输出参数：装甲板在相机坐标系中的偏航角
+         * @param measurement 输出参数：装甲板的测量值 [y, x, z, absolute_yaw]
+         * @return bool 成功标志，true表示PnP求解成功，false表示失败
+         * @details 通过PnP算法从2D图像点反推3D世界坐标，并计算装甲板朝向
          */
-        Eigen::Vector4d pnp_get_measurement(const cv::Point2f (&p)[4], const int &armor_number, const int &color_id, const float &attitude_yaw, float &yaw_in_camera);
-
+        bool pnp_get_measurement(const cv::Point2f (&p)[4], const int &armor_number, 
+                                                    const int &color_id, const float &attitude_yaw, 
+                                                    float &yaw_in_camera, Eigen::Vector4d &measurement);
         // === 坐标变换内联函数 ===
         /**
          * @brief 相机坐标系 → 世界坐标系坐标变换

@@ -98,10 +98,13 @@ namespace predict
      * @param armor_number 装甲板编号 (0,1,8为大装甲板，其他为小装甲板)
      * @param attitude_yaw 机器人当前姿态的偏航角 (弧度)
      * @param yaw_in_camera 输出参数：装甲板在相机坐标系中的偏航角
-     * @return Eigen::Vector4d 装甲板的测量值 [y, x, z, absolute_yaw]
+     * @param measurement 输出参数：装甲板的测量值 [y, x, z, absolute_yaw]
+     * @return bool 成功标志，true表示PnP求解成功，false表示失败
      * @details 通过PnP算法从2D图像点反推3D世界坐标，并计算装甲板朝向
      */
-    Eigen::Vector4d CoordTransformer::pnp_get_measurement(const cv::Point2f (&p)[4], const int &armor_number, const int &color_id, const float &attitude_yaw, float &yaw_in_camera)
+    bool CoordTransformer::pnp_get_measurement(const cv::Point2f (&p)[4], const int &armor_number, 
+                                                const int &color_id, const float &attitude_yaw, 
+                                                float &yaw_in_camera, Eigen::Vector4d &measurement)
     {
         // 根据装甲板编号选择对应的3D模型尺寸
         std::vector<cv::Point3d> pw_cur;
@@ -137,7 +140,11 @@ namespace predict
 
         // PnP求解：从2D图像点和3D模型点求解相机位姿
         cv::Mat rvec, tvec;  // 旋转向量和平移向量
-        cv::solvePnP(pw_cur, pu, F_MAT, C_MAT, rvec, tvec, false, cv::SOLVEPNP_IPPE);
+        bool success = cv::solvePnP(pw_cur, pu, F_MAT, C_MAT, rvec, tvec, false, cv::SOLVEPNP_IPPE);
+
+        if (!success) {
+            return false;
+        }
         
         // === 坐标变换过程 ===
         // 获取装甲板中心在不同坐标系中的位置
@@ -179,13 +186,15 @@ namespace predict
         // 正对装甲板的yaw_in_camera=0，绕世界坐标系z轴正方向旋转为负，相反为正
         yaw_in_camera = atan2(armor_v_z_c[0], -armor_v_z_c[2]);
 
+        if (adjust)
+            cout << pc[1] << endl << pc[0] << endl << pc[2] << endl << yaw_in_camera << endl;
+
         // === 组装最终测量值 ===
-        Eigen::Vector4d measurement;
         // 测量值格式：[y坐标, x坐标, z坐标, 绝对偏航角]，该测量值对应于ekf的测量项
         // 绝对偏航角 = 相机坐标系中的偏航角 - 机器人姿态偏航角
         measurement << pw[1], pw[0], pw[2], yaw_in_camera - attitude_yaw;
 
-        return measurement;
+        return true;
     }
 }
 

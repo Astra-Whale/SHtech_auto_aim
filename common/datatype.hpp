@@ -75,6 +75,13 @@ enum class SubModuleName : uint8_t
     COUNT, // 仅用于计数子模块数量
 };
 
+enum class DetectionSource : uint8_t
+{
+    // 检测来源
+    NEURAL_NETWORK = 0, // 神经网络
+    TRADITIONAL = 1, // 传统方法
+};
+
 // 根据 SubModuleName 自动生成子模块数量常量
 constexpr size_t SUBMODULE_COUNT = static_cast<size_t>(SubModuleName::COUNT);
 
@@ -144,6 +151,7 @@ struct bbox_t
     float confidence;
     int color_id; // 0: red, 1: blue, 2: gray
     int tag_id;   // 0: guard, 1-5: number, 6: base
+    DetectionSource source;   // 0: neural network, 1: traditional cv
 
     bool operator==(const bbox_t &a) const
     {

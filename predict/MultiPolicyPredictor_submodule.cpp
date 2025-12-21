@@ -131,22 +131,37 @@ namespace predict
             }
             else {
                 // 检测到装甲板，开始新的跟踪
-                vector<bbox_t> candidate_armors;
+                vector<bbox_t> candidate_armors_from_trad;
+                vector<bbox_t> candidate_armors_from_nnet;
                 for (const auto &armor : detected_armors) {
                     if (armor.color_id == (robot_status.enemy_color==EnemyColor::BLUE)) {
-                        candidate_armors.push_back(armor);
+                        if (armor.source == DetectionSource::TRADITIONAL) {
+                            candidate_armors_from_trad.push_back(armor);
+                        }
+                        else if (armor.source == DetectionSource::NEURAL_NETWORK) {
+                            candidate_armors_from_nnet.push_back(armor);
+                        }
+                        else {
+                            candidate_armors_from_nnet.push_back(armor);
+                        }
                     }
                 }
 
                 bool find_target = false;
 
-                if (candidate_armors.empty()) {
+                if (candidate_armors_from_trad.empty() && candidate_armors_from_nnet.empty()) {
                     if (debug)
                         std::cout << "[predict] no candidate armor found" << std::endl;
                 }
                 else {
                     // TODO: 添加车辆选择逻辑
-                    tracked_armor = candidate_armors.front();
+                    if (candidate_armors_from_trad.empty()) {
+                        tracked_armor = candidate_armors_from_nnet.front();
+                    }
+                    else {
+                        tracked_armor = candidate_armors_from_trad.front();
+                    }
+
                     find_target = true;
                 }
 
@@ -162,8 +177,15 @@ namespace predict
 
                     // 通过PnP算法获取装甲板的3D位置和姿态
                     float yaw_in_camera;
-                    tracked_measurement = coord_transformer.pnp_get_measurement(tracked_armor.pts, tracked_armor.tag_id, tracked_armor.color_id,
-                                                                                attitude_yaw, yaw_in_camera);
+                    bool success = coord_transformer.pnp_get_measurement(tracked_armor.pts, tracked_armor.tag_id, tracked_armor.color_id,
+                                                                                attitude_yaw, yaw_in_camera, tracked_measurement);
+
+                    if (!success) {
+                        if (debug)
+                            std::cout << "[predict] pnp failed for initial target" << std::endl;
+
+                        return;
+                    }
                     
                     // 重置跟踪器并初始化目标
                     auto &target = tracker.reset_target(tracked_measurement, tp);
@@ -185,19 +207,26 @@ namespace predict
             // 注意：以下逻辑针对单个车辆进行处理
 
             // === 装甲板筛选和匹配 ===
-            // 寻找与当前跟踪目标相同ID的装甲板，优先考虑上次跟踪的装甲板
+            // 寻找与当前跟踪目标相同ID的装甲板，优先考虑上次跟踪的装甲板并且来源于传统视觉
             int same_id_armor_count = 0;         // 同ID装甲板数量
             double min_position_diff = DBL_MAX;  // 最小位置差
             bbox_t selected_armor;               // 选中的装甲板
             Eigen::Matrix<double, 4, 1> selected_measurement; // 选中装甲板的测量值
+            bbox_t secondary_armor;               // 备选装甲板
+            Eigen::Matrix<double, 4, 1> secondary_measurement; // 备选装甲板的测量值
 
             // 遍历所有检测到的装甲板
             for (const auto &armor : detected_armors) {
                 if (armor.tag_id == tracked_armor.tag_id) {
                     // 找到同ID装甲板，进行PnP解算
                     float yaw_in_camera;
-                    Eigen::Matrix<double, 4, 1> measured_measurement = coord_transformer.pnp_get_measurement(
-                                                                    armor.pts, armor.tag_id, tracked_armor.color_id,attitude_yaw, yaw_in_camera);
+                    Eigen::Matrix<double, 4, 1> measured_measurement;
+                    bool success = coord_transformer.pnp_get_measurement(armor.pts, armor.tag_id, tracked_armor.color_id, 
+                                                                            attitude_yaw, yaw_in_camera, measured_measurement);
+
+                    if (!success) {
+                        continue;
+                    }
                     
                     // 计算位置变化
                     Eigen::Matrix<double, 3, 1> measured_pw(measured_measurement(1, 0), measured_measurement(0, 0), measured_measurement(2, 0));
@@ -206,12 +235,32 @@ namespace predict
                     same_id_armor_count++;
                     show_armor = true;
 
-                    // 选择位置变化最小的装甲板作为跟踪目标
+                    // 选中的装甲板为位置变化最小的，备选装甲板是次小的
                     double pw_diff = (tracked_pw - measured_pw).norm();
-                    if (pw_diff < min_position_diff) {
-                        min_position_diff = pw_diff;
-                        selected_armor = armor;
-                        selected_measurement = measured_measurement;
+                    if (same_id_armor_count == 1) {
+                        if (pw_diff < min_position_diff) {
+                            min_position_diff = pw_diff;
+                            selected_armor = armor;
+                            selected_measurement = measured_measurement;
+                        }
+                    }
+                    else {
+                        if (pw_diff < min_position_diff) {
+                            secondary_armor = selected_armor;
+                            secondary_measurement = selected_measurement;
+
+                            min_position_diff = pw_diff;
+                            selected_armor = armor;
+                            selected_measurement = measured_measurement;
+                        }
+                        else {
+                            secondary_armor = armor;
+                            secondary_measurement = measured_measurement;
+                        }
+                    }
+
+                    if (same_id_armor_count == 2) {
+                        break;
                     }
                 }
             }
@@ -219,10 +268,26 @@ namespace predict
             if (debug)
                 std::cout << "[predict] same id armor count: " << same_id_armor_count << std::endl;
 
-            // 更新跟踪目标（如果找到同ID装甲板）
-            if (same_id_armor_count) {
+            // 更新跟踪目标，优先选择来源于传统视觉的装甲板
+            if (same_id_armor_count == 1) {
                 tracked_armor = selected_armor;
                 tracked_measurement = selected_measurement;
+            }
+            else {
+                if (selected_armor.source == DetectionSource::TRADITIONAL) {
+                    tracked_armor = selected_armor;
+                    tracked_measurement = selected_measurement;
+                }
+                else {
+                    if (secondary_armor.source == DetectionSource::TRADITIONAL) {
+                        tracked_armor = secondary_armor;
+                        tracked_measurement = secondary_measurement;
+                    }
+                    else {
+                        tracked_armor = selected_armor;
+                        tracked_measurement = selected_measurement;
+                    }
+                }
             }
 
             // === 执行跟踪更新 ===
@@ -290,6 +355,8 @@ namespace predict
     {
         LOGT_S();
 
+        // cout << (tracked_armor.source == DetectionSource::TRADITIONAL ? "trad" : "nnet") << endl;
+
         // cout << target.tracked_measurement(0, 0) << std::endl;
         // cout << target.tracked_measurement(1, 0) << std::endl;
         // cout << target.tracked_measurement(2, 0) << std::endl;
@@ -316,15 +383,15 @@ namespace predict
         // cout << target.armor_z_state(0, 0) << endl;
         // cout << target.armor_z_state(1, 0) << endl;
         
-        // cout << target.tracked_state(0, 0) << std::endl;
-        // cout << target.tracked_state(1, 0) << std::endl;
-        // cout << target.tracked_state(2, 0) << std::endl;
-        // cout << target.tracked_state(3, 0) << std::endl;
-        // cout << target.tracked_state(4, 0) << std::endl;
-        // cout << target.tracked_state(5, 0) << std::endl;
-        // cout << target.tracked_state(6, 0) << std::endl;
-        // cout << target.tracked_state(7, 0) << std::endl;
-        // cout << target.tracked_state(8, 0) << std::endl;
+        cout << target.tracked_state(0, 0) << std::endl;
+        cout << target.tracked_state(1, 0) << std::endl;
+        cout << target.tracked_state(2, 0) << std::endl;
+        cout << target.tracked_state(3, 0) << std::endl;
+        cout << target.tracked_state(4, 0) << std::endl;
+        cout << target.tracked_state(5, 0) << std::endl;
+        cout << target.tracked_state(6, 0) << std::endl;
+        cout << target.tracked_state(7, 0) << std::endl;
+        cout << target.tracked_state(8, 0) << std::endl;
 
         // cout << target.vehicle_model_trust << std::endl;
 

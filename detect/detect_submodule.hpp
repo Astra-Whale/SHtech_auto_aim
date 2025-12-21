@@ -22,7 +22,7 @@
 namespace detect
 {
     const int bin_threshold_for_blue = 70;
-    const int bin_threshold_for_red = 93;
+    const int bin_threshold_for_red = 94;
 
     /**
      * @brief   检测子模块
@@ -54,7 +54,7 @@ namespace detect
         bool center = false;
         bool adjust = false;
         ArmorCornerOptimizer corner_optimizer;
-        int binary_thres;
+        int binary_thres = 94;
     };
 }
 
