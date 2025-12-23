@@ -10,10 +10,11 @@ static inline float sigmoid(float x) {
     return 1.0f / (1.0f + std::exp(-x));
 }
 
-// 获取 Letterbox 的仿射变换矩阵
+// 获取 Letterbox 变换矩阵 (保持长宽比)
 static cv::Mat get_transform_matrix(const cv::Size& src_size, const cv::Size& dst_size, ONNX::PreProcessParams& params) {
     float scale = std::min((float)dst_size.width / src_size.width, (float)dst_size.height / src_size.height);
     
+    // 计算居中填充的偏移量
     float ox = (dst_size.width - src_size.width * scale) * 0.5f;
     float oy = (dst_size.height - src_size.height * scale) * 0.5f;
     
@@ -21,8 +22,6 @@ static cv::Mat get_transform_matrix(const cv::Size& src_size, const cv::Size& ds
     params.ox = ox;
     params.oy = oy;
     
-    // [scale, 0, ox]
-    // [0, scale, oy]
     return (cv::Mat_<float>(2, 3) << scale, 0, ox, 0, scale, oy);
 }
 
@@ -50,9 +49,7 @@ void ONNX::build_engine_from_onnx(const std::string &onnx_file)
     migraphx::target targ = migraphx::target("gpu");
     migraphx::compile_options comp_opts;
     comp_opts.set_offload_copy();
-    
-    // 启用 FP16 加速
-    migraphx::quantize_fp16(net);
+    migraphx::quantize_fp16(net); // 开启 FP16
     net.compile(targ, comp_opts);
 }
 
@@ -77,58 +74,48 @@ void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
     cv::Mat trans_mat = get_transform_matrix(src.size(), cv::Size(INPUT_W, INPUT_H), params);
     
     cv::Mat warped;
-    // 使用 warpAffine 一步完成 resize + padding
-    // 114 是 YOLO 训练常用的 padding 值
+    // 使用 114 填充背景 (YOLO 标准)
     cv::warpAffine(src, warped, trans_mat, cv::Size(INPUT_W, INPUT_H), 
                    cv::INTER_LINEAR, cv::BORDER_CONSTANT, cv::Scalar(114, 114, 114));
     
-    // HWC -> CHW, BGR -> RGB, Normalize 0-1
-    // blobFromImage 内部有优化
     cv::Mat blob;
+    // BGR -> RGB, /255.0, HWC -> CHW
     cv::dnn::blobFromImage(warped, blob, 1.0/255.0, cv::Size(), cv::Scalar(0,0,0), true, false);
     
-    // 填充输入 Buffer
     inputTensorValues.assign(blob.begin<float>(), blob.end<float>());
 
-    // ================= 2. Inference (MIGraphX) =================
+    // ================= 2. Inference =================
     migraphx::program_parameters prog_params;
     auto param_shapes = net.get_parameter_shapes();
     auto input_name = param_shapes.names().front();
     
     prog_params.add(input_name, migraphx::argument(param_shapes[input_name], inputTensorValues.data()));
     
-    // 同步执行
     auto outputs = net.eval(prog_params);
     float* output_data = reinterpret_cast<float*>(outputs[0].data());
 
-    // ================= 3. Post-process (Decoding) =================
-    // 假设输出形状: [1, 25200, 22]
-    // 22 channels: [x0,y0...x3,y3 (8), conf(1), color(4), class(9)]
-    const int num_anchors = 25200; // YOLO stride 8,16,32 --> 640x640 -> 25200
+    // ================= 3. Post-process =================
+    // 假设 Output Shape: [1, 25200, 22]
+    const int num_anchors = 25200;
     const int stride = 22;
     
-    std::vector<cv::Rect> boxes_nms;
-    std::vector<float> scores_nms;
-    std::vector<bbox_t> temp_bboxes;
+    std::vector<cv::Rect> boxes_nms;     // NMS 用的矩形框
+    std::vector<float> scores_nms;       // NMS 用的分数
+    std::vector<bbox_t> temp_bboxes;     // 暂存解码后的完整对象
     
-    // 预分配内存以提升性能
-    boxes_nms.reserve(100);
-    scores_nms.reserve(100);
-    temp_bboxes.reserve(100);
+    boxes_nms.reserve(128);
+    scores_nms.reserve(128);
+    temp_bboxes.reserve(128);
 
     for (int i = 0; i < num_anchors; i++) {
         float* ptr = output_data + i * stride;
         
-        // --- Fail-Fast 优化 ---
-        // 直接检查 Logit 值，避免 exp 计算
+        // 1. Fail-Fast 过滤: 检查置信度 Logit
         if (ptr[8] < LOGIT_THRESH) continue;
         
-        // 计算实际置信度
         float conf = sigmoid(ptr[8]);
         
-        // --- 颜色分类 (0-3) ---
-        // ptr[9:13] -> Blue, Red, Gray, Purple
-        // 找到最大值的索引
+        // 2. 颜色分类 (Blue, Red, Gray, Purple) -> Index 9-12
         int color_id = 0;
         float max_color_val = ptr[9];
         for(int c=1; c<4; c++) {
@@ -137,12 +124,10 @@ void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
                 color_id = c;
             }
         }
-        
-        // 过滤灰色(2)和紫色(3)，或者根据需求过滤
+        // 过滤灰色(2)和紫色(3)
         if (color_id == 2 || color_id == 3) continue;
 
-        // --- 数字分类 (0-8) ---
-        // ptr[13:22]
+        // 3. 数字分类 (G, 1-5, O, Bs, Bb) -> Index 13-21
         int class_id = 0;
         float max_class_val = ptr[13];
         for(int c=1; c<9; c++) {
@@ -163,44 +148,41 @@ void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
         
         if (color_id == 0) color_id = 1; // Red
         else if (color_id == 1) color_id = 0; // Blue
-
-        // --- 组装 bbox_t ---
+        
+        // 4. 填充 bbox_t 结构体
         bbox_t box;
         box.confidence = conf;
         box.color_id = color_id;
         box.tag_id = class_id;
-
+        box.source = DetectionSource::NEURAL_NETWORK;
         
+        // 提取关键点并计算 NMS 用的包围盒
+        float x_min = 1e5, y_min = 1e5;
+        float x_max = -1e5, y_max = -1e5;
         
-        // 提取关键点 (此时还是 640x640 下的坐标)
-        // 存储顺序: P0(x,y), P1(x,y), P2(x,y), P3(x,y)
-        float x_min = 10000, y_min = 10000;
-        float x_max = -10000, y_max = -10000;
-        
+        // ptr[0-7] 是 4个点的 x,y 坐标
         for (int k = 0; k < 4; k++) {
-            box.pts[2*k] = ptr[2*k];     // x
-            box.pts[2*k+1] = ptr[2*k+1]; // y
+            float x = ptr[2*k];
+            float y = ptr[2*k+1];
             
-            x_min = std::min(x_min, box.pts[2*k]);
-            x_max = std::max(x_max, box.pts[2*k]);
-            y_min = std::min(y_min, box.pts[2*k+1]);
-            y_max = std::max(y_max, box.pts[2*k+1]);
+            // 正确填充 cv::Point2f 数组
+            box.pts[k].x = x;
+            box.pts[k].y = y;
+            
+            x_min = std::min(x_min, x);
+            x_max = std::max(x_max, x);
+            y_min = std::min(y_min, y);
+            y_max = std::max(y_max, y);
         }
         
-        // 计算 NMS 用的包围盒 (扩大 ROI 策略)
+        // 临时保存对象
+        temp_bboxes.push_back(box);
+        
+        // 准备 NMS 数据 (扩大一点 ROI 以防止过度抑制)
         float w = x_max - x_min;
         float h = y_max - y_min;
-        
-        // 稍微扩大一点框给 NMS 用，防止太紧凑
-        cv::Rect rect;
-        rect.x = x_min - 0.2f * w;
-        rect.y = y_min - 0.2f * h;
-        rect.width = w * 1.4f;
-        rect.height = h * 1.4f;
-        
-        temp_bboxes.push_back(box);
-        boxes_nms.push_back(rect);
-        scores_nms.push_back(conf); // 这里也可以用 conf * class_score
+        boxes_nms.push_back(cv::Rect(x_min - 0.1f*w, y_min - 0.1f*h, w*1.2f, h*1.2f));
+        scores_nms.push_back(conf);
     }
     
     // ================= 4. NMS =================
@@ -208,17 +190,21 @@ void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
     cv::dnn::NMSBoxes(boxes_nms, scores_nms, CONF_THRESH, NMS_THRESH, indices);
     
     // ================= 5. Coordinate Restoration =================
-    // 仅对留下来的目标进行逆变换
     det.reserve(indices.size());
     for (int idx : indices) {
         bbox_t& box = temp_bboxes[idx];
         
-        // Inverse Affine: (x - ox) / scale
+        // 使用预存的参数进行逆仿射变换
+        // 公式: real_x = (pred_x - ox) / scale
         for (int k = 0; k < 4; k++) {
-            box.pts[2*k]     = (box.pts[2*k] - params.ox) / params.scale;
-            box.pts[2*k+1]   = (box.pts[2*k+1] - params.oy) / params.scale;
+            box.pts[k].x = (box.pts[k].x - params.ox) / params.scale;
+            box.pts[k].y = (box.pts[k].y - params.oy) / params.scale;
         }
         
         det.push_back(box);
     }
+    
+    // 如果外部需要按置信度排序
+    // bbox_t 重载了 > 运算符 (confidence > a.confidence)
+    std::sort(det.begin(), det.end(), std::greater<bbox_t>());
 }

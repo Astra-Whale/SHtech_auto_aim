@@ -1,35 +1,22 @@
-//
-// Modified for New RoboMaster Armor Detection Model (YOLO-Pose style)
-// Supports: Letterbox, Fail-Fast Logit Filter, Inverse Affine Restore
-//
-
 #ifndef _ONNXMODULE_HPP_
 #define _ONNXMODULE_HPP_
 
 #include <opencv2/core.hpp>
-#include <opencv2/imgproc.hpp> // for warpAffine
-#include "common.hpp"
+#include <opencv2/imgproc.hpp>
+#include "common.hpp" // 必须包含这个，因为 bbox_t 和 DetectionSource 在这里定义
 #include "../backend.hpp"
 #include <migraphx/migraphx.hpp>
 #include <vector>
-#include <cmath>
 
 class ONNX : public BackEnd
 {
 public:
-    // 配置参数
     static constexpr int INPUT_W = 640;
     static constexpr int INPUT_H = 640;
     static constexpr int TOPK_NUM = 128;
-    
-    // 置信度阈值 (Confidence Threshold)
     static constexpr float CONF_THRESH = 0.65f; 
-    
-    // Fail-Fast Logit 阈值: -ln(1/CONF_THRESH - 1)
-    // 当 conf = 0.65 时, logit ≈ 0.619
-    // 只有 logit > LOGIT_THRESH，Sigmoid后的值才会 > CONF_THRESH
+    // -ln(1/0.65 - 1) ≈ 0.619
     static constexpr float LOGIT_THRESH = 0.619f; 
-    
     static constexpr float NMS_THRESH = 0.45f;
 
     explicit ONNX(const std::string &onnx_file);
@@ -40,6 +27,7 @@ public:
 
     ~ONNX();
 
+    // 禁用拷贝
     ONNX(const ONNX &) = delete;
     ONNX operator=(const ONNX &) = delete;
 
@@ -49,7 +37,7 @@ private:
     migraphx::program net;
     std::vector<float> inputTensorValues;
     
-    // 用于保存预处理的缩放参数，供后处理还原坐标使用
+    // 用于后处理坐标还原的参数
     struct PreProcessParams {
         float scale;
         float ox;
