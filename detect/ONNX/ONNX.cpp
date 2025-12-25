@@ -59,18 +59,22 @@ void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
     // ================= 1. Pre-process (Direct Resize) =================
     // 目标输入：uint8 [512, 640, 3] (HWC)
     
-    cv::Mat resized_img;
-    cv::resize(src, resized_img, cv::Size(INPUT_W, INPUT_H));
+    cv::Mat input_mat;
+    cv::resize(src, input_mat, cv::Size(INPUT_W, INPUT_H));
+
+    cv::Mat float_mat;
+
+    input_mat.convertTo(float_mat, CV_32F);
     
 
-    // 此时 input_mat 是 HWC 排列，uint8 类型，直接拷贝数据
-    // 注意：input_mat 必须是连续内存，cvtColor 和 resize 生成的通常是连续的
-    if (input_mat.isContinuous()) {
-        inputTensorValues.assign(input_mat.data, input_mat.data + input_mat.total() * input_mat.channels());
+    // 此时 float_mat 是 HWC 排列，uint8 类型，直接拷贝数据
+    // 注意：float_mat 必须是连续内存，cvtColor 和 resize 生成的通常是连续的
+    if (float_mat.isContinuous()) {
+        inputTensorValues.assign(float_mat.begin<float>(), float_mat.end<float>());
     } else {
         // 防御性代码，防止非常规操作导致的内存不连续
-        cv::Mat continuous_mat = input_mat.clone();
-        inputTensorValues.assign(continuous_mat.data, continuous_mat.data + continuous_mat.total() * continuous_mat.channels());
+        cv::Mat continuous_mat = float_mat.clone();
+        inputTensorValues.assign(continuous_mat.begin<float>(), continuous_mat.end<float>());
     }
 
     std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
@@ -94,8 +98,8 @@ void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
 
     // ================= 3. Post-process =================
     std::chrono::steady_clock::time_point t5 = std::chrono::steady_clock::now();
-    // 假设 Output Shape: [1, 25200, 22]
-    const int num_anchors = 25200;
+    // 假设 Output Shape: [1, 20160, 22]
+    const int num_anchors = 20160;
     const int stride = 22;
     
     std::vector<cv::Rect> boxes_nms;
