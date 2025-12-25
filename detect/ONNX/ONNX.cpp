@@ -10,7 +10,6 @@ static inline float sigmoid(float x) {
     return 1.0f / (1.0f + std::exp(-x));
 }
 
-// 移除了 get_transform_matrix，因为不再需要 Letterbox
 
 // ================= 类实现 =================
 
@@ -56,59 +55,58 @@ void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
     std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
     det.clear();
     
+    if (src.rows * INPUT_W != src.cols * INPUT_H) {
+
+        LOGW_S("[ONNX_ROCM]Warning: Input image aspect ratio differs from model input!");
+    
+    }
+
     // ================= 1. Pre-process (Direct Resize) =================
-    // 目标输入：uint8 [512, 640, 3] (HWC)
     
-    cv::Mat input_mat;
-    cv::resize(src, input_mat, cv::Size(INPUT_W, INPUT_H));
+    cv::Mat resized_img;
+    cv::resize(src, resized_img, cv::Size(INPUT_W, INPUT_H));
 
-    cv::Mat float_mat;
+    cv::Mat blob; // shape will be [1, 3, 512, 640]
 
-    input_mat.convertTo(float_mat, CV_32F);
-    
+    cv::dnn::blobFromImage(
+        resized_img,                // 输入图像
+        blob,                   // 输出 blob
+        1.0 / 255.0,            // 缩放因子（归一化）
+        cv::Size(),             // 不再调整尺寸（已 resize）
+        cv::Scalar(0, 0, 0),    // 均值减去（这里为 0）
+        true,                   // swapRB = true → BGR 转 RGB
+        false                   // crop = false
+    );
 
-    // 此时 float_mat 是 HWC 排列，uint8 类型，直接拷贝数据
-    // 注意：float_mat 必须是连续内存，cvtColor 和 resize 生成的通常是连续的
-    if (float_mat.isContinuous()) {
-        inputTensorValues.assign(float_mat.begin<float>(), float_mat.end<float>());
+    if (blob.isContinuous()) {
+        inputTensorValues.assign(blob.begin<float>(), blob.end<float>());
     } else {
         // 防御性代码，防止非常规操作导致的内存不连续
-        cv::Mat continuous_mat = float_mat.clone();
+        cv::Mat continuous_mat = blob.clone();
         inputTensorValues.assign(continuous_mat.begin<float>(), continuous_mat.end<float>());
     }
 
-    std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-    std::cout << "Pre-process time: " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us" << std::endl;
+    //std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
+    //std::cout << "Pre-process time: " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us" << std::endl;
 
     // ================= 2. Inference =================
-    std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
+    //std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
 
     migraphx::program_parameters prog_params;
     auto param_shapes = net.get_parameter_shapes();
     auto input_name = param_shapes.names().front();
     
-    // 注意：这里传入的是 uint8 数据的指针
     prog_params.add(input_name, migraphx::argument(param_shapes[input_name], inputTensorValues.data()));
     
     auto outputs = net.eval(prog_params);
     float* output_data = reinterpret_cast<float*>(outputs[0].data());
 
-    std::chrono::steady_clock::time_point t4 = std::chrono::steady_clock::now();
-    std::cout << "Inference time: " << std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count() << " us" << std::endl;
-
-    std::cout<<"__________________________________________________"<<std::endl;
-    int32_t raw_bits;
-
-    std::memcpy(&raw_bits, output_data, sizeof(raw_bits));
-
-
-    std::cout << "Raw bits: " << raw_bits << std::endl;
-    std::cout<<"__________________________________________________"<<std::endl;
-
+    //std::chrono::steady_clock::time_point t4 = std::chrono::steady_clock::now();
+    //std::cout << "Inference time: " << std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count() << " us" << std::endl;
 
     // ================= 3. Post-process =================
     std::chrono::steady_clock::time_point t5 = std::chrono::steady_clock::now();
-    // 假设 Output Shape: [1, 20160, 22]
+    // Output Shape: [1, 20160, 22], as we cut down the input size from szu's 640*640 to H512W640
     const int num_anchors = 20160;
     const int stride = 22;
     
@@ -206,6 +204,6 @@ void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
     }
     
     std::sort(det.begin(), det.end(), std::greater<bbox_t>());
-    std::chrono::steady_clock::time_point t6 = std::chrono::steady_clock::now();
-    std::cout << "Post-process time: " << std::chrono::duration_cast<std::chrono::microseconds>(t6 - t5).count() << " us" << std::endl;
+    //std::chrono::steady_clock::time_point t6 = std::chrono::steady_clock::now();
+    //std::cout << "Post-process time: " << std::chrono::duration_cast<std::chrono::microseconds>(t6 - t5).count() << " us" << std::endl;
 }
