@@ -49,7 +49,6 @@ void ONNX::build_engine_from_onnx(const std::string &onnx_file)
     migraphx::target targ = migraphx::target("gpu");
     migraphx::compile_options comp_opts;
     comp_opts.set_offload_copy();
-    migraphx::quantize_fp16(net); // 开启 FP16
     net.compile(targ, comp_opts);
 }
 
@@ -82,7 +81,13 @@ void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
     // BGR -> RGB, /255.0, HWC -> CHW
     cv::dnn::blobFromImage(warped, blob, 1.0/255.0, cv::Size(), cv::Scalar(0,0,0), true, false);
     
-    inputTensorValues.assign(blob.begin<float>(), blob.end<float>());
+    //inputTensorValues.assign(blob.begin<float>(), blob.end<float>());
+
+    float* blob_data = reinterpret_cast<float*>(blob.data);
+    inputTensorValues.resize(blob.total());
+    for (size_t i = 0; i < blob.total(); i++) {
+        inputTensorValues[i] = static_cast<migraphx::half>(blob_data[i]);
+    }
 
     // ================= 2. Inference =================
     migraphx::program_parameters prog_params;
