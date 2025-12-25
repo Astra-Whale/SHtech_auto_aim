@@ -35,7 +35,8 @@ public:
 
 private:
     migraphx::program net;
-    std::vector<migraphx::half> inputTensorValues;
+    std::vector<float> inputTensorValues;
+
     
     // 用于后处理坐标还原的参数
     struct PreProcessParams {
@@ -43,6 +44,7 @@ private:
         float ox;
         float oy;
     };
+    cv::Mat get_transform_matrix(const cv::Size& src_size, const cv::Size& dst_size, PreProcessParams& params);
 };
 
 #endif /* _ONNXMODULE_HPP_ */
