@@ -35,7 +35,7 @@ public:
 
 private:
     migraphx::program net;
-    std::vector<float> inputTensorValues;
+    std::vector<migraphx::half> inputTensorValues;
     
     // 用于后处理坐标还原的参数
     struct PreProcessParams {
