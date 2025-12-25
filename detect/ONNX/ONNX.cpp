@@ -96,6 +96,16 @@ void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
     std::chrono::steady_clock::time_point t4 = std::chrono::steady_clock::now();
     std::cout << "Inference time: " << std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count() << " us" << std::endl;
 
+    std::cout<<"__________________________________________________"<<std::endl;
+    int32_t raw_bits;
+
+    std::memcpy(&raw_bits, output_data, sizeof(raw_bits));
+
+
+    std::cout << "Raw bits: " << raw_bits << std::endl;
+    std::cout<<"__________________________________________________"<<std::endl;
+
+
     // ================= 3. Post-process =================
     std::chrono::steady_clock::time_point t5 = std::chrono::steady_clock::now();
     // 假设 Output Shape: [1, 20160, 22]
