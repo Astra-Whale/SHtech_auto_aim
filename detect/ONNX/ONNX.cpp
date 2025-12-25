@@ -11,7 +11,7 @@ static inline float sigmoid(float x) {
 }
 
 // 获取 Letterbox 变换矩阵 (保持长宽比)
-static cv::Mat get_transform_matrix(const cv::Size& src_size, const cv::Size& dst_size, ONNX::PreProcessParams& params) {
+cv::Mat ONNX::get_transform_matrix(const cv::Size& src_size, const cv::Size& dst_size, PreProcessParams& params) {
     float scale = std::min((float)dst_size.width / src_size.width, (float)dst_size.height / src_size.height);
     
     // 计算居中填充的偏移量
@@ -66,6 +66,7 @@ ONNX::~ONNX() {}
 
 void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
 {
+    std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
     det.clear();
     
     // ================= 1. Pre-process (Letterbox) =================
@@ -83,13 +84,14 @@ void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
     
     //inputTensorValues.assign(blob.begin<float>(), blob.end<float>());
 
-    float* blob_data = reinterpret_cast<float*>(blob.data);
-    inputTensorValues.resize(blob.total());
-    for (size_t i = 0; i < blob.total(); i++) {
-        inputTensorValues[i] = static_cast<migraphx::half>(blob_data[i]);
-    }
+    inputTensorValues.assign(blob.begin<float>(), blob.end<float>());
+
+    std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
+    std::cout << "Pre-process time: " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us" << std::endl;
 
     // ================= 2. Inference =================
+    std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
+
     migraphx::program_parameters prog_params;
     auto param_shapes = net.get_parameter_shapes();
     auto input_name = param_shapes.names().front();
@@ -99,7 +101,11 @@ void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
     auto outputs = net.eval(prog_params);
     float* output_data = reinterpret_cast<float*>(outputs[0].data());
 
+    std::chrono::steady_clock::time_point t4 = std::chrono::steady_clock::now();
+    std::cout << "Inference time: " << std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count() << " us" << std::endl;
+
     // ================= 3. Post-process =================
+    std::chrono::steady_clock::time_point t5 = std::chrono::steady_clock::now();
     // 假设 Output Shape: [1, 25200, 22]
     const int num_anchors = 25200;
     const int stride = 22;
@@ -212,4 +218,6 @@ void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
     // 如果外部需要按置信度排序
     // bbox_t 重载了 > 运算符 (confidence > a.confidence)
     std::sort(det.begin(), det.end(), std::greater<bbox_t>());
+    std::chrono::steady_clock::time_point t6 = std::chrono::steady_clock::now();
+    std::cout << "Post-process time: " << std::chrono::duration_cast<std::chrono::microseconds>(t6 - t5).count() << " us" << std::endl;
 }
