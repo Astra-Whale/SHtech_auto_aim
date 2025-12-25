@@ -35,7 +35,7 @@ private:
     migraphx::program net;
     
     // 修改：输入数据现在是 uint8 类型
-    std::vector<uint8_t> inputTensorValues;
+    std::vector<float> inputTensorValues;
 };
 
 #endif /* _ONNXMODULE_HPP_ */
