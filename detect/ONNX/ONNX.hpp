@@ -34,7 +34,6 @@ public:
 private:
     migraphx::program net;
     
-    // 修改：输入数据现在是 uint8 类型
     std::vector<float> inputTensorValues;
 };
 
