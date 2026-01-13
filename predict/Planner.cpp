@@ -49,7 +49,7 @@ namespace predict
     void Planner::planner_reset()
     {
         plan.aimed_armor_pos = Eigen::Matrix<double, 3, 1>::Zero();
-        last_aimed_armor_pos = plan.aimed_armor_pos;
+        last_shooted_armor_pos = plan.aimed_armor_pos;
         armor_jump = false;
         plan.aimed_target_type = AimedTargetType::NONE;
     }
@@ -61,7 +61,7 @@ namespace predict
     void Planner::aim_target_init()
     {
         plan.aimed_armor_pos = Eigen::Matrix<double, 3, 1>::Zero();
-        last_aimed_armor_pos = plan.aimed_armor_pos;
+        last_shooted_armor_pos = plan.aimed_armor_pos;
         armor_jump = false;
         plan.aimed_target_type = AimedTargetType::ARMOR_WITH_NO_MODEL;
     }
@@ -107,7 +107,7 @@ namespace predict
                                 target.armor_y_measurement(0, 0), 
                                 target.armor_z_measurement(0, 0);
 
-            last_aimed_armor_pos = plan.aimed_armor_pos;
+            last_shooted_armor_pos = plan.aimed_armor_pos;
             armor_jump = false;
 
             // 计算云台目标角度（考虑弹道下降）
@@ -147,7 +147,12 @@ namespace predict
                             hit_pos(1, 0) + total_delay * target.armor_y_state(1, 0), 
                             hit_pos(2, 0) + total_delay * target.armor_z_state(1, 0);
 
-            last_aimed_armor_pos = plan.aimed_armor_pos;
+            Pos3D shooted_armor_pos;
+            shooted_armor_pos << hit_pos(0, 0) + (total_delay + shoot_latency) * target.armor_x_state(1, 0), 
+                            hit_pos(1, 0) + (total_delay + shoot_latency) * target.armor_y_state(1, 0), 
+                            hit_pos(2, 0) + (total_delay + shoot_latency) * target.armor_z_state(1, 0);
+
+            last_shooted_armor_pos = shooted_armor_pos;
             armor_jump = false;
             
             // 计算云台控制参数
@@ -222,20 +227,26 @@ namespace predict
             plan.target_pitch = pitch_solver_->work->x(0, HALF_HORIZON);
             plan.target_pitch_speed = pitch_solver_->work->x(1, HALF_HORIZON);
 
+            Pos3D shooted_armor_pos = predict_closest_armor(target, total_delay + shoot_latency);
             // === 装甲板切换检测 ===
-            if (distance_3D(last_aimed_armor_pos - plan.aimed_armor_pos) > same_position_threshold) {
+            if (distance_3D(last_shooted_armor_pos - shooted_armor_pos) > same_position_threshold) {
                 armor_jump_tp = tp;
             }
 
-            int dt_since_jump = duration_cast<microseconds>(tp - armor_jump_tp).count() - shoot_latency * 1e6;
-            if (dt_since_jump > armor_jump_interval / 6.28f * target.yaw_state(1, 0) || dt_since_jump < 0) {
+            int dt_since_jump = duration_cast<microseconds>(tp - armor_jump_tp).count();
+            if (dt_since_jump > armor_jump_interval / 6.28f * target.yaw_state(1, 0)) {
                 armor_jump = false;
             }
             else {
                 armor_jump = true;
             }
 
-            last_aimed_armor_pos = plan.aimed_armor_pos;
+            // LOGT_S();
+
+            last_shooted_armor_pos = shooted_armor_pos;
+
+            // cout << traj(0, HALF_HORIZON + shoot_offset)+yaw0 << endl;
+            // cout << yaw_solver_->work->x(0, HALF_HORIZON + shoot_offset)+yaw0 << endl;
 
             // cout << target_yaw_raw << endl;
             // cout << armor_jump << endl;
@@ -284,8 +295,22 @@ namespace predict
             aimed_state << aimed_center_pos(1, 0), 0, aimed_center_pos(0, 0), 0, aimed_center_pos(2, 0), 0, aimed_direction, 0, target.tracked_state(8, 0);
             Eigen::Matrix<double, 4, 1> aimed_measurement = whole_state_2_measurement(aimed_state);
             plan.aimed_armor_pos << aimed_measurement(1, 0), aimed_measurement(0, 0), aimed_measurement(2, 0);
+
+            Pos3D shooted_center_pos;
+            shooted_center_pos << target.tracked_state(2, 0) + (total_delay + shoot_latency) * target.tracked_state(3, 0), 
+                                target.tracked_state(0, 0) + (total_delay + shoot_latency) * target.tracked_state(1, 0), 
+                                target.tracked_state(4, 0) + (total_delay + shoot_latency) * target.tracked_state(5, 0);
+
+            double shooted_direction = atan(shooted_center_pos(0, 0) / shooted_center_pos(1, 0));
+
+            Eigen::Matrix<double, 9, 1> shooted_state;
+            shooted_state << shooted_center_pos(1, 0), 0, shooted_center_pos(0, 0), 0, shooted_center_pos(2, 0), 0, shooted_direction, 0, target.tracked_state(8, 0);
+            Eigen::Matrix<double, 4, 1> shooted_measurement = whole_state_2_measurement(shooted_state);
+
+            Pos3D shooted_armor_pos;
+            shooted_armor_pos << shooted_measurement(1, 0), shooted_measurement(0, 0), shooted_measurement(2, 0);
             
-            last_aimed_armor_pos = plan.aimed_armor_pos;
+            last_shooted_armor_pos = shooted_armor_pos;
             armor_jump = false;
             
             // 计算云台控制参数

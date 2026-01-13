@@ -104,6 +104,8 @@ void UartDriver::on_receive_sts(drivers::packet_data_t* packet_ptr, drivers::pac
 
     // 构造临时的 RobotStatus 对象
     RobotStatus temp_status;
+
+    // cout << state_ptr->robot_id << endl;
     
     // 根据 robot_id 判断己方颜色，从而确定敌方颜色
     // 1-20: 红方机器人，敌方是蓝色

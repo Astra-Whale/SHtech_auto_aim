@@ -92,7 +92,7 @@ namespace predict
 
         // === 射击决策参数 ===
         /// @brief 轨迹跟踪一致性阈值 (弧度)
-        const double same_trace_threshold = 0.03;
+        const double same_trace_threshold = 0.01;
         
         /// @brief 射击精度阈值 (弧度) - 约等于atan(0.05/0.4)
         const double fire_threshold = 0.125;
@@ -113,7 +113,7 @@ namespace predict
         /// @brief 射击时机偏移（MPC步数）(与shoot_latency配合使用)
         int shoot_offset = 2;
 
-        double pitch_comp = -0.051;
+        double pitch_comp = 0;
 
         double yaw_comp = 0;
 
@@ -133,7 +133,7 @@ namespace predict
         TinySolver * pitch_solver_;
 
         /// @brief 上次瞄准的装甲板位置，用于检测装甲板切换
-        Eigen::Matrix<double, 3, 1> last_aimed_armor_pos;
+        Eigen::Matrix<double, 3, 1> last_shooted_armor_pos;
 
         /// @brief 装甲板切换标志
         bool armor_jump;

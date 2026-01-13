@@ -92,8 +92,8 @@ namespace detect
           position_error_ratio(0.5f),   // 位置可能偏离半个高度
           length_error_ratio(0.1f),     // 长度测量误差10%
           width_error_ratio(0.2f),      // 宽度测量误差20%
-          roi_height_multiplier(0.8f),  // ROI高度为灯条高度的1.3倍
-          roi_width_multiplier(0.9f),   // ROI宽度为灯条宽度的1倍
+          roi_height_multiplier(0.2f),  // ROI高度为灯条高度的1.3倍
+          roi_width_multiplier(0.2f),   // ROI宽度为灯条宽度的1倍
           min_roi_size(20),             // 最小ROI尺寸为20像素
           center_distance_weight(0.2f), // 中心距离权重
           length_difference_weight(0.7f), // 长度差异权重

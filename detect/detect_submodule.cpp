@@ -129,17 +129,6 @@ namespace detect
                 std::vector<cv::Point2f> optimized_corners =
                     corner_optimizer.optimizeCorners(data->frame, bbox.pts, _imgshow);
 
-                // if (optimized_corners.empty()) {
-
-                //     continue;
-                // }
-                
-                // // Update corners with optimized ones
-                // for (int i = 0; i < 4; i++)
-                // {
-                //     bbox.pts[i] = optimized_corners[i];
-                // }
-
                 if (!optimized_corners.empty()) {
                     for (int i = 0; i < 4; i++)
                     {
@@ -170,6 +159,17 @@ namespace detect
             //     cout << data->bboxes[1].tag_id << endl;
             // }
 
+            // int left_armor_idx = (data->bboxes[0].pts[0].x < data->bboxes[1].pts[1].x) ? 0 : 1;
+
+            // if (data->bboxes.size() == 1) {
+            //     cout << (data->bboxes[left_armor_idx].source == DetectionSource::TRADITIONAL) << endl;
+            //     cout << -1 << endl;
+            // }
+            // else {
+            //     cout << (data->bboxes[left_armor_idx].source == DetectionSource::TRADITIONAL) << endl;
+            //     cout << (data->bboxes[1-left_armor_idx].source == DetectionSource::TRADITIONAL) << endl;
+            // }
+
             auto t_opt_end = std::chrono::steady_clock::now(); 
             if (_debugprint)
             {
@@ -191,15 +191,25 @@ namespace detect
             cv::Mat im2show = data->frame.clone();
             for (const auto &b : data->bboxes)
             {
-                cv::line(im2show, b.pts[0], b.pts[1], colors[2], 2);
-                cv::line(im2show, b.pts[1], b.pts[2], colors[2], 2);
-                cv::line(im2show, b.pts[2], b.pts[3], colors[2], 2);
-                cv::line(im2show, b.pts[3], b.pts[0], colors[2], 2);
-                cv::putText(im2show, std::to_string(b.tag_id), b.pts[0], cv::FONT_HERSHEY_SIMPLEX, 1, colors[b.color_id]);
+                cv::line(im2show, b.pts[0], b.pts[1], colors[2], 1);
+                cv::line(im2show, b.pts[1], b.pts[2], colors[2], 1);
+                cv::line(im2show, b.pts[2], b.pts[3], colors[2], 1);
+                cv::line(im2show, b.pts[3], b.pts[0], colors[2], 1);
+                // cv::putText(im2show, std::to_string(b.tag_id), b.pts[0], cv::FONT_HERSHEY_SIMPLEX, 1, colors[b.color_id]);
+
+                cv::putText(im2show, ((b.source==DetectionSource::TRADITIONAL)?"T":"N"), b.pts[0], cv::FONT_HERSHEY_SIMPLEX, 1, colors[b.color_id]);
                 // if (center)
                 //     cv::putText(im2show, "center", b.pts[2], cv::FONT_HERSHEY_SIMPLEX, 1, colors[b.color_id]);
                 // else
                 //     cv::putText(im2show, "all", b.pts[2], cv::FONT_HERSHEY_SIMPLEX, 1, colors[b.color_id]);
+            }
+
+            for (const auto &b : output_bboxes)
+            {
+                cv::line(im2show, b.pts[0], b.pts[1], colors[0], 1);
+                cv::line(im2show, b.pts[1], b.pts[2], colors[0], 1);
+                cv::line(im2show, b.pts[2], b.pts[3], colors[0], 1);
+                cv::line(im2show, b.pts[3], b.pts[0], colors[0], 1);
             }
 
             // 创建目录（只需执行一次）
