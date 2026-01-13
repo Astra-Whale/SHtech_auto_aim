@@ -104,6 +104,8 @@ namespace predict
      */
     void MultiPolicyPredictorSubModule::predict(std::shared_ptr<ThreadDataPack> data)
     {
+        // LOGT_S();
+
         // === 提取数据包信息 ===
         auto &detected_armors = data->bboxes;          // 检测到的装甲板列表
         auto attitude_yaw = data->attitude.yaw / 180 * M_PI;      // 机器人偏航角（转换为弧度）
@@ -134,7 +136,8 @@ namespace predict
                 vector<bbox_t> candidate_armors_from_trad;
                 vector<bbox_t> candidate_armors_from_nnet;
                 for (const auto &armor : detected_armors) {
-                    if (armor.color_id == (robot_status.enemy_color==EnemyColor::BLUE)) {
+                    // TODO: temporaliy do not use enemy_color
+                    // if (armor.color_id == (robot_status.enemy_color==EnemyColor::BLUE)) {
                         if (armor.source == DetectionSource::TRADITIONAL) {
                             candidate_armors_from_trad.push_back(armor);
                         }
@@ -144,7 +147,7 @@ namespace predict
                         else {
                             candidate_armors_from_nnet.push_back(armor);
                         }
-                    }
+                    // }
                 }
 
                 bool find_target = false;
@@ -355,7 +358,7 @@ namespace predict
     {
         LOGT_S();
 
-        // cout << (tracked_armor.source == DetectionSource::TRADITIONAL ? "trad" : "nnet") << endl;
+        // cout << (tracked_armor.source == DetectionSource::TRADITIONAL ? 1 : 0) << endl;
 
         // cout << target.tracked_measurement(0, 0) << std::endl;
         // cout << target.tracked_measurement(1, 0) << std::endl;
@@ -383,15 +386,15 @@ namespace predict
         // cout << target.armor_z_state(0, 0) << endl;
         // cout << target.armor_z_state(1, 0) << endl;
         
-        cout << target.tracked_state(0, 0) << std::endl;
-        cout << target.tracked_state(1, 0) << std::endl;
-        cout << target.tracked_state(2, 0) << std::endl;
-        cout << target.tracked_state(3, 0) << std::endl;
-        cout << target.tracked_state(4, 0) << std::endl;
-        cout << target.tracked_state(5, 0) << std::endl;
-        cout << target.tracked_state(6, 0) << std::endl;
-        cout << target.tracked_state(7, 0) << std::endl;
-        cout << target.tracked_state(8, 0) << std::endl;
+        // cout << target.tracked_state(0, 0) << std::endl;
+        // cout << target.tracked_state(1, 0) << std::endl;
+        // cout << target.tracked_state(2, 0) << std::endl;
+        // cout << target.tracked_state(3, 0) << std::endl;
+        // cout << target.tracked_state(4, 0) << std::endl;
+        // cout << target.tracked_state(5, 0) << std::endl;
+        // cout << target.tracked_state(6, 0) << std::endl;
+        // cout << target.tracked_state(7, 0) << std::endl;
+        // cout << target.tracked_state(8, 0) << std::endl;
 
         // cout << target.vehicle_model_trust << std::endl;
 
@@ -399,13 +402,13 @@ namespace predict
         // cout << plan.aimed_armor_pos(1, 0) << endl;
         // cout << plan.aimed_armor_pos(2, 0) << endl;
 
-        // cout << plan.target_yaw << std::endl;
-        // cout << plan.target_yaw_speed << std::endl;
+        cout << plan.target_yaw << std::endl;
+        cout << plan.target_yaw_speed << std::endl;
 
-        // cout << plan.target_pitch << std::endl;
-        // cout << plan.target_pitch_speed << std::endl;
+        cout << plan.target_pitch << std::endl;
+        cout << plan.target_pitch_speed << std::endl;
 
-        // cout << plan.fire_enable << endl;
+        cout << plan.fire_enable << endl;
     }
 
     // === 枚举转字符串辅助函数 ===
@@ -571,7 +574,7 @@ namespace predict
         // 仿真图像参数设置
         int h = 1000;           // 图像高度
         int w = 1000;           // 图像宽度
-        int percentage = 300;   // 坐标缩放比例
+        int percentage = 100;   // 坐标缩放比例
         int origin_x = 500;     // 原点X坐标
         int origin_y = 1000;    // 原点Y坐标
         cv::Mat hh = cv::Mat::zeros(1000,1000,CV_8UC3); // 创建黑色背景图像

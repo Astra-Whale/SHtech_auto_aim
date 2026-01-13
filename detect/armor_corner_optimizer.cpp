@@ -193,6 +193,9 @@ namespace detect
       if (light_length_ratio < 0.7 || fabs(left_light_angle_deg - right_light_angle_deg) > 5) {
         optimized_corners.clear();
 
+        // cout << light_length_ratio << endl;
+        // cout << fabs(left_light_angle_deg - right_light_angle_deg) << endl;
+
         return optimized_corners;
       }
 
@@ -461,6 +464,9 @@ namespace detect
     // Apply threshold
     cv::Mat binary_img;
     cv::threshold(green_channel, binary_img, binary_thres, 255, cv::THRESH_BINARY);
+
+    // cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(1, 3));
+    // cv::morphologyEx(binary_img, binary_img, cv::MORPH_OPEN, kernel);
     
     return binary_img;
   }
