@@ -147,6 +147,9 @@ namespace predict
         /// @brief 原始目标俯仰角（未经MPC优化）
         double target_pitch_raw;
 
+        /// @brief 坐标变换器单例 - 负责坐标系转换
+        CoordTransformer& coord_transformer;
+
     private:
         /**
          * @brief 设置偏航轴MPC求解器
@@ -172,7 +175,6 @@ namespace predict
         /**
          * @brief 计算云台目标角度
          * @param aimed_armor_pos 瞄准的装甲板位置
-         * @param coord_transformer 坐标变换器
          * @param bullet_speed 弹丸速度
          * @param attitude_yaw 机器人当前偏航角
          * @param attitude_pitch 机器人当前俯仰角
@@ -181,7 +183,7 @@ namespace predict
          * @details 考虑弹道下降，计算云台应达到的偏航角和俯仰角
          */
         Eigen::Matrix<double, 2, 1> cal_gimbal_target(Eigen::Matrix<double, 3, 1> aimed_armor_pos, 
-                                                        CoordTransformer &coord_transformer, const float bullet_speed, 
+                                                        const float bullet_speed, 
                                                         const double attitude_yaw, const double attitude_pitch,
                                                         const Eigen::Matrix3d &R_world2imu);
 
@@ -191,7 +193,6 @@ namespace predict
          * @param total_delay 总延迟时间
          * @param yaw0 初始偏航角偏移
          * @param bullet_speed 弹丸速度
-         * @param coord_transformer 坐标变换器
          * @param attitude_yaw 机器人偏航角
          * @param attitude_pitch 机器人俯仰角
          * @param R_world2imu 世界坐标系到IMU坐标系的旋转矩阵
@@ -199,7 +200,7 @@ namespace predict
          * @details 生成HORIZON长度的参考轨迹，包含偏航角、偏航角速度、俯仰角、俯仰角速度
          */
         Trajectory get_trajectory(const Target &target, const double total_delay, const double yaw0, const double bullet_speed, 
-                                    CoordTransformer &coord_transformer, const double attitude_yaw, const double attitude_pitch,
+                                    const double attitude_yaw, const double attitude_pitch,
                                     const Eigen::Matrix3d &R_world2imu);
 
         /**
@@ -270,7 +271,6 @@ namespace predict
         /**
          * @brief 制定预测计划
          * @param target 目标跟踪状态
-         * @param coord_transformer 坐标变换器
          * @param bullet_speed 弹丸速度
          * @param attitude_yaw 机器人偏航角
          * @param attitude_pitch 机器人俯仰角
@@ -279,7 +279,7 @@ namespace predict
          * @return 生成的预测计划
          * @details 根据目标状态选择预测策略，生成包含云台角度、角速度和射击决策的完整计划
          */
-        const Plan& make_plan(const Target &target, CoordTransformer &coord_transformer, const float bullet_speed,
+        const Plan& make_plan(const Target &target, const float bullet_speed,
                                 const double attitude_yaw, const double attitude_pitch, 
                                 const Eigen::Matrix3d &R_world2imu, const TP &tp);
 
