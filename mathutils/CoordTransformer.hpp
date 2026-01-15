@@ -85,6 +85,10 @@ namespace predict
     class CoordTransformer
     {
     private:
+        // === 单例模式相关 ===
+        /// @brief 私有静态指针 - 单例实例
+        static std::unique_ptr<CoordTransformer> instance_;
+
         // === 配置参数 ===
         /// @brief 调试模式标志 - 控制调试信息输出
         bool adjust;
@@ -119,14 +123,13 @@ namespace predict
         int pw_length = 135; // 小装甲板长度，单位毫米
         int pw_width = 48; // 小装甲板宽度，单位毫米
                       
-    public:
         /**
-         * @brief 默认构造函数
+         * @brief 默认构造函数（私有）
          */
         explicit CoordTransformer(bool adjust_);
         
         /**
-         * @brief 带参数构造函数
+         * @brief 带参数构造函数（私有）
          * @param camera_param 相机参数文件路径
          * @details 从YAML配置文件中读取相机内参、畸变参数和外参
          *          文件应包含以下字段：
@@ -136,6 +139,34 @@ namespace predict
          *          - D: 相机畸变参数
          */
         explicit CoordTransformer(const std::string camera_param,  bool adjust_);
+                      
+    public:
+        // === 禁止拷贝和赋值 ===
+        CoordTransformer(const CoordTransformer&) = delete;
+        void operator=(const CoordTransformer&) = delete;
+
+        /**
+         * @brief 显式初始化单例
+         * @param param_file 相机参数文件路径
+         * @param adjust 是否开启调试模式
+         * @details 必须在 main/init 中调用一次，用于加载相机参数并创建单例实例
+         *          如果已经初始化，再次调用将不会重复创建
+         */
+        static void Init(const std::string& param_file, bool adjust);
+
+        /**
+         * @brief 获取单例实例
+         * @return CoordTransformer& 单例引用
+         * @details 各个子模块通过此方法获取实例
+         *          如果在 Init 之前调用，将终止程序（Fail Fast）
+         */
+        static CoordTransformer& Get();
+
+        /**
+         * @brief 销毁单例
+         * @details 配合 main 函数的生命周期管理，在程序退出前调用
+         */
+        static void Destroy();
 
         /**
          * @brief PnP算法获取装甲板测量值

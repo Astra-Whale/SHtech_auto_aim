@@ -48,7 +48,6 @@ namespace predict
     public:
         /**
          * @brief 带参数构造函数
-         * @param camera_param 相机参数文件路径
          * @param comm_latency_ 通信延迟时间 (毫秒)
          * @param shoot_latency_ 发射延迟时间 (毫秒)
          * @param debug_ 调试模式标志
@@ -57,9 +56,9 @@ namespace predict
          * @param adjust_ 参数调整模式标志
          * @details 初始化所有核心组件，设置配置参数
          */
-        MultiPolicyPredictorSubModule(const std::string camera_param, int comm_latency_, int shoot_latency_,
+        MultiPolicyPredictorSubModule(int comm_latency_, int shoot_latency_,
                                         double pitch_comp, double yaw_comp, bool disable_vehicle_center_shoot_mode,
-                                        bool debug_, bool show_, bool plot_, bool adjust_, bool transformer_adjust_);
+                                        bool debug_, bool show_, bool plot_, bool adjust_);
         virtual ~MultiPolicyPredictorSubModule() = default;
 
         bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
@@ -95,9 +94,6 @@ namespace predict
         bool adjust;
 
         // === 核心组件 ===
-        /// @brief 坐标变换器 - 处理PnP求解和坐标系转换
-        CoordTransformer coord_transformer;
-        
         /// @brief 目标跟踪器 - 执行多模型自适应跟踪
         Tracker tracker;
         
@@ -109,6 +105,9 @@ namespace predict
         
         /// @brief 当前跟踪的装甲板对象
         bbox_t tracked_armor;
+
+        /// @brief 坐标变换器单例 - 负责坐标系转换
+        CoordTransformer& coord_transformer;
 
     private:
         /**
