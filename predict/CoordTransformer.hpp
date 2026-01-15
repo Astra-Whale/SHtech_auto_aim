@@ -35,15 +35,6 @@ namespace predict
     /// @brief 三维位置向量类型别名，使用Eigen::Vector3d
     using Pos3D = Eigen::Vector3d;
 
-    /**
-     * @brief 自定义坐标系到PnP坐标系的转换矩阵
-     * @details 该矩阵用于将自定义的世界坐标系转换为PnP算法使用的标准坐标系
-     *          实现坐标系的翻转和轴交换
-     */
-    const Eigen::Matrix3d R_custom2pnp = 
-        (Eigen::Matrix3d() << -1., 0., 0.,
-                        0., 0., 1.,
-                        0., 1., 0. ).finished();
 
     /**
      * @brief 小装甲板的3D模型坐标点
@@ -51,13 +42,13 @@ namespace predict
      *          角点顺序：左上、左下、右下、右上
      *          尺寸：13.5cm × 5.6cm
      */
-    const std::vector<cv::Point3d> pw_blue_small = {
+    inline const std::vector<cv::Point3d> pw_blue_small = {
                 {-0.0675, -0.028, 0.},  // 左上角点
                 {-0.0675, 0.028, 0.},   // 左下角点
                 {0.0675, 0.028, 0.},    // 右下角点
                 {0.0675, -0.028, 0.}};  // 右上角点
 
-    const std::vector<cv::Point3d> pw_red_small = {
+    inline const std::vector<cv::Point3d> pw_red_small = {
                 {-0.0675, -0.024, 0.},  // 左上角点
                 {-0.0675, 0.024, 0.},   // 左下角点
                 {0.0675, 0.024, 0.},    // 右下角点
@@ -69,13 +60,13 @@ namespace predict
      *          角点顺序：左上、左下、右下、右上
      *          尺寸：23.0cm × 5.8cm
      */
-    const std::vector<cv::Point3d> pw_blue_big = {
+    inline const std::vector<cv::Point3d> pw_blue_big = {
                 {-0.115, -0.029, 0.},   // 左上角点
                 {-0.115, 0.029, 0.},    // 左下角点
                 {0.115, 0.029, 0.},     // 右下角点
                 {0.115, -0.029, 0.}};   // 右上角点
 
-    const std::vector<cv::Point3d> pw_red_big = {
+    inline const std::vector<cv::Point3d> pw_red_big = {
                 {-0.115, -0.029, 0.},   // 左上角点
                 {-0.115, 0.029, 0.},    // 左下角点
                 {0.115, 0.029, 0.},     // 右下角点
@@ -124,9 +115,6 @@ namespace predict
         /// @brief 相机畸变参数 (OpenCV Mat格式)
         cv::Mat C_MAT;
 
-        /// @brief 世界坐标系到IMU坐标系的旋转矩阵 - 由IMU姿态实时更新
-        Eigen::Matrix3d R_world2imu; 
-
         // === 装甲板模型尺寸 (毫米) (支持实时调参) ===
         int pw_length = 135; // 小装甲板长度，单位毫米
         int pw_width = 48; // 小装甲板宽度，单位毫米
@@ -150,20 +138,12 @@ namespace predict
         explicit CoordTransformer(const std::string camera_param,  bool adjust_);
 
         /**
-         * @brief 更新世界坐标系到IMU坐标系的旋转矩阵
-         * @param q_raw 从IMU姿态得到的四元数
-         * @details 在每次接收到新的IMU数据时调用，更新实时的坐标变换关系
-         *          该函数会结合预定义的坐标系转换矩阵R_custom2pnp
-         */
-        void update_R_world2imu(const Eigen::Quaternionf &q_raw);
-
-        void update_R_world2imu(const Eigen::Matrix3d &);
-
-        /**
          * @brief PnP算法获取装甲板测量值
          * @param p 装甲板四个角点的图像像素坐标 (按顺序：左上、左下、右下、右上)
          * @param armor_number 装甲板编号 (0,1,8为大装甲板，其他为小装甲板)
+         * @param color_id 颜色ID
          * @param attitude_yaw 机器人当前姿态的偏航角 (弧度)
+         * @param R_world2imu 世界坐标系到IMU坐标系的旋转矩阵
          * @param yaw_in_camera 输出参数：装甲板在相机坐标系中的偏航角
          * @param measurement 输出参数：装甲板的测量值 [y, x, z, absolute_yaw]
          * @return bool 成功标志，true表示PnP求解成功，false表示失败
@@ -171,16 +151,18 @@ namespace predict
          */
         bool pnp_get_measurement(const cv::Point2f (&p)[4], const int &armor_number, 
                                                     const int &color_id, const float &attitude_yaw, 
+                                                    const Eigen::Matrix3d &R_world2imu,
                                                     float &yaw_in_camera, Eigen::Vector4d &measurement);
         // === 坐标变换内联函数 ===
         /**
          * @brief 相机坐标系 → 世界坐标系坐标变换
          * @param pc 相机坐标系中的3D点
+         * @param R_world2imu 世界坐标系到IMU坐标系的旋转矩阵
          * @return Pos3D 世界坐标系中的3D点
          * @details 变换链：Camera → IMU → World
          *          pc -(R_camera2imu,T_camera2imu)-> pi -(R_world2imu^T)-> pw
          */
-        inline Pos3D pc_to_pw(const Pos3D &pc)
+        inline Pos3D pc_to_pw(const Pos3D &pc, const Eigen::Matrix3d &R_world2imu)
         {
             return R_world2imu.transpose() * (R_camera2imu * pc + T_camera2imu);
         }
@@ -188,11 +170,12 @@ namespace predict
         /**
          * @brief 世界坐标系 → 相机坐标系坐标变换
          * @param pw 世界坐标系中的3D点
+         * @param R_world2imu 世界坐标系到IMU坐标系的旋转矩阵
          * @return Pos3D 相机坐标系中的3D点
          * @details 变换链：World → IMU → Camera
          *          pw -(R_world2imu)-> pi -(R_camera2imu^T,T_camera2imu)-> pc
          */
-        inline Pos3D pw_to_pc(const Pos3D &pw)
+        inline Pos3D pw_to_pc(const Pos3D &pw, const Eigen::Matrix3d &R_world2imu)
         {
             return R_camera2imu.transpose() * (R_world2imu * pw - T_camera2imu);
         }
@@ -200,10 +183,11 @@ namespace predict
         /**
          * @brief 世界坐标系 → IMU坐标系坐标变换
          * @param pw 世界坐标系中的3D点
+         * @param R_world2imu 世界坐标系到IMU坐标系的旋转矩阵
          * @return Pos3D IMU坐标系中的3D点
          * @details 直接通过旋转矩阵变换，不包含平移
          */
-        inline Pos3D pw_to_pi(const Pos3D &pw)
+        inline Pos3D pw_to_pi(const Pos3D &pw, const Eigen::Matrix3d &R_world2imu)
         {
             return R_world2imu * pw;
         }

@@ -77,31 +77,12 @@ namespace predict
     }
 
     /**
-     * @brief 更新世界坐标系到IMU坐标系的旋转矩阵
-     * @param q_raw 从IMU姿态得到的四元数
-     * @details 该函数在每帧更新时调用，根据IMU的实时姿态更新坐标变换矩阵
-     *          R_custom2pnp是自定义坐标系到PnP坐标系的转换矩阵
-     */
-    void CoordTransformer::update_R_world2imu(const Eigen::Quaternionf &q_raw)
-    {
-        Eigen::Quaternionf q(q_raw.matrix().transpose()); // 重建四元数
-        Eigen::Matrix3d R_T = q.matrix().cast<double>(); // 生成旋转矩阵
-
-        // 组合自定义坐标系转换和IMU旋转
-        // R_custom2pnp: 将自定义世界坐标系转换为PnP算法使用的坐标系
-        R_world2imu = R_custom2pnp * R_T;
-    }
-
-    void CoordTransformer::update_R_world2imu(const Eigen::Matrix3d &r_world2imu)
-    {
-        R_world2imu = r_world2imu;
-    }
-
-    /**
      * @brief PnP算法获取装甲板测量值
      * @param p 装甲板四个角点的图像像素坐标 (按顺序：左上、左下、右下、右上)
      * @param armor_number 装甲板编号 (0,1,8为大装甲板，其他为小装甲板)
+     * @param color_id 颜色ID
      * @param attitude_yaw 机器人当前姿态的偏航角 (弧度)
+     * @param R_world2imu 世界坐标系到IMU坐标系的旋转矩阵
      * @param yaw_in_camera 输出参数：装甲板在相机坐标系中的偏航角
      * @param measurement 输出参数：装甲板的测量值 [y, x, z, absolute_yaw]
      * @return bool 成功标志，true表示PnP求解成功，false表示失败
@@ -109,6 +90,7 @@ namespace predict
      */
     bool CoordTransformer::pnp_get_measurement(const cv::Point2f (&p)[4], const int &armor_number, 
                                                 const int &color_id, const float &attitude_yaw, 
+                                                const Eigen::Matrix3d &R_world2imu,
                                                 float &yaw_in_camera, Eigen::Vector4d &measurement)
     {
         // 根据装甲板编号选择对应的3D模型尺寸
@@ -141,7 +123,8 @@ namespace predict
         }
 
         // 将图像点转换为PnP算法需要的格式
-        std::vector<cv::Point2d> pu(p, p + 4);
+        // std::vector<cv::Point2d> pu(p, p + 4);
+        cv::Mat pu(4, 1, CV_32FC2, const_cast<cv::Point2f*>(p));
 
         // PnP求解：从2D图像点和3D模型点求解相机位姿
         cv::Mat rvec, tvec;  // 旋转向量和平移向量
