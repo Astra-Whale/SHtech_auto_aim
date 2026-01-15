@@ -82,12 +82,13 @@ namespace predict
      * @param bullet_speed 弹丸速度 (m/s)
      * @param attitude_yaw 机器人偏航角 (弧度)
      * @param attitude_pitch 机器人俯仰角 (弧度)
+     * @param R_world2imu 世界坐标系到IMU坐标系的旋转矩阵
      * @param tp 当前时间戳
      * @return 生成的预测计划引用
      * @details 根据目标旋转速度选择预测策略，生成包含云台角度、角速度和射击决策的完整计划
      */
     const Plan& Planner::make_plan(const Target &target, CoordTransformer &coord_transformer, const float bullet_speed,
-        const double attitude_yaw, const double attitude_pitch, const TP &tp)
+        const double attitude_yaw, const double attitude_pitch, const Eigen::Matrix3d &R_world2imu, const TP &tp)
     {
         double rotation_speed = abs(target.yaw_state(1, 0));
         
@@ -113,7 +114,7 @@ namespace predict
             // 计算云台目标角度（考虑弹道下降）
             Eigen::Vector2d res;
             res = cal_gimbal_target(plan.aimed_armor_pos, coord_transformer, bullet_speed,
-                                attitude_yaw, attitude_pitch);
+                                attitude_yaw, attitude_pitch, R_world2imu);
 
             plan.target_yaw = res(0, 0);
             plan.target_pitch = res(1, 0);
@@ -195,11 +196,11 @@ namespace predict
 
             // 计算初始偏航角偏移
             double yaw0 = cal_gimbal_target(plan.aimed_armor_pos, coord_transformer, bullet_speed,
-                                            attitude_yaw, attitude_pitch)(0, 0);
+                                            attitude_yaw, attitude_pitch, R_world2imu)(0, 0);
 
             // 生成MPC参考轨迹
             Trajectory traj;
-            traj = get_trajectory(target, total_delay, yaw0, bullet_speed, coord_transformer, attitude_yaw, attitude_pitch);
+            traj = get_trajectory(target, total_delay, yaw0, bullet_speed, coord_transformer, attitude_yaw, attitude_pitch, R_world2imu);
 
             target_yaw_raw = traj(0, HALF_HORIZON) + yaw0;
             target_pitch_raw = traj(2, HALF_HORIZON);
@@ -451,6 +452,7 @@ namespace predict
      * @param bullet_speed 弹丸速度
      * @param attitude_yaw 机器人当前偏航角
      * @param attitude_pitch 机器人当前俯仰角
+     * @param R_world2imu 世界坐标系到IMU坐标系的旋转矩阵
      * @return [target_yaw, target_pitch] 云台目标角度
      * @details 考虑弹道下降，计算云台应达到的偏航角和俯仰角
      *          弹道补偿：z = z0 - 0.5 * g * t²
@@ -460,7 +462,8 @@ namespace predict
                                                             CoordTransformer &coord_transformer,
                                                             const float bullet_speed,
                                                             const double attitude_yaw,
-                                                            const double attitude_pitch) 
+                                                            const double attitude_pitch,
+                                                            const Eigen::Matrix3d &R_world2imu) 
     {
         Pos3D pw{aimed_armor_pos(0, 0), aimed_armor_pos(1, 0), aimed_armor_pos(2, 0)};
 
@@ -469,7 +472,7 @@ namespace predict
         pw(2, 0) -= 0.5 * g * fly_time * fly_time;  // 重力下降补偿
 
         // 世界坐标系转换为IMU坐标系
-        Pos3D pi = coord_transformer.pw_to_pi(pw);   
+        Pos3D pi = coord_transformer.pw_to_pi(pw, R_world2imu);   
 
         // 计算IMU坐标系下的目标角度，并叠加机器人当前姿态
         return {atan(pi(0, 0) / pi(2, 0)) + attitude_yaw + yaw_comp, atan(pi(1, 0) / pi(2, 0)) + attitude_pitch + pitch_comp};
@@ -484,13 +487,14 @@ namespace predict
      * @param coord_transformer 坐标变换器
      * @param attitude_yaw 机器人偏航角
      * @param attitude_pitch 机器人俯仰角
+     * @param R_world2imu 世界坐标系到IMU坐标系的旋转矩阵
      * @return 完整的参考轨迹矩阵
      * @details 生成HORIZON长度的参考轨迹，包含偏航角、偏航角速度、俯仰角、俯仰角速度
      *          使用中心差分法计算角速度：v(k) = [x(k+1) - x(k-1)] / (2*dt)
      */
     Trajectory Planner::get_trajectory(const Target &target, const double total_delay, const double yaw0, const double bullet_speed,
                                         CoordTransformer &coord_transformer, const double attitude_yaw,
-                                        const double attitude_pitch)
+                                        const double attitude_pitch, const Eigen::Matrix3d &R_world2imu)
     {
         Trajectory traj;
 
@@ -499,16 +503,16 @@ namespace predict
         
         // 预计算前两个时刻的位置用于中心差分
         Eigen::Matrix<double, 3, 1> last_pos = predict_closest_armor(target, delay_start - DT);
-        auto yaw_pitch_last = cal_gimbal_target(last_pos, coord_transformer, bullet_speed, attitude_yaw, attitude_pitch);
+        auto yaw_pitch_last = cal_gimbal_target(last_pos, coord_transformer, bullet_speed, attitude_yaw, attitude_pitch, R_world2imu);
 
         Eigen::Matrix<double, 3, 1> cur_pos = predict_closest_armor(target, delay_start);
-        auto yaw_pitch_cur = cal_gimbal_target(cur_pos, coord_transformer, bullet_speed, attitude_yaw, attitude_pitch);
+        auto yaw_pitch_cur = cal_gimbal_target(cur_pos, coord_transformer, bullet_speed, attitude_yaw, attitude_pitch, R_world2imu);
 
         // 生成完整轨迹
         for (int i = 0; i < HORIZON; i++) {
             // 预测下一时刻的位置
             Eigen::Matrix<double, 3, 1> next_pos = predict_closest_armor(target, delay_start + DT * (i+1));
-            auto yaw_pitch_next = cal_gimbal_target(next_pos, coord_transformer, bullet_speed, attitude_yaw, attitude_pitch);
+            auto yaw_pitch_next = cal_gimbal_target(next_pos, coord_transformer, bullet_speed, attitude_yaw, attitude_pitch, R_world2imu);
 
             // 使用中心差分法计算角速度
             auto yaw_vel = (yaw_pitch_next(0) - yaw_pitch_last(0)) / (2 * DT);
