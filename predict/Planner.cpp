@@ -31,10 +31,9 @@ namespace predict
       pitch_comp(pitch_comp_),
       yaw_comp(yaw_comp_),
       disable_vehicle_center_shoot_mode(disable_vehicle_center_shoot_mode_),
-      debug(debug_)
+      debug(debug_),
+      coord_transformer(CoordTransformer::Get())
     {
-        // 获取 CoordTransformer 单例
-        coord_transformer = CoordTransformer::Get();
         
         shoot_offset = static_cast<int>(shoot_latency / DT);
 
@@ -115,7 +114,7 @@ namespace predict
 
             // 计算云台目标角度（考虑弹道下降）
             Eigen::Vector2d res;
-            res = cal_gimbal_target(plan.aimed_armor_pos, coord_transformer, bullet_speed,
+            res = cal_gimbal_target(plan.aimed_armor_pos, bullet_speed,
                                 attitude_yaw, attitude_pitch, R_world2imu);
 
             plan.target_yaw = res(0, 0);
@@ -160,7 +159,7 @@ namespace predict
             
             // 计算云台控制参数
             Eigen::Vector2d res;
-            res = cal_gimbal_target(plan.aimed_armor_pos, coord_transformer, bullet_speed,
+            res = cal_gimbal_target(plan.aimed_armor_pos, bullet_speed,
                                 attitude_yaw, attitude_pitch,R_world2imu);
 
             plan.target_yaw = res(0, 0);
@@ -197,12 +196,12 @@ namespace predict
             plan.aimed_armor_pos = predict_closest_armor(target, total_delay);
 
             // 计算初始偏航角偏移
-            double yaw0 = cal_gimbal_target(plan.aimed_armor_pos, coord_transformer, bullet_speed,
+            double yaw0 = cal_gimbal_target(plan.aimed_armor_pos, bullet_speed,
                                             attitude_yaw, attitude_pitch, R_world2imu)(0, 0);
 
             // 生成MPC参考轨迹
             Trajectory traj;
-            traj = get_trajectory(target, total_delay, yaw0, bullet_speed, coord_transformer, attitude_yaw, attitude_pitch, R_world2imu);
+            traj = get_trajectory(target, total_delay, yaw0, bullet_speed, attitude_yaw, attitude_pitch, R_world2imu);
 
             target_yaw_raw = traj(0, HALF_HORIZON) + yaw0;
             target_pitch_raw = traj(2, HALF_HORIZON);
@@ -318,7 +317,7 @@ namespace predict
             
             // 计算云台控制参数
             Eigen::Vector2d res;
-            res = cal_gimbal_target(plan.aimed_armor_pos, coord_transformer, bullet_speed,
+            res = cal_gimbal_target(plan.aimed_armor_pos, bullet_speed,
                                 attitude_yaw, attitude_pitch,R_world2imu);
 
             plan.target_yaw = res(0, 0);
@@ -502,16 +501,16 @@ namespace predict
         
         // 预计算前两个时刻的位置用于中心差分
         Eigen::Matrix<double, 3, 1> last_pos = predict_closest_armor(target, delay_start - DT);
-        auto yaw_pitch_last = cal_gimbal_target(last_pos, coord_transformer, bullet_speed, attitude_yaw, attitude_pitch, R_world2imu);
+        auto yaw_pitch_last = cal_gimbal_target(last_pos, bullet_speed, attitude_yaw, attitude_pitch, R_world2imu);
 
         Eigen::Matrix<double, 3, 1> cur_pos = predict_closest_armor(target, delay_start);
-        auto yaw_pitch_cur = cal_gimbal_target(cur_pos, coord_transformer, bullet_speed, attitude_yaw, attitude_pitch, R_world2imu);
+        auto yaw_pitch_cur = cal_gimbal_target(cur_pos, bullet_speed, attitude_yaw, attitude_pitch, R_world2imu);
 
         // 生成完整轨迹
         for (int i = 0; i < HORIZON; i++) {
             // 预测下一时刻的位置
             Eigen::Matrix<double, 3, 1> next_pos = predict_closest_armor(target, delay_start + DT * (i+1));
-            auto yaw_pitch_next = cal_gimbal_target(next_pos, coord_transformer, bullet_speed, attitude_yaw, attitude_pitch, R_world2imu);
+            auto yaw_pitch_next = cal_gimbal_target(next_pos, bullet_speed, attitude_yaw, attitude_pitch, R_world2imu);
 
             // 使用中心差分法计算角速度
             auto yaw_vel = (yaw_pitch_next(0) - yaw_pitch_last(0)) / (2 * DT);

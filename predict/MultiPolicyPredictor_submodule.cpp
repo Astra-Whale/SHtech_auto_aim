@@ -35,10 +35,9 @@ namespace predict
       plot(plot_),
       adjust(adjust_),
       tracker(debug_, adjust_),
-      planner(comm_latency_ / 1e3, shoot_latency_ / 1e3, pitch_comp, yaw_comp, disable_vehicle_center_shoot_mode, debug_)
+      planner(comm_latency_ / 1e3, shoot_latency_ / 1e3, pitch_comp, yaw_comp, disable_vehicle_center_shoot_mode, debug_),
+      coord_transformer(CoordTransformer::Get())
     {
-        // 获取 CoordTransformer 单例
-        coord_transformer = CoordTransformer::Get();
         
         LOGM_S("[MultiPolicyPredictorSubModule] constructing with latency: %d", comm_latency_);
 
