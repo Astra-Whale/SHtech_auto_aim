@@ -36,6 +36,9 @@
 #include "foxglove/foxglove_server.hpp"
 #include "planner/planner_submodule.hpp"
 
+//Math Utils
+#include "mathutils/CoordTransformer.hpp"
+
 //Common
 #include "common.hpp"
 

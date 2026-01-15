@@ -17,29 +17,30 @@ namespace predict
 {
     /**
      * @brief 构造函数 - 初始化多策略预测器的所有组件
-     * @param camera_param 相机参数文件路径
      * @param comm_latency_ 通信延迟时间 (毫秒)
      * @param shoot_latency_ 发射延迟时间 (毫秒)
      * @param debug_ 调试模式标志
      * @param show_ 显示模式标志
      * @param plot_ 绘图模式标志
      * @param adjust_ 参数调整模式标志
-     * @details 初始化坐标变换器、跟踪器和规划器，设置各种显示和调试选项
+     * @details 初始化跟踪器和规划器，设置各种显示和调试选项
+     *          CoordTransformer 已在 main 中初始化，直接使用单例
      */ 
-    MultiPolicyPredictorSubModule::MultiPolicyPredictorSubModule(const std::string camera_param, int comm_latency_, int shoot_latency_,
+    MultiPolicyPredictorSubModule::MultiPolicyPredictorSubModule(int comm_latency_, int shoot_latency_,
                                                                     double pitch_comp, double yaw_comp, bool disable_vehicle_center_shoot_mode,
-                                                                    bool debug_, bool show_, bool plot_, bool adjust_, bool transformer_adjust_)
+                                                                    bool debug_, bool show_, bool plot_, bool adjust_)
     : SubModule(SubModuleName::MULTI_POLICY_PREDICTOR),
       debug(debug_),
       show(show_),
       plot(plot_),
       adjust(adjust_),
-      coord_transformer(camera_param, transformer_adjust_),
       tracker(debug_, adjust_),
       planner(comm_latency_ / 1e3, shoot_latency_ / 1e3, pitch_comp, yaw_comp, disable_vehicle_center_shoot_mode, debug_)
     {
-        LOGM_S("[MultiPolicyPredictorSubModule] constructing with camera_param: %s, latency: %d", 
-               camera_param.c_str(), comm_latency_);
+        // 获取 CoordTransformer 单例
+        coord_transformer = CoordTransformer::Get();
+        
+        LOGM_S("[MultiPolicyPredictorSubModule] constructing with latency: %d", comm_latency_);
 
         LOGM_S("[MultiPolicyPredictorSubModule] construction completed");
     }
@@ -195,7 +196,7 @@ namespace predict
                     planner.aim_target_init();
                     
                     // 生成初始预测计划
-                    auto &plan = planner.make_plan(target, coord_transformer, robot_status.robot_speed_mps,
+                    auto &plan = planner.make_plan(target, robot_status.robot_speed_mps,
                                 attitude_yaw, attitude_pitch, R_world2imu, tp);
 
                     if (debug)
@@ -295,7 +296,7 @@ namespace predict
             auto &target = tracker.track(tracked_measurement, same_id_armor_count, tp, attitude_yaw);
 
             // === 生成预测计划 ===
-            auto &plan = planner.make_plan(target, coord_transformer, robot_status.robot_speed_mps,
+            auto &plan = planner.make_plan(target, robot_status.robot_speed_mps,
                                         attitude_yaw, attitude_pitch, R_world2imu, tp);
 
             // 输出数据用于绘图分析（可选）

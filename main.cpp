@@ -207,6 +207,15 @@ bool init(void)
     LOGM_F("open log file success!");
     LOGM_S("open log file success!");
 
+    // 初始化 CoordTransformer 单例
+    try {
+        predict::CoordTransformer::Init(info["camera_para"], display["transformer_adjust"]);
+        LOGM_S("CoordTransformer initialized.");
+    } catch (const std::exception& e) {
+        LOGE_S("[init] Failed to initialize CoordTransformer: %s", e.what());
+        return false;
+    }
+
 
     // 第二步: 分配内存
     // 初始化复合任务
@@ -284,10 +293,10 @@ bool init(void)
     detect_submodule_registered = detect_composite->register_submodule_with_params<detect::DetectSubModule>(info["model"], display["detect_adjust"]);
 
     predict_submodule_registered = predict_composite->register_submodule_with_params<predict::MultiPolicyPredictorSubModule>(
-        info["camera_para"], atoi(info["latency"].c_str()), atoi(info["shoot_latency"].c_str()), 
+        atoi(info["latency"].c_str()), atoi(info["shoot_latency"].c_str()), 
         atof(info["pitch_comp"].c_str()), atof(info["yaw_comp"].c_str()), 
         display["disable_vehicle_center_shoot_mode"],
-        display["predic_debug"], display["predic_show"], display["predic_plot"], display["predic_adjust"], display["transformer_adjust"]
+        display["predic_debug"], display["predic_show"], display["predic_plot"], display["predic_adjust"]
         );
 
     planner_submodule_registered = predict_composite->register_submodule_with_params<plan::PlannerSubModule>(*planner_to_serial_bridge);
@@ -488,6 +497,9 @@ int main(void)
     delete entrystage_to_foxglove_alive_bridge;
     delete sensor_from_serial_attitude_bridge;
     delete sensor_from_serial_robot_status_bridge;
+    
+    // 销毁 CoordTransformer 单例
+    predict::CoordTransformer::Destroy();
     // 第六步结束
 
     return 0;
