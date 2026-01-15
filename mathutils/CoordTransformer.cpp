@@ -9,6 +9,9 @@
 
 namespace predict
 {
+    // 定义静态成员变量
+    std::unique_ptr<CoordTransformer> CoordTransformer::instance_ = nullptr;
+
     /**
      * @brief 默认构造函数 - 初始化所有变换矩阵为零矩阵
      */
@@ -74,6 +77,37 @@ namespace predict
             cv::createTrackbar("pw_length", "transformer trackbar", &pw_length, 250, 0);
             cv::createTrackbar("pw_width", "transformer trackbar", &pw_width, 250, 0);
         }
+    }
+
+    /**
+     * @brief 显式初始化单例
+     */
+    void CoordTransformer::Init(const std::string& param_file, bool adjust)
+    {
+        if (!instance_) {
+            instance_ = std::unique_ptr<CoordTransformer>(new CoordTransformer(param_file, adjust));
+        }
+    }
+
+    /**
+     * @brief 获取单例实例
+     */
+    CoordTransformer& CoordTransformer::Get()
+    {
+        if (!instance_) {
+            // 防御性编程：如果未初始化就调用，直接报错终止
+            std::cerr << "[FATAL] CoordTransformer accessed before Init!" << std::endl;
+            std::abort();
+        }
+        return *instance_;
+    }
+
+    /**
+     * @brief 销毁单例
+     */
+    void CoordTransformer::Destroy()
+    {
+        instance_.reset();
     }
 
     /**

@@ -33,6 +33,9 @@ namespace predict
       disable_vehicle_center_shoot_mode(disable_vehicle_center_shoot_mode_),
       debug(debug_)
     {
+        // 获取 CoordTransformer 单例
+        coord_transformer = CoordTransformer::Get();
+        
         shoot_offset = static_cast<int>(shoot_latency / DT);
 
         plan.aimed_target_type = AimedTargetType::NONE;
@@ -78,7 +81,6 @@ namespace predict
     /**
      * @brief 制定预测计划 - 根据目标状态生成完整的射击计划
      * @param target 目标跟踪状态
-     * @param coord_transformer 坐标变换器
      * @param bullet_speed 弹丸速度 (m/s)
      * @param attitude_yaw 机器人偏航角 (弧度)
      * @param attitude_pitch 机器人俯仰角 (弧度)
@@ -87,7 +89,7 @@ namespace predict
      * @return 生成的预测计划引用
      * @details 根据目标旋转速度选择预测策略，生成包含云台角度、角速度和射击决策的完整计划
      */
-    const Plan& Planner::make_plan(const Target &target, CoordTransformer &coord_transformer, const float bullet_speed,
+    const Plan& Planner::make_plan(const Target &target, const float bullet_speed,
         const double attitude_yaw, const double attitude_pitch, const Eigen::Matrix3d &R_world2imu, const TP &tp)
     {
         double rotation_speed = abs(target.yaw_state(1, 0));
@@ -448,7 +450,6 @@ namespace predict
     /**
      * @brief 计算云台目标角度
      * @param aimed_armor_pos 瞄准的装甲板位置
-     * @param coord_transformer 坐标变换器
      * @param bullet_speed 弹丸速度
      * @param attitude_yaw 机器人当前偏航角
      * @param attitude_pitch 机器人当前俯仰角
@@ -459,7 +460,6 @@ namespace predict
      *          通过坐标变换计算IMU坐标系下的角度
      */
     Eigen::Matrix<double, 2, 1> Planner::cal_gimbal_target(Eigen::Matrix<double, 3, 1> aimed_armor_pos,
-                                                            CoordTransformer &coord_transformer,
                                                             const float bullet_speed,
                                                             const double attitude_yaw,
                                                             const double attitude_pitch,
@@ -484,7 +484,6 @@ namespace predict
      * @param total_delay 总延迟时间
      * @param yaw0 初始偏航角偏移
      * @param bullet_speed 弹丸速度
-     * @param coord_transformer 坐标变换器
      * @param attitude_yaw 机器人偏航角
      * @param attitude_pitch 机器人俯仰角
      * @param R_world2imu 世界坐标系到IMU坐标系的旋转矩阵
@@ -493,7 +492,7 @@ namespace predict
      *          使用中心差分法计算角速度：v(k) = [x(k+1) - x(k-1)] / (2*dt)
      */
     Trajectory Planner::get_trajectory(const Target &target, const double total_delay, const double yaw0, const double bullet_speed,
-                                        CoordTransformer &coord_transformer, const double attitude_yaw,
+                                        const double attitude_yaw,
                                         const double attitude_pitch, const Eigen::Matrix3d &R_world2imu)
     {
         Trajectory traj;
