@@ -176,8 +176,11 @@ struct bbox_t
 class Attitude
 {
 public:
-    float yaw, pitch, roll;
-    Attitude() : yaw(.0f), pitch(.0f), roll(.0f) {}
+    float yaw = 0.0f;
+    float pitch = 0.0f;
+    float roll = 0.0f;
+    
+    Attitude() = default;
     Attitude(float _yaw, float _pitch, float _roll) : yaw(_yaw), pitch(_pitch), roll(_roll) {}
     Eigen::Quaternionf toQuaternion()
     {
