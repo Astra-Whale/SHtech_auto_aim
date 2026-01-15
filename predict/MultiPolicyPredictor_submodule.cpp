@@ -113,9 +113,8 @@ namespace predict
         auto tp = data->time;                          // 当前时间戳
         auto &send = data->robotcommand;               // 机器人控制指令结构体
         auto robot_status = data->robotstatus;         // 机器人状态信息
+        auto R_world2imu = data->attitude.R_world2imu(); // 世界坐标系到IMU坐标系的旋转矩阵
 
-        // 更新坐标变换矩阵（根据IMU姿态数据）
-        coord_transformer.update_R_world2imu(data->attitude.R_world2imu());
 
         bool show_armor = false; // 控制是否在可视化中显示装甲板边界框
 
@@ -180,7 +179,7 @@ namespace predict
                     // 通过PnP算法获取装甲板的3D位置和姿态
                     float yaw_in_camera;
                     bool success = coord_transformer.pnp_get_measurement(tracked_armor.pts, tracked_armor.tag_id, tracked_armor.color_id,
-                                                                                attitude_yaw, yaw_in_camera, tracked_measurement);
+                                                                                attitude_yaw, R_world2imu, yaw_in_camera, tracked_measurement);
 
                     if (!success) {
                         if (debug)
@@ -197,7 +196,7 @@ namespace predict
                     
                     // 生成初始预测计划
                     auto &plan = planner.make_plan(target, coord_transformer, robot_status.robot_speed_mps,
-                                attitude_yaw, attitude_pitch, tp);
+                                attitude_yaw, attitude_pitch, R_world2imu, tp);
 
                     if (debug)
                         std::cout << "[predict] start tracking" << std::endl;
@@ -224,7 +223,7 @@ namespace predict
                     float yaw_in_camera;
                     Eigen::Matrix<double, 4, 1> measured_measurement;
                     bool success = coord_transformer.pnp_get_measurement(armor.pts, armor.tag_id, tracked_armor.color_id, 
-                                                                            attitude_yaw, yaw_in_camera, measured_measurement);
+                                                                            attitude_yaw, R_world2imu, yaw_in_camera, measured_measurement);
 
                     if (!success) {
                         continue;
@@ -297,7 +296,7 @@ namespace predict
 
             // === 生成预测计划 ===
             auto &plan = planner.make_plan(target, coord_transformer, robot_status.robot_speed_mps,
-                                        attitude_yaw, attitude_pitch, tp);
+                                        attitude_yaw, attitude_pitch, R_world2imu, tp);
 
             // 输出数据用于绘图分析（可选）
             if (plot)
@@ -486,14 +485,14 @@ namespace predict
 
         // estimated center
         Pos3D pw(target.tracked_state(2, 0), target.tracked_state(0, 0), target.tracked_state(4, 0));
-        Pos3D pc = coord_transformer.pw_to_pc(pw);
+        Pos3D pc = coord_transformer.pw_to_pc(pw, R_world2imu);
         Pos3D pu = coord_transformer.pc_to_pu(pc);
         cv::Point2d pi(pu(0, 0), pu(1, 0));
         cv::circle(im2show, pi, 5, {255, 255, 255}, 3); // white
 
         // measured armor
         Pos3D pw_a(target.tracked_measurement(1, 0), target.tracked_measurement(0, 0), target.tracked_measurement(2, 0));
-        Pos3D pc_a = coord_transformer.pw_to_pc(pw_a);
+        Pos3D pc_a = coord_transformer.pw_to_pc(pw_a, R_world2imu);
         Pos3D pu_a = coord_transformer.pc_to_pu(pc_a);
         cv::Point2d pi_a(pu_a(0, 0), pu_a(1, 0));
         cv::circle(im2show, pi_a, 5, {0, 255, 0}, 3); // green
@@ -502,7 +501,7 @@ namespace predict
         // Eigen::Matrix<double, 4, 1> estimated_armor_m;
         // estimated_armor_m << target.armor_y_state(0, 0), target.armor_x_state(0, 0), target.armor_z_state(0, 0), 0;
         // Pos3D pw_ea(estimated_armor_m(1, 0), estimated_armor_m(0, 0), estimated_armor_m(2, 0));
-        // Pos3D pc_ea = coord_transformer.pw_to_pc(pw_ea);
+        // Pos3D pc_ea = coord_transformer.pw_to_pc(pw_ea, R_world2imu);
         // Pos3D pu_ea = coord_transformer.pc_to_pu(pc_ea);
         // cv::Point2d pi_ea(pu_ea(0, 0), pu_ea(1, 0));
         // cv::circle(im2show, pi_ea, 5, {255, 0, 0}, 3); // blue
@@ -510,14 +509,14 @@ namespace predict
         // estimated armor, vehicle model
         Eigen::Matrix<double, 4, 1> estimated_armor_m = planner.whole_state_2_measurement(target.tracked_state);
         Pos3D pw_ea(estimated_armor_m(1, 0), estimated_armor_m(0, 0), estimated_armor_m(2, 0));
-        Pos3D pc_ea = coord_transformer.pw_to_pc(pw_ea);
+        Pos3D pc_ea = coord_transformer.pw_to_pc(pw_ea, R_world2imu);
         Pos3D pu_ea = coord_transformer.pc_to_pu(pc_ea);
         cv::Point2d pi_ea(pu_ea(0, 0), pu_ea(1, 0));
         cv::circle(im2show, pi_ea, 5, {255, 0, 0}, 3); // blue
 
         // armor target
         Pos3D pw_t(plan.aimed_armor_pos(0, 0), plan.aimed_armor_pos(1, 0), plan.aimed_armor_pos(2, 0));
-        Pos3D pc_t = coord_transformer.pw_to_pc(pw_t);
+        Pos3D pc_t = coord_transformer.pw_to_pc(pw_t, R_world2imu);
         Pos3D pu_t = coord_transformer.pc_to_pu(pc_t);
         cv::Point2d pi_t(pu_t(0, 0), pu_t(1, 0));
         cv::circle(im2show, pi_t, 5, {0, 0, 255}, 3); // red

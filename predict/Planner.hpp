@@ -176,12 +176,14 @@ namespace predict
          * @param bullet_speed 弹丸速度
          * @param attitude_yaw 机器人当前偏航角
          * @param attitude_pitch 机器人当前俯仰角
+         * @param R_world2imu 世界坐标系到IMU坐标系的旋转矩阵
          * @return [target_yaw, target_pitch] 云台目标角度
          * @details 考虑弹道下降，计算云台应达到的偏航角和俯仰角
          */
         Eigen::Matrix<double, 2, 1> cal_gimbal_target(Eigen::Matrix<double, 3, 1> aimed_armor_pos, 
                                                         CoordTransformer &coord_transformer, const float bullet_speed, 
-                                                        const double attitude_yaw, const double attitude_pitch);
+                                                        const double attitude_yaw, const double attitude_pitch,
+                                                        const Eigen::Matrix3d &R_world2imu);
 
         /**
          * @brief 生成MPC参考轨迹
@@ -192,11 +194,13 @@ namespace predict
          * @param coord_transformer 坐标变换器
          * @param attitude_yaw 机器人偏航角
          * @param attitude_pitch 机器人俯仰角
+         * @param R_world2imu 世界坐标系到IMU坐标系的旋转矩阵
          * @return 完整的参考轨迹矩阵
          * @details 生成HORIZON长度的参考轨迹，包含偏航角、偏航角速度、俯仰角、俯仰角速度
          */
         Trajectory get_trajectory(const Target &target, const double total_delay, const double yaw0, const double bullet_speed, 
-                                    CoordTransformer &coord_transformer, const double attitude_yaw, const double attitude_pitch);
+                                    CoordTransformer &coord_transformer, const double attitude_yaw, const double attitude_pitch,
+                                    const Eigen::Matrix3d &R_world2imu);
 
         /**
          * @brief 更新瞄准目标类型
@@ -270,12 +274,14 @@ namespace predict
          * @param bullet_speed 弹丸速度
          * @param attitude_yaw 机器人偏航角
          * @param attitude_pitch 机器人俯仰角
+         * @param R_world2imu 世界坐标系到IMU坐标系的旋转矩阵
          * @param tp 当前时间戳
          * @return 生成的预测计划
          * @details 根据目标状态选择预测策略，生成包含云台角度、角速度和射击决策的完整计划
          */
         const Plan& make_plan(const Target &target, CoordTransformer &coord_transformer, const float bullet_speed,
-                                const double attitude_yaw, const double attitude_pitch, const TP &tp);
+                                const double attitude_yaw, const double attitude_pitch, 
+                                const Eigen::Matrix3d &R_world2imu, const TP &tp);
 
         /**
          * @brief 整车状态转换为观测值
