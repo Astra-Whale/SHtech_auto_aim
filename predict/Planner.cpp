@@ -159,7 +159,7 @@ namespace predict
             // 计算云台控制参数
             Eigen::Vector2d res;
             res = cal_gimbal_target(plan.aimed_armor_pos, coord_transformer, bullet_speed,
-                                attitude_yaw, attitude_pitch);
+                                attitude_yaw, attitude_pitch,R_world2imu);
 
             plan.target_yaw = res(0, 0);
             plan.target_pitch = res(1, 0);
@@ -317,7 +317,7 @@ namespace predict
             // 计算云台控制参数
             Eigen::Vector2d res;
             res = cal_gimbal_target(plan.aimed_armor_pos, coord_transformer, bullet_speed,
-                                attitude_yaw, attitude_pitch);
+                                attitude_yaw, attitude_pitch,R_world2imu);
 
             plan.target_yaw = res(0, 0);
             plan.target_pitch = res(1, 0);
