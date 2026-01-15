@@ -108,8 +108,8 @@ namespace predict
 
         // === 提取数据包信息 ===
         auto &detected_armors = data->bboxes;          // 检测到的装甲板列表
-        auto attitude_yaw = data->attitude.yaw / 180 * M_PI;      // 机器人偏航角（转换为弧度）
-        auto attitude_pitch = data->attitude.pitch / 180 * M_PI;  // 机器人俯仰角（转换为弧度）
+        auto attitude_yaw = data->attitude.yaw() / 180 * M_PI;      // 机器人偏航角（转换为弧度）
+        auto attitude_pitch = data->attitude.pitch() / 180 * M_PI;  // 机器人俯仰角（转换为弧度）
         auto q_raw = data->attitude.toQuaternion();    // 机器人姿态四元数
         auto tp = data->time;                          // 当前时间戳
         auto &send = data->robotcommand;               // 机器人控制指令结构体
