@@ -89,7 +89,7 @@ public:
         if (attitude_cb_) {
             attitude_cb_(initial_attitude_);
             LOGM_S("[MockDriver] Sent initial attitude: yaw=%.2f, pitch=%.2f", 
-                   initial_attitude_.yaw, initial_attitude_.pitch);
+                   initial_attitude_.yaw(), initial_attitude_.pitch());
         }
         
         if (status_cb_) {

@@ -86,7 +86,7 @@ namespace hardware
         if (_debugprint)
         {
             // LOGM_S("[TimedSerial] Attitude updated: yaw=%.2f, pitch=%.2f", 
-            //        att.yaw, att.pitch);
+            //        att.yaw(), att.pitch);
         }
     }
 
@@ -221,8 +221,8 @@ namespace hardware
                                    (long long)std::chrono::duration_cast<std::chrono::microseconds>(read_time_cost).count());
                     
                     driver_->transmit_cmd(
-                        attitude_cache_.yaw + command_cache_.yaw_angle,
-                        attitude_cache_.pitch + command_cache_.pitch_angle,
+                        attitude_cache_.yaw() + command_cache_.yaw_angle,
+                        attitude_cache_.pitch() + command_cache_.pitch_angle,
                         command_cache_.yaw_speed,
                         command_cache_.pitch_speed,
                         command_cache_.distance,
@@ -232,11 +232,11 @@ namespace hardware
                     if (_debugprint)
                     {
                         LOGM_S("[TimedSerial][transmit] p-m:%6.2f | p-s:%6.2f | ps-s:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f | shoot_s:%6.2f | enemy:%d",
-                               attitude_cache_.pitch,
-                               attitude_cache_.pitch + command_cache_.pitch_angle,
+                               attitude_cache_.pitch(),
+                               attitude_cache_.pitch() + command_cache_.pitch_angle,
                                command_cache_.pitch_speed,
-                               attitude_cache_.yaw,
-                               attitude_cache_.yaw + command_cache_.yaw_angle,
+                               attitude_cache_.yaw(),
+                               attitude_cache_.yaw() + command_cache_.yaw_angle,
                                command_cache_.yaw_speed,
                                latest_robot_status_.robot_speed_mps,
                                latest_robot_status_.enemy_color==EnemyColor::RED);

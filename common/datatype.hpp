@@ -176,29 +176,47 @@ struct bbox_t
 class Attitude
 {
 public:
-    float yaw = 0.0f;
-    float pitch = 0.0f;
-    float roll = 0.0f;
-    
-    Attitude() = default;
-    Attitude(float _yaw, float _pitch, float _roll) : yaw(_yaw), pitch(_pitch), roll(_roll) {}
-    Eigen::Quaternionf toQuaternion()
+    // 1. 默认构造函数：ypr等于0，即水平姿态
+    Attitude() : Attitude(0.0f, 0.0f, 0.0f) {}
+
+    Attitude(float yaw, float pitch, float roll) 
+        : yaw_(yaw), pitch_(pitch), roll_(roll) 
     {
-        Eigen::Quaternionf q;
-        // q = Eigen::AngleAxisf(yaw / 180 * M_PI, Eigen::Vector3f::UnitZ()) *
-        //     Eigen::AngleAxisf(pitch / 180 * M_PI, Eigen::Vector3f::UnitX());
-        q = Eigen::AngleAxisf(yaw / 180 * M_PI, Eigen::Vector3f::UnitZ()) *
-            Eigen::AngleAxisf(pitch / 180 * M_PI, Eigen::Vector3f::UnitX()) *
-            Eigen::AngleAxisf(roll / 180 * M_PI, Eigen::Vector3f::UnitY());
-        return q;
+        const double deg2rad = M_PI / 180.0;
+
+        Eigen::Quaterniond q = 
+            Eigen::AngleAxisd(static_cast<double>(yaw)   * deg2rad, Eigen::Vector3d::UnitZ()) *
+            Eigen::AngleAxisd(static_cast<double>(pitch) * deg2rad, Eigen::Vector3d::UnitX()) *
+            Eigen::AngleAxisd(static_cast<double>(roll)  * deg2rad, Eigen::Vector3d::UnitY());
+
+        // 计算 World -> IMU 旋转
+        // R_world2imu_ = R_initial * R_relative.transpose()
+        R_world2imu_ = get_initial_transform() * q.toRotationMatrix().transpose();
     }
-    void toQuaternion(Eigen::Quaternionf &q)
+
+    float yaw() const { return yaw_; }
+    float pitch() const { return pitch_; }
+    float roll() const { return roll_; }
+    const Eigen::Matrix3d& R_world2imu() const { return R_world2imu_; }
+
+private:
+    float yaw_;
+    float pitch_;
+    float roll_;
+    Eigen::Matrix3d R_world2imu_;
+
+    /**
+     * @brief 自定义坐标系到PnP坐标系的转换矩阵
+     * @details 该矩阵用于将自定义的世界坐标系转换为PnP算法使用的标准坐标系
+     *          实现坐标系的翻转和轴交换
+     */
+    static const Eigen::Matrix3d& get_initial_transform()
     {
-        // q = Eigen::AngleAxisf(yaw / 180 * M_PI, Eigen::Vector3f::UnitZ()) *
-        //     Eigen::AngleAxisf(pitch / 180 * M_PI, Eigen::Vector3f::UnitX());
-        q = Eigen::AngleAxisf(yaw / 180 * M_PI, Eigen::Vector3f::UnitZ()) *
-            Eigen::AngleAxisf(pitch / 180 * M_PI, Eigen::Vector3f::UnitX()) *
-            Eigen::AngleAxisf(roll / 180 * M_PI, Eigen::Vector3f::UnitY());
+        static const Eigen::Matrix3d R = (Eigen::Matrix3d() << 
+            -1.,  0.,  0.,
+             0.,  0.,  1.,
+             0.,  1.,  0. ).finished();
+        return R;
     }
 };
 
