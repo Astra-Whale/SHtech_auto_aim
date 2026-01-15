@@ -110,13 +110,12 @@ namespace predict
         auto &detected_armors = data->bboxes;          // 检测到的装甲板列表
         auto attitude_yaw = data->attitude.yaw() / 180 * M_PI;      // 机器人偏航角（转换为弧度）
         auto attitude_pitch = data->attitude.pitch() / 180 * M_PI;  // 机器人俯仰角（转换为弧度）
-        auto q_raw = data->attitude.toQuaternion();    // 机器人姿态四元数
         auto tp = data->time;                          // 当前时间戳
         auto &send = data->robotcommand;               // 机器人控制指令结构体
         auto robot_status = data->robotstatus;         // 机器人状态信息
 
         // 更新坐标变换矩阵（根据IMU姿态数据）
-        coord_transformer.update_R_world2imu(q_raw);
+        coord_transformer.update_R_world2imu(data->attitude.R_world2imu());
 
         bool show_armor = false; // 控制是否在可视化中显示装甲板边界框
 

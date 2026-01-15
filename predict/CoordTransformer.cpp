@@ -92,6 +92,11 @@ namespace predict
         R_world2imu = R_custom2pnp * R_T;
     }
 
+    void CoordTransformer::update_R_world2imu(const Eigen::Matrix3d &r_world2imu)
+    {
+        R_world2imu = r_world2imu;
+    }
+
     /**
      * @brief PnP算法获取装甲板测量值
      * @param p 装甲板四个角点的图像像素坐标 (按顺序：左上、左下、右下、右上)
