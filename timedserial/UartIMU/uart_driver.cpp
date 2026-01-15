@@ -59,10 +59,7 @@ void UartDriver::on_receive_imu(drivers::packet_data_t* packet_ptr, drivers::pac
     pc_mcu_data_t* _tmp_ptr = (pc_mcu_data_t*)packet_ptr;
 
     // 1. 构造临时的 Attitude 对象并触发回调
-    Attitude temp_att;
-    temp_att.yaw = _tmp_ptr->curr_yaw;
-    temp_att.pitch = _tmp_ptr->curr_pitch;
-    temp_att.roll = _tmp_ptr->curr_roll;
+    Attitude temp_att{_tmp_ptr->curr_yaw, _tmp_ptr->curr_pitch, _tmp_ptr->curr_roll};
     
     if (this->attitude_cb_) {
         this->attitude_cb_(temp_att);

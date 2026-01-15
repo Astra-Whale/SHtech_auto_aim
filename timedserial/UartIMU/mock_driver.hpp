@@ -48,11 +48,6 @@ public:
      */
     MockDriver()
     {
-        // 设置默认姿态：水平姿态
-        initial_attitude_.yaw = 0.0f;
-        initial_attitude_.pitch = 0.0f;
-        initial_attitude_.roll = 0.0f;
-        
         // 设置默认机器人状态
         initial_status_.robot_speed_mps = 28.0f;
         initial_status_.enemy_color = EnemyColor::RED;
@@ -61,6 +56,7 @@ public:
         for (int i = 0; i < 6; i++) {
             initial_status_.enemy[i] = 600;  // 满血
         }
+        // initial_attitude_ 使用 Attitude 类的默认初始值（水平姿态）
     }
     
     /**
