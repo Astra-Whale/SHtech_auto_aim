@@ -141,7 +141,7 @@ namespace predict
          *          - 跟踪状态信息
          */
         void show_real_world(const Target &target, const Plan &plan, 
-                                std::shared_ptr<ThreadDataPack> &data, bool show_armor);
+                                std::shared_ptr<ThreadDataPack> &data,const Eigen::Matrix3d &R_world2imu, bool show_armor);
         
         /**
          * @brief 显示仿真俯视图

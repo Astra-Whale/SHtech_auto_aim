@@ -312,7 +312,7 @@ namespace predict
 
         // === 可视化显示（可选） ===
         if (show) {
-            show_real_world(target, plan, data, show_armor);  // 显示真实世界视图
+            show_real_world(target, plan, data, R_world2imu, show_armor);  // 显示真实世界视图
             show_sim(target, plan);                           // 显示仿真俯视图
         }
     }
@@ -474,7 +474,7 @@ namespace predict
      *          - 文字信息：跟踪状态和估计参数
      */
     void MultiPolicyPredictorSubModule::show_real_world(const Target &target, const Plan &plan, 
-                                                std::shared_ptr<ThreadDataPack> &data, bool show_armor)
+                                                std::shared_ptr<ThreadDataPack> &data,const Eigen::Matrix3d &R_world2imu, bool show_armor)
     {
         cv::Point2d zero(50, 50);
         cv::Point2d right_top(800, 50);
