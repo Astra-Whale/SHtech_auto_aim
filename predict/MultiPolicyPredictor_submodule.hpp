@@ -36,6 +36,8 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/eigen.hpp>
 
+using namespace mathutils;
+
 namespace predict
 {
     /**

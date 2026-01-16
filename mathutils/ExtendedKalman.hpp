@@ -17,7 +17,7 @@
 #include <Eigen/Dense>
 #include <functional>
 
-namespace predict
+namespace mathutils
 {
     /**
      * @class ExtendedKalman
