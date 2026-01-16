@@ -30,7 +30,7 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/eigen.hpp>
 
-namespace predict
+namespace mathutils
 {
     /// @brief 三维位置向量类型别名，使用Eigen::Vector3d
     using Pos3D = Eigen::Vector3d;

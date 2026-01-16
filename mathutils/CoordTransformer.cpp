@@ -7,7 +7,7 @@
 
 #include "CoordTransformer.hpp"
 
-namespace predict
+namespace mathutils
 {
     // 定义静态成员变量
     std::unique_ptr<CoordTransformer> CoordTransformer::instance_ = nullptr;

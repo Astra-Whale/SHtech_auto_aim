@@ -30,14 +30,14 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/core/eigen.hpp>
 
-namespace predict
+namespace mathutils
 {
     /// @brief 三维位置向量类型别名，使用Eigen::Vector3d
     using Pos3D = Eigen::Vector3d;
 
     /// @brief 重力加速度常数 (m/s²)
     /// @note 根据具体地理位置调整的重力加速度值
-    constexpr double g = 9.7833;
+    constexpr double g = 9.7946;
 
     /**
      * @brief 计算XY平面内的二维距离
