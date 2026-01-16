@@ -209,7 +209,7 @@ bool init(void)
 
     // 初始化 CoordTransformer 单例
     try {
-        predict::CoordTransformer::Init(info["camera_para"], display["transformer_adjust"]);
+        mathutils::CoordTransformer::Init(info["camera_para"], display["transformer_adjust"]);
         LOGM_S("CoordTransformer initialized.");
     } catch (const std::exception& e) {
         LOGE_S("[init] Failed to initialize CoordTransformer: %s", e.what());
@@ -499,7 +499,7 @@ int main(void)
     delete sensor_from_serial_robot_status_bridge;
     
     // 销毁 CoordTransformer 单例
-    predict::CoordTransformer::Destroy();
+    mathutils::CoordTransformer::Destroy();
     // 第六步结束
 
     return 0;
