@@ -17,7 +17,7 @@
 // modules
 #include "common.hpp"
 #include "types.hpp"
-#include "ExtendedKalman.hpp"
+#include "IESEKF.hpp"
 #include "Kalman.hpp"
 #include "math_tools.hpp"
 
@@ -154,8 +154,8 @@ namespace predict
         /// @brief 目标跟踪状态结构体
         Target target;
 
-        /// @brief 整车状态扩展卡尔曼滤波器 (观测维度4，状态维度9)
-        ExtendedKalman<4, 9> whole_state_ekf;
+        /// @brief 整车状态迭代扩展卡尔曼滤波器 (观测维度4，状态维度9)
+        IESEKF<4, 9> whole_state_ekf;
 
         /// @brief 偏航角速度发散计数器
         int yaw_speed_diverge_counter;
