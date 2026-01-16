@@ -519,14 +519,40 @@ namespace predict
         X0(8, 0) = 0.26;  // 初始旋转半径设为0.26米
 
         // === 状态加法函数 ===
-        auto x_add_ = [this](const Eigen::Matrix<double, 9, 1> & x1, const Eigen::Matrix<double, 9, 1> & x2) {
+        auto x_add_ = [](const Eigen::Matrix<double, 9, 1> & x1, const Eigen::Matrix<double, 9, 1> & x2) {
             Eigen::Matrix<double, 9, 1> res;
             res = x1 + x2;
             return res;
         };
 
-        // 初始化EKF
-        whole_state_ekf.reset(f_, h_, cal_F_, cal_H_, update_Q_, update_R_, P0, X0, x_add_);
+        // === 状态减法函数（关键：处理 Yaw 角周期性）===
+        // 计算 delta = x1 - x2，特别处理 Yaw 角 (索引 6) 的周期性 [-PI, PI]
+        // 这对 IESEKF 至关重要，防止在角度接近 PI/-PI 交界处反复震荡
+        auto x_minus_ = [](const Eigen::Matrix<double, 9, 1> & x1, const Eigen::Matrix<double, 9, 1> & x2) {
+            Eigen::Matrix<double, 9, 1> res = x1 - x2;
+            
+            // 处理 Yaw 角 (索引 6) 的周期性归一化到 [-PI, PI]
+            while(res(6, 0) > M_PI) res(6, 0) -= 2 * M_PI;
+            while(res(6, 0) < -M_PI) res(6, 0) += 2 * M_PI;
+            
+            return res;
+        };
+
+        // === 初始化 IESEKF ===
+        // 参数说明：
+        // - f_, h_: 状态转移和观测函数
+        // - cal_F_, cal_H_: 雅可比矩阵计算函数
+        // - update_Q_, update_R_: 噪声协方差更新函数
+        // - P0, X0: 初始协方差和状态
+        // - x_add_, x_minus_: 流形运算函数
+        // - 5: 最大迭代次数（建议 3-5 次）
+        // - 1e-4: 收敛阈值（状态修正量范数）
+        whole_state_ekf = IESEKF<4, 9>(
+            f_, h_, cal_F_, cal_H_, update_Q_, update_R_, 
+            P0, X0, x_add_, x_minus_,
+            5,      // max_iter: 最大迭代次数
+            1e-4    // stop_threshold: 收敛阈值
+        );
     }
 
     /**
