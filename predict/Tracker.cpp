@@ -348,7 +348,7 @@ namespace predict
         auto y_update_R = [this](const Eigen::Matrix<double, 1, 1> & z) {
             Eigen::Matrix<double, 1, 1> R;
 
-            R << r_ycoord;
+            R << r_rad_coeff;
 
             return R;
         };
@@ -384,7 +384,7 @@ namespace predict
 
         auto x_update_R = [this](const Eigen::Matrix<double, 1, 1> & z) {
             Eigen::Matrix<double, 1, 1> R;
-            R << r_xcoord;  // X坐标观测噪声方差
+            R << r_tan_coeff;  // X坐标观测噪声方差
             return R;
         };
 
@@ -414,7 +414,7 @@ namespace predict
 
         auto z_update_R = [this](const Eigen::Matrix<double, 1, 1> & z) {
             Eigen::Matrix<double, 1, 1> R;
-            R << r_zcoord;  // Z坐标观测噪声方差
+            R << r_z_coeff;  // Z坐标观测噪声方差
             return R;
         };
 
@@ -498,15 +498,63 @@ namespace predict
             return Q;
         };
 
-        // TODO: 噪声从ypd投影到xyz
-        // === 观测噪声协方差矩阵 ===
-        auto update_R_ = [this](const Eigen::Matrix<double, 4, 1> & x) {
-            Eigen::Matrix<double, 4, 4> R;
-            // 观测噪声与观测值成正比（距离越远噪声越大）
-            R << abs(r_ycoord * x(0, 0)), 0,       0,       0,
-                 0,       abs(r_xcoord * x(1, 0)), 0,       0,
-                 0,       0,       abs(r_zcoord * x(2, 0)), 0,
-                 0,       0,       0,       r_yaw;
+        // === 观测噪声协方差矩阵 R 更新 (基于球坐标系 YPD + Yaw 物理模型) ===
+        auto update_R_ = [this](const Eigen::Matrix<double, 4, 1> & measurement) {
+            Eigen::Matrix<double, 4, 4> R = Eigen::Matrix<double, 4, 4>::Zero();
+
+            // 1. 解析观测值 [y, x, z, yaw]
+            double meas_y = measurement(0, 0);
+            double meas_x = measurement(1, 0);
+            double meas_z = measurement(2, 0);
+
+            // 2. 计算距离信息
+            // 平面距离 (用于构建旋转矩阵基向量)
+            double dist_xy_sq = meas_y * meas_y + meas_x * meas_x;
+            double dist_xy = std::sqrt(dist_xy_sq);
+            
+            // 三维欧氏距离 (用于计算由于角度抖动产生的弧长误差)
+            double dist_3d = std::sqrt(dist_xy_sq + meas_z * meas_z);
+
+            // 极近距离保护 (防止除零)
+            if (dist_xy < 0.1) dist_xy = 0.1;
+            if (dist_3d < 0.1) dist_3d = 0.1;
+
+            // 3. 构建平面旋转基向量 (仅在XY平面旋转)
+            // u_r: 径向单位向量 (指向目标)
+            Eigen::Vector2d u_radial(meas_y / dist_xy, meas_x / dist_xy);
+            // u_t: 切向单位向量 (垂直于指向，即图像水平方向)
+            Eigen::Vector2d u_tangent(-meas_x / dist_xy, meas_y / dist_xy);
+
+            // 4. === YPD 物理模型核心转换 ===
+            
+            // A. [Yaw/Azimuth] 方位角标准差 -> 水平切向空间标准差
+            // 物理含义: 相机水平方向像素抖动导致的空间位置误差
+            // 公式: Arc = r * theta
+            double sigma_pos_tangent = dist_3d * std_dev_azi_angle; 
+
+            // B. [Pitch] 俯仰角标准差 -> 垂直(Z轴)空间标准差
+            // 物理含义: 相机垂直方向像素抖动导致的高度测量误差
+            double sigma_pos_z = dist_3d * std_dev_ele_angle;
+
+            // C. [Distance] 深度测量标准差 -> 径向空间标准差
+            // 物理含义: 视觉算法估算深度的不确定性
+            // 注意: 视觉深度的误差通常随距离增加 (线性或平方)，这里采用线性模型
+            double sigma_pos_radial = dist_3d * std_dev_dist_coeff;
+
+            // D. [Target Yaw] 目标偏航角标准差 (常数)
+            double sigma_yaw = std_dev_tgt_yaw;
+
+            // 5. 构建协方差矩阵
+            // 使用基向量外积构建 XY 平面的各向异性噪声
+            Eigen::Matrix2d R_pos_xy = 
+                std::pow(sigma_pos_radial, 2) * (u_radial * u_radial.transpose()) +
+                std::pow(sigma_pos_tangent, 2) * (u_tangent * u_tangent.transpose());
+
+            // 填入 R 矩阵
+            R.block<2, 2>(0, 0) = R_pos_xy;
+            R(2, 2) = std::pow(sigma_pos_z, 2); // Z轴独立处理 (近似垂直切向)
+            R(3, 3) = std::pow(sigma_yaw, 2);   // 目标Yaw独立
+
             return R;
         };
 
@@ -572,15 +620,17 @@ namespace predict
         cv::createTrackbar("p_r_mant", "predictor trackbar", &p_r_mant, 99, 0);
         cv::createTrackbar("p_r_exp", "predictor trackbar", &p_r_exp, 20, 0);
 
-        // 观测噪声参数滑动条
-        cv::createTrackbar("r_xcoord_mant", "predictor trackbar", &r_xcoord_mant, 99, 0);
-        cv::createTrackbar("r_xcoord_exp", "predictor trackbar", &r_xcoord_exp, 20, 0);
-        cv::createTrackbar("r_ycoord_mant", "predictor trackbar", &r_ycoord_mant, 99, 0);
-        cv::createTrackbar("r_ycoord_exp", "predictor trackbar", &r_ycoord_exp, 20, 0);
-        cv::createTrackbar("r_zcoord_mant", "predictor trackbar", &r_zcoord_mant, 99, 0);
-        cv::createTrackbar("r_zcoord_exp", "predictor trackbar", &r_zcoord_exp, 20, 0);
-        cv::createTrackbar("r_yaw_mant", "predictor trackbar", &r_yaw_mant, 99, 0);
-        cv::createTrackbar("r_yaw_exp", "predictor trackbar", &r_yaw_exp, 20, 0);
+        // === 观测噪声参数滑动条 (物理单位：角度-度、距离-%) ===
+        cv::createTrackbar("Azimuth_Deg_Int", "predictor trackbar", &azi_angle_deg_int, 50, 0);
+        cv::createTrackbar("Azimuth_Deg_Frac", "predictor trackbar", &azi_angle_deg_frac, 9, 0);
+
+        cv::createTrackbar("Pitch_Deg_Int", "predictor trackbar", &ele_angle_deg_int, 50, 0);
+        cv::createTrackbar("Pitch_Deg_Frac", "predictor trackbar", &ele_angle_deg_frac, 9, 0);
+
+        cv::createTrackbar("Distance_Coeff_%", "predictor trackbar", &dist_coeff_percent, 100, 0);
+
+        cv::createTrackbar("TargetYaw_Deg_Int", "predictor trackbar", &tgt_yaw_deg_int, 50, 0);
+        cv::createTrackbar("TargetYaw_Deg_Frac", "predictor trackbar", &tgt_yaw_deg_frac, 9, 0);
 
         // 装甲板模型KF参数调整滑动条
         // cv::createTrackbar("kf_yaw_mant", "predictor trackbar", &kf_yaw_mant, 99, 0);
@@ -599,13 +649,21 @@ namespace predict
      */
     void Tracker::update_parameter()
     {
-        r_xcoord = sci_to_float(r_xcoord_mant, r_xcoord_exp - 10);
-        r_ycoord = sci_to_float(r_ycoord_mant, r_ycoord_exp - 10);
-        r_zcoord = sci_to_float(r_zcoord_mant, r_zcoord_exp - 10);
-        r_yaw = sci_to_float(r_yaw_mant, r_yaw_exp - 10);
+        // 更新观测噪声 (将物理单位转换为内部计算单位)
+        // 角度: 度数 -> 弧度
+        std_dev_azi_angle = (azi_angle_deg_int + azi_angle_deg_frac / 10.0) * 0.1 * (M_PI / 180.0);
+        std_dev_ele_angle = (ele_angle_deg_int + ele_angle_deg_frac / 10.0) * 0.1 * (M_PI / 180.0);
+        std_dev_tgt_yaw = (tgt_yaw_deg_int + tgt_yaw_deg_frac / 10.0) * 0.1 * (M_PI / 180.0);
+        
+        // 距离系数: 百分比 -> 小数
+        std_dev_dist_coeff = dist_coeff_percent / 100.0;
+        
+        // 更新过程噪声
         p_yaw = sci_to_float(p_yaw_mant, p_yaw_exp - 10);
         p_coord = sci_to_float(p_coord_mant, p_coord_exp - 10);
         p_r = sci_to_float(p_r_mant, p_r_exp - 10);
+        
+        // 更新装甲板KF参数
         q_kf_yaw = sci_to_float(kf_yaw_mant, kf_yaw_exp - 10);
         q_kf_y = sci_to_float(kf_y_mant, kf_y_exp - 10);
         q_kf_x = sci_to_float(kf_x_mant, kf_x_exp - 10);

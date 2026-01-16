@@ -111,15 +111,32 @@ namespace predict
         /// @brief 旋转半径过程噪声指数
         int p_r_exp = 1 + 10;
         
-        // 观测噪声参数
-        int r_ycoord_mant = 3;
-        int r_ycoord_exp = -4 + 10;
-        int r_xcoord_mant = 3;
-        int r_xcoord_exp = -4 + 10;
-        int r_zcoord_mant = 3;
-        int r_zcoord_exp = -4 + 10;
-        int r_yaw_mant = 3;
-        int r_yaw_exp = -3 + 10;
+        // === 观测噪声参数 (基于球坐标系 YPD + Yaw 物理模型) ===
+        
+        // 1. 方位角标准差 (Azimuth Angle Std Dev) - 单位: 度
+            // 物理意义: 相机水平方向像素抖动导致的角度不确定性
+        // 默认: 3.6°
+        int azi_angle_deg_int = 36;  // 0.1度 * 36 = 3.6°
+        int azi_angle_deg_frac = 0;  // 小数部分 (0.0)
+
+        // 2. 俯仰角标准差 (Elevation/Pitch Angle Std Dev) - 单位: 度
+        // 物理意义: 相机垂直方向像素抖动导致的角度不确定性
+        // 经验值: 0.5° ~ 2.0° (云台Pitch轴震动可能较大)
+        // 默认: 3.6°
+        int ele_angle_deg_int = 36;  // 0.1度 * 36 = 3.6°
+        int ele_angle_deg_frac = 0;  // 小数部分 (0.0)
+
+        // 3. 距离误差系数 (Distance Error Coefficient) - 无量纲
+        // 物理意义: 距离每增加1米，深度测量误差增加多少米 (误差 = 距离 * 系数)
+        // 默认: 0.20 (20%)
+        int dist_coeff_percent = 20;  // 百分比表示 (20% = 0.20)
+
+        // 4. 目标偏航角标准差 (Target Yaw Std Dev) - 单位: 度
+        // 物理意义: 神经网络解算装甲板朝向的角度不确定性
+        // 经验值: 5° ~ 15°
+        // 默认: 10°
+        int tgt_yaw_deg_int = 200;     // 0.1度 * 200 = 20°
+        int tgt_yaw_deg_frac = 0;     // 小数部分 (0.0)
         
         // 装甲板KF噪声参数
         int kf_yaw_mant = 15;
@@ -131,14 +148,18 @@ namespace predict
         int kf_z_mant = 5;
         int kf_z_exp = 0 + 10;
 
-        // === 计算后的噪声协方差参数 ===
-        double r_xcoord = sci_to_float(r_xcoord_mant, r_xcoord_exp - 10);
-        double r_ycoord = sci_to_float(r_ycoord_mant, r_ycoord_exp - 10);
-        double r_zcoord = sci_to_float(r_zcoord_mant, r_zcoord_exp - 10);
-        double r_yaw = sci_to_float(r_yaw_mant, r_yaw_exp - 10);
+        // === 计算后的实际物理参数 ===
+        double std_dev_azi_angle = (azi_angle_deg_int + azi_angle_deg_frac / 10.0) * 0.1 * (M_PI / 180.0); // 方位角标准差 (弧度)
+        double std_dev_ele_angle = (ele_angle_deg_int + ele_angle_deg_frac / 10.0) * 0.1 * (M_PI / 180.0); // 俯仰角标准差 (弧度)
+        double std_dev_dist_coeff = dist_coeff_percent / 100.0;                                           // 距离误差系数 (无量纲)
+        double std_dev_tgt_yaw = (tgt_yaw_deg_int + tgt_yaw_deg_frac / 10.0) * 0.1 * (M_PI / 180.0);      // 目标yaw标准差 (弧度)
+        
+        // 过程噪声参数
         double p_yaw = sci_to_float(p_yaw_mant, p_yaw_exp - 10);
         double p_coord = sci_to_float(p_coord_mant, p_coord_exp - 10);
         double p_r = sci_to_float(p_r_mant, p_r_exp - 10);
+        
+        // 装甲板KF参数
         double q_kf_yaw = sci_to_float(kf_yaw_mant, kf_yaw_exp - 10);
         double q_kf_y = sci_to_float(kf_y_mant, kf_y_exp - 10);
         double q_kf_x = sci_to_float(kf_x_mant, kf_x_exp - 10);
