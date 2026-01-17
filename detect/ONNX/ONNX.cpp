@@ -58,6 +58,7 @@ void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
     if (src.rows * INPUT_W != src.cols * INPUT_H) {
 
         LOGW_S("[ONNX_ROCM]Warning: Input image aspect ratio differs from model input!");
+        LOGW_S("%d %d %d %d",src.rows,INPUT_W,src.cols,INPUT_H);
     
     }
 
