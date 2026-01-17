@@ -148,7 +148,7 @@ namespace predict
         /// @brief 整车状态向量 [y, vy, x, vx, z, vz, yaw, vyaw, r] (9x1)
         /// @details y,x,z: 车辆中心位置；vy,vx,vz: 速度；yaw,vyaw: 装甲板偏航角和角速度；r: 旋转半径
         /// 坐标使用世界坐标系，装甲板偏航角坐标系为：正对世界坐标系y轴为0度，以世界坐标系z轴负半轴为正方向旋转
-        Eigen::Matrix<double, 9, 1> tracked_state;
+        Eigen::Matrix<double, 11, 1> tracked_state;
         
         /// @brief 整车模型观测向量 [y, x, z, yaw] (4x1)
         Eigen::Matrix<double, 4, 1> tracked_measurement;

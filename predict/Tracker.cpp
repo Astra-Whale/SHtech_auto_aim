@@ -89,13 +89,14 @@ namespace predict
     /**
      * @brief 执行目标跟踪更新 - 核心跟踪算法
      * @param measurement 当前观测值 [y, x, z, yaw]
+     * @param secondary_measurement 当前备选观测值 [y, x, z, yaw]
      * @param same_id_armor_count 检测到的同ID装甲板数量
      * @param tp 当前时间戳
      * @param attitude_yaw 机器人当前姿态偏航角
      * @return 更新后的目标状态引用
      * @details 执行完整的跟踪流程：预测、更新、模型选择、异常检测
      */
-    const Target& Tracker::track(const Eigen::Matrix<double, 4, 1> &measurement, const int same_id_armor_count,
+    const Target& Tracker::track(const Eigen::Matrix<double, 4, 1> &measurement, const Eigen::Matrix<double, 4, 1> &secondary_measurement, const int same_id_armor_count,
                                     const TP &tp, const double attitude_yaw)
     {
         // 注意：以下逻辑都是针对单个车辆的跟踪
@@ -188,20 +189,21 @@ namespace predict
         // === 整车模型更新 ===
         if (same_id_armor_count) {
             if (target.updating_model_type != UpdatingModelType::ARMOR_MODEL) {
-                if (min_position_diff < same_position_threshold) {
-                    target.tracked_state = whole_state_ekf.update(target.tracked_measurement);
-                    if (debug)
-                        cout << "[predict] ekf update" << std::endl;
+                if (same_id_armor_count == 1) {
+                    int id = match_armor_id(target.tracked_measurement);
+                    target.tracked_state = whole_state_ekf.update(target.tracked_measurement, id);
                 }
-                else {
-                    // 装甲板跳变处理
-                    // 记录高度差和不同装甲板对的半径差异
-                    target.dz = target.tracked_state(4, 0) - target.tracked_measurement(2, 0);
-                    target.tracked_state(6, 0) = target.tracked_measurement(3, 0);  // 更新偏航角
-                    target.tracked_state(4, 0) = target.tracked_measurement(2, 0);  // 更新Z坐标
-                    std::swap(target.tracked_state(8, 0), target.another_r);        // 交换半径
+                else if (same_id_armor_count == 2) {
+                    int id = match_armor_id(target.tracked_measurement);
+                    target.tracked_state = whole_state_ekf.update(target.tracked_measurement, id);
 
-                    // 切换装甲板计数器
+                    id = match_armor_id(secondary_measurement);
+                    target.tracked_state = whole_state_ekf.update(secondary_measurement, id);
+                }
+
+                if (min_position_diff > same_position_threshold) {
+                    // 装甲板跳变处理
+                    // 切换装甲板计数器          
                     target.ab_counter = 1 - target.ab_counter;
 
                     if (rotate_counter < least_rotate_count) {
@@ -215,12 +217,12 @@ namespace predict
                         target.vehicle_model_trust = true;
                     }
 
-                    // 重置EKF状态
-                    whole_state_ekf.reset(target.tracked_state);
-
                     if (debug)
                         cout << "[predict] armor jump" << std::endl;
                 }
+
+                if (debug)
+                    cout << "[predict] ekf update" << std::endl;
 
                 // 限制旋转半径在合理范围内
                 radium_limit();
@@ -250,6 +252,70 @@ namespace predict
         last_tp = tp;
 
         return target;
+    }
+
+    Eigen::Vector3d Tracker::h_armor_xyz(const Eigen::VectorXd & x, int id)
+    {
+    auto angle = x[6] + id * 2 * CV_PI / 4;
+    auto use_l_h = id == 1 || id == 3;
+
+    auto r = (use_l_h) ? x[8] + x[9] : x[8];
+    auto armor_x = x[0] - r * std::cos(angle);
+    auto armor_y = x[2] - r * std::sin(angle);
+    auto armor_z = (use_l_h) ? x[4] + x[10] : x[4];
+
+    return {armor_x, armor_y, armor_z};
+    }
+
+    std::vector<Eigen::Vector4d> Tracker::armor_xyza_list()
+    {
+        std::vector<Eigen::Vector4d> _armor_xyza_list;
+
+        for (int i = 0; i < 4; i++) {
+            auto angle = target.tracked_state(6, 0) + i * 2 * CV_PI / 4;
+            Eigen::Vector3d xyz = h_armor_xyz(target.tracked_state, i);
+            _armor_xyza_list.push_back({xyz[0], xyz[1], xyz[2], angle});
+        }
+        return _armor_xyza_list;
+    }
+
+    int Tracker::match_armor_id(const Eigen::Matrix<double, 4, 1> &measurement)
+    {
+        int id;
+        auto min_angle_error = 1e10;
+        const std::vector<Eigen::Vector4d> & xyza_list = armor_xyza_list();
+      
+        std::vector<std::pair<Eigen::Vector4d, int>> xyza_i_list;
+        for (int i = 0; i < 4; i++) {
+          xyza_i_list.push_back({xyza_list[i], i});
+        }
+      
+        std::sort(
+          xyza_i_list.begin(), xyza_i_list.end(),
+          [](const std::pair<Eigen::Vector4d, int> & a, const std::pair<Eigen::Vector4d, int> & b) {
+            Eigen::Vector3d ypd1 = mathutils::xyz2ypd(a.first.head(3));
+            Eigen::Vector3d ypd2 = mathutils::xyz2ypd(b.first.head(3));
+            return ypd1[2] < ypd2[2];
+          });
+
+        Eigen::Vector3d xyz_measurement;
+        xyz_measurement << measurement(0, 0), measurement(1, 0), measurement(2, 0);
+        Eigen::Vector3d ypd_measurement = mathutils::xyz2ypd(xyz_measurement);
+      
+        // 取前3个distance最小的装甲板
+        for (int i = 0; i < 3; i++) {
+          const auto & xyza = xyza_i_list[i].first;
+          Eigen::Vector3d ypd = mathutils::xyz2ypd(xyza.head(3));
+          auto angle_error = std::abs(measurement(3, 0) - xyza[3]) +
+                             std::abs(ypd_measurement[0] - ypd[0]);
+      
+          if (std::abs(angle_error) < std::abs(min_angle_error)) {
+            id = xyza_i_list[i].second;
+            min_angle_error = angle_error;
+          }
+        }
+
+        return id;
     }
 
     /**
@@ -311,7 +377,7 @@ namespace predict
         auto yaw_update_R = [this](const Eigen::Matrix<double, 1, 1> & z) {
             Eigen::Matrix<double, 1, 1> R;
 
-            R << r_yaw;
+            R << 1.0;//r_yaw;
 
             return R;
         };
@@ -322,6 +388,7 @@ namespace predict
         // === Y坐标卡尔曼滤波器初始化 ===
         auto y_update_A = [this](const Eigen::Matrix<double, 2, 1> & x) {
             Eigen::Matrix<double, 2, 2> A;
+
 
             A << 1,   dt,
                  0,   1;
@@ -348,7 +415,7 @@ namespace predict
         auto y_update_R = [this](const Eigen::Matrix<double, 1, 1> & z) {
             Eigen::Matrix<double, 1, 1> R;
 
-            R << r_rad_coeff;
+            R << 1.0;//r_rad_coeff;
 
             return R;
         };
@@ -384,7 +451,7 @@ namespace predict
 
         auto x_update_R = [this](const Eigen::Matrix<double, 1, 1> & z) {
             Eigen::Matrix<double, 1, 1> R;
-            R << r_tan_coeff;  // X坐标观测噪声方差
+            R << 1.0;//r_tan_coeff;  // X坐标观测噪声方差
             return R;
         };
 
@@ -414,7 +481,7 @@ namespace predict
 
         auto z_update_R = [this](const Eigen::Matrix<double, 1, 1> & z) {
             Eigen::Matrix<double, 1, 1> R;
-            R << r_z_coeff;  // Z坐标观测噪声方差
+            R << 1.0;//r_z_coeff;  // Z坐标观测噪声方差
             return R;
         };
 
@@ -430,10 +497,10 @@ namespace predict
     void Tracker::whole_state_ekf_init()
     {
         // === 状态转移函数 ===
-        // 状态: y, vy, x, vx, z, vz, yaw(-∞, +∞), vyaw, r
+        // 状态: y, vy, x, vx, z, vz, yaw(-∞, +∞), vyaw, r, l, h
         // 观测: y, x, z, yaw(-∞, +∞)
-        auto f_ = [this](const Eigen::Matrix<double, 9, 1> & x) {
-            Eigen::Matrix<double, 9, 1> x_pri = x;
+        auto f_ = [this](const Eigen::Matrix<double, 11, 1> & x) {
+            Eigen::Matrix<double, 11, 1> x_pri = x;
             // 积分更新位置和角度
             x_pri(0, 0) += x(1, 0) * dt;  // y = y + vy * dt
             x_pri(2, 0) += x(3, 0) * dt;  // x = x + vx * dt
@@ -443,58 +510,74 @@ namespace predict
         };
 
         // === 状态转移雅可比矩阵 ===
-        auto cal_F_ = [this](const Eigen::Matrix<double, 9, 1> & x) {
-            Eigen::Matrix<double, 9, 9> F;
-            F << 1,   dt, 0,   0,   0,   0,   0,   0,   0,
-                 0,   1,   0,   0,   0,   0,   0,   0,   0,
-                 0,   0,   1,   dt, 0,   0,   0,   0,   0, 
-                 0,   0,   0,   1,   0,   0,   0,   0,   0,
-                 0,   0,   0,   0,   1,   dt, 0,   0,   0,
-                 0,   0,   0,   0,   0,   1,   0,   0,   0,
-                 0,   0,   0,   0,   0,   0,   1,   dt, 0,
-                 0,   0,   0,   0,   0,   0,   0,   1,   0,
-                 0,   0,   0,   0,   0,   0,   0,   0,   1;
+        auto cal_F_ = [this](const Eigen::Matrix<double, 11, 1> & x) {
+            Eigen::Matrix<double, 11, 11> F;
+            F << 1,   dt, 0,   0,   0,   0,   0,   0,   0,  0,  0,
+                 0,   1,   0,   0,   0,   0,   0,   0,   0, 0,  0,
+                 0,   0,   1,   dt, 0,   0,   0,   0,   0,  0,  0,
+                 0,   0,   0,   1,   0,   0,   0,   0,   0, 0,  0,
+                 0,   0,   0,   0,   1,   dt, 0,   0,   0,  0,  0,
+                 0,   0,   0,   0,   0,   1,   0,   0,   0, 0,  0,
+                 0,   0,   0,   0,   0,   0,   1,   dt, 0,  0,  0,
+                 0,   0,   0,   0,   0,   0,   0,   1,   0, 0,  0,
+                 0,   0,   0,   0,   0,   0,   0,   0,   1, 0,  0,
+                 0,   0,   0,   0,   0,   0,   0,   0,   0, 1,  0,
+                 0,   0,   0,   0,   0,   0,   0,   0,   0, 0,  1;
             return F;
         };
 
         // === 观测函数 ===
         // 从车辆中心状态计算装甲板位置
-        auto h_ = [](const Eigen::Matrix<double, 9, 1> & x) {
+        auto h_ = [](const Eigen::Matrix<double, 11, 1> & x, const int id) {
             Eigen::Matrix<double, 4, 1> z;
-            z(0, 0) = x(0, 0) - x(8, 0) * cos(x(6, 0));  // ya = yc - r * cos(yaw)
-            z(1, 0) = x(2, 0) - x(8, 0) * sin(x(6, 0));  // xa = xc - r * sin(yaw)
-            z(2, 0) = x(4, 0);                            // za = zc
-            z(3, 0) = x(6, 0);                            // yaw_a = yaw_c
+
+            auto angle = x(6, 0) + id / 4 * M_PI * 2;
+            auto is_another_r = id == 1 || id == 3;
+            auto r = is_another_r ? x(8, 0) + x(9, 0) : x(8, 0);
+
+            z(0, 0) = x(0, 0) - r * cos(angle);  // ya = yc - r * cos(yaw)
+            z(1, 0) = x(2, 0) - r * sin(angle);  // xa = xc - r * sin(yaw)
+            z(2, 0) = is_another_r ? x(4, 0) + x(10, 0) : x(4, 0);  // za = zc
+            z(3, 0) = angle;                            // yaw_a = yaw_c
             return z;
         };
 
         // === 观测雅可比矩阵 ===
-        auto cal_H_ = [](const Eigen::Matrix<double, 9, 1> & x) {
-            Eigen::Matrix<double, 4, 9> H;
-            H << 1,   0,   0,   0,   0,   0,   x(8, 0)*sin(x(6, 0)), 0,   -cos(x(6, 0)),
-                 0,   0,   1,   0,   0,   0,   -x(8, 0)*cos(x(6, 0)),0,   -sin(x(6, 0)),
-                 0,   0,   0,   0,   1,   0,   0,                    0,   0,
-                 0,   0,   0,   0,   0,   0,   1,                    0,   0;
+        auto cal_H_ = [](const Eigen::Matrix<double, 11, 1> & x, const int id) {
+            auto angle = x(6, 0) + id / 4 * M_PI * 2;
+            auto is_another_r = id == 1 || id == 3;
+            auto r = is_another_r ? x(8, 0) + x(9, 0) : x(8, 0);
+
+            auto dx_dl = is_another_r ? -cos(angle) : 0.0;
+            auto dy_dl = is_another_r ? -sin(angle) : 0.0;
+            auto dz_dh = is_another_r ? 1.0 : 0.0;
+
+            Eigen::Matrix<double, 4, 11> H;
+            H << 1,   0,   0,   0,   0,   0,   r*sin(angle), 0,   -cos(angle),  dx_dl,  0,
+                 0,   0,   1,   0,   0,   0,   -r*cos(angle),0,   -sin(angle),  dy_dl,  0,
+                 0,   0,   0,   0,   1,   0,   0,                    0,   0,    0,  dz_dh,
+                 0,   0,   0,   0,   0,   0,   1,                    0,   0,    0,  0;
             return H;
         };
 
         // === 过程噪声协方差矩阵 ===
-        auto update_Q_ = [this](const Eigen::Matrix<double, 9, 1> & x) {
-            Eigen::Matrix<double, 9, 9> Q;
+        auto update_Q_ = [this](const Eigen::Matrix<double, 11, 1> & x) {
+            Eigen::Matrix<double, 11, 11> Q;
             // 连续白噪声加速度模型
             double q_x_x = pow(dt, 4) / 4 * p_coord, q_x_vx = pow(dt, 3) / 2 * p_coord, q_vx_vx = pow(dt, 2) * p_coord;
             double q_y_y = pow(dt, 4) / 4 * p_yaw, q_y_vy = pow(dt, 3) / 2 * p_yaw, q_vy_vy = pow(dt, 2) * p_yaw;
-            double q_r = pow(dt, 4) / 4 * p_r;
 
-            Q << q_x_x,  q_x_vx, 0,      0,      0,      0,      0,      0,      0,
-                 q_x_vx, q_vx_vx,0,      0,      0,      0,      0,      0,      0,
-                 0,      0,      q_x_x,  q_x_vx, 0,      0,      0,      0,      0,
-                 0,      0,      q_x_vx, q_vx_vx,0,      0,      0,      0,      0,
-                 0,      0,      0,      0,      q_x_x,  q_x_vx, 0,      0,      0,
-                 0,      0,      0,      0,      q_x_vx, q_vx_vx,0,      0,      0,
-                 0,      0,      0,      0,      0,      0,      q_y_y,  q_y_vy, 0,
-                 0,      0,      0,      0,      0,      0,      q_y_vy, q_vy_vy,0,
-                 0,      0,      0,      0,      0,      0,      0,      0,      q_r;
+            Q << q_x_x,  q_x_vx, 0,      0,      0,      0,      0,      0,      0, 0,  0,  0,
+                 q_x_vx, q_vx_vx,0,      0,      0,      0,      0,      0,      0, 0,  0,  0,
+                 0,      0,      q_x_x,  q_x_vx, 0,      0,      0,      0,      0, 0,  0,  0,
+                 0,      0,      q_x_vx, q_vx_vx,0,      0,      0,      0,      0, 0,  0,  0,
+                 0,      0,      0,      0,      q_x_x,  q_x_vx, 0,      0,      0, 0,  0,  0,
+                 0,      0,      0,      0,      q_x_vx, q_vx_vx,0,      0,      0, 0,  0,  0,
+                 0,      0,      0,      0,      0,      0,      q_y_y,  q_y_vy, 0, 0,  0,  0,
+                 0,      0,      0,      0,      0,      0,      q_y_vy, q_vy_vy,0, 0,  0,  0,
+                 0,      0,      0,      0,      0,      0,      0,      0,      0, 0,  0,  0,
+                 0,      0,      0,      0,      0,      0,      0,      0,      0, 0,  0,  0,
+                 0,      0,      0,      0,      0,      0,      0,      0,      0, 0,  0,  0;
             return Q;
         };
 
@@ -559,16 +642,16 @@ namespace predict
         };
 
         // === 初始状态协方差和状态向量 ===
-        Eigen::Matrix<double, 9, 9> P0;
-        P0 = Eigen::Matrix<double, 9, 9>::Identity();
+        Eigen::Matrix<double, 11, 11> P0;
+        P0 = Eigen::Matrix<double, 11, 11>::Identity();
 
-        Eigen::Matrix<double, 9, 1> X0;
+        Eigen::Matrix<double, 11, 1> X0;
         X0.setZero();
         X0(8, 0) = 0.26;  // 初始旋转半径设为0.26米
 
         // === 状态加法函数 ===
-        auto x_add_ = [](const Eigen::Matrix<double, 9, 1> & x1, const Eigen::Matrix<double, 9, 1> & x2) {
-            Eigen::Matrix<double, 9, 1> res;
+        auto x_add_ = [](const Eigen::Matrix<double, 11, 1> & x1, const Eigen::Matrix<double, 11, 1> & x2) {
+            Eigen::Matrix<double, 11, 1> res;
             res = x1 + x2;
             return res;
         };
@@ -576,8 +659,8 @@ namespace predict
         // === 状态减法函数（关键：处理 Yaw 角周期性）===
         // 计算 delta = x1 - x2，特别处理 Yaw 角 (索引 6) 的周期性 [-PI, PI]
         // 这对 IESEKF 至关重要，防止在角度接近 PI/-PI 交界处反复震荡
-        auto x_minus_ = [](const Eigen::Matrix<double, 9, 1> & x1, const Eigen::Matrix<double, 9, 1> & x2) {
-            Eigen::Matrix<double, 9, 1> res = x1 - x2;
+        auto x_minus_ = [](const Eigen::Matrix<double, 11, 1> & x1, const Eigen::Matrix<double, 11, 1> & x2) {
+            Eigen::Matrix<double, 11, 1> res = x1 - x2;
             
             // 处理 Yaw 角 (索引 6) 的周期性归一化到 [-PI, PI]
             while(res(6, 0) > M_PI) res(6, 0) -= 2 * M_PI;
@@ -595,7 +678,7 @@ namespace predict
         // - x_add_, x_minus_: 流形运算函数
         // - 5: 最大迭代次数（建议 3-5 次）
         // - 1e-4: 收敛阈值（状态修正量范数）
-        whole_state_ekf = IESEKF<4, 9>(
+        whole_state_ekf = IESEKF_Double_Armor<4, 11>(
             f_, h_, cal_F_, cal_H_, update_Q_, update_R_, 
             P0, X0, x_add_, x_minus_,
             5,      // max_iter: 最大迭代次数
@@ -726,6 +809,9 @@ namespace predict
      */
     void Tracker::tracker_model_select()
     {
+        target.updating_model_type = UpdatingModelType::VEHICLE_MODEL;
+        return;
+
         // 根据旋转速度更新模型
         if (target.updating_model_type == UpdatingModelType::ARMOR_MODEL) {
             if (abs(target.yaw_state(1, 0)) > armor_model_threshold) {
@@ -802,9 +888,9 @@ namespace predict
         double yc = target.tracked_measurement(0, 0) + 0.26 * cos(target.tracked_measurement(3, 0));
         double xc = target.tracked_measurement(1, 0) + 0.26 * sin(target.tracked_measurement(3, 0));
         
-        // 设置初始状态：[yc, 0, xc, 0, zc, 0, yaw, 0, 0.26]
+        // 设置初始状态：[yc, 0, xc, 0, zc, 0, yaw, 0, 0.26, 0, 0]
         target.tracked_state << yc, 0, xc, 0, target.tracked_measurement(2, 0), 0, 
-                                target.tracked_measurement(3, 0), 0, 0.26;
+                                target.tracked_measurement(3, 0), 0, 0.26, 0, 0;
 
         whole_state_ekf.reset(target.tracked_state);
 

@@ -273,26 +273,30 @@ namespace predict
             if (same_id_armor_count == 1) {
                 tracked_armor = selected_armor;
                 tracked_measurement = selected_measurement;
+                secondary_tracked_measurement = secondary_measurement;
             }
             else {
                 if (selected_armor.source == DetectionSource::TRADITIONAL) {
                     tracked_armor = selected_armor;
                     tracked_measurement = selected_measurement;
+                    secondary_tracked_measurement = secondary_measurement;
                 }
                 else {
                     if (secondary_armor.source == DetectionSource::TRADITIONAL) {
                         tracked_armor = secondary_armor;
                         tracked_measurement = secondary_measurement;
+                        secondary_tracked_measurement = selected_measurement;
                     }
                     else {
                         tracked_armor = selected_armor;
                         tracked_measurement = selected_measurement;
+                        secondary_tracked_measurement = secondary_measurement;
                     }
                 }
             }
 
             // === 执行跟踪更新 ===
-            auto &target = tracker.track(tracked_measurement, same_id_armor_count, tp, attitude_yaw);
+            auto &target = tracker.track(tracked_measurement, secondary_tracked_measurement, same_id_armor_count, tp, attitude_yaw);
 
             // === 生成预测计划 ===
             auto &plan = planner.make_plan(target, robot_status.robot_speed_mps,

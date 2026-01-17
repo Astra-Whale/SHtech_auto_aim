@@ -68,7 +68,7 @@ namespace detect
         int halfy = input_frame.size[0] / 2;
         if (center)
         {
-            input_frame = input_frame.rowRange(halfy - 100, halfy + 284).colRange(halfx - 320, halfx + 320); // crop size 384*640 in center
+            input_frame = input_frame.rowRange(halfy - 256, halfy + 256).colRange(halfx - 320, halfx + 320); // crop size 384*640 in center
         }
         auto t2 = std::chrono::steady_clock::now();
 
@@ -84,7 +84,7 @@ namespace detect
                 for (int i = 0; i < 4; i++)
                 {
                     t_bbox.pts[i].x += halfx - 320;
-                    t_bbox.pts[i].y += halfy - 100;
+                    t_bbox.pts[i].y += halfy - 256;
                 }
             }
         }

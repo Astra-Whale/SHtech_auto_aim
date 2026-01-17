@@ -104,6 +104,9 @@ namespace predict
 
         /// @brief 当前跟踪的观测值 [y, x, z, yaw]
         Eigen::Matrix<double, 4, 1> tracked_measurement;
+
+        /// @brief 当前备选跟踪的观测值 [y, x, z, yaw]
+        Eigen::Matrix<double, 4, 1> secondary_tracked_measurement;
         
         /// @brief 当前跟踪的装甲板对象
         bbox_t tracked_armor;
@@ -199,4 +202,4 @@ namespace predict
     };
 }
 
-#endif // PREDICT_LINEAR_PREDICTOR_SUBMODULE_H
+#endif // PREDICT_LINEAR_PREDICTOR_SUBMODULE_Htracked_armor

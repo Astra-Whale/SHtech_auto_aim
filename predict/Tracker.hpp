@@ -20,6 +20,7 @@
 #include "IESEKF.hpp"
 #include "Kalman.hpp"
 #include "math_tools.hpp"
+#include "IESEKF_Double_Armor.hpp"
 
 // packages
 #include <iostream>
@@ -176,7 +177,7 @@ namespace predict
         Target target;
 
         /// @brief 整车状态迭代扩展卡尔曼滤波器 (观测维度4，状态维度9)
-        IESEKF<4, 9> whole_state_ekf;
+        IESEKF_Double_Armor<4, 11> whole_state_ekf;
 
         /// @brief 偏航角速度发散计数器
         int yaw_speed_diverge_counter;
@@ -213,6 +214,12 @@ namespace predict
         inline float sci_to_float(int mant, int exp) {
             return mant * std::pow(10.0f, exp);
         }
+
+        Eigen::Vector3d h_armor_xyz(const Eigen::VectorXd & x, int id);
+
+        std::vector<Eigen::Vector4d> armor_xyza_list();
+
+        int match_armor_id(const Eigen::Matrix<double, 4, 1> &measurement);
 
         /**
          * @brief 初始化目标状态
@@ -315,13 +322,14 @@ namespace predict
         /**
          * @brief 执行目标跟踪更新
          * @param measurement 当前观测值 [y, x, z, yaw]
+         * @param secondary_measurement 当前备选观测值 [y, x, z, yaw]
          * @param same_id_armor_count 同ID装甲板检测数量
          * @param tp 当前时间戳
          * @param attitude_yaw 机器人当前姿态偏航角
          * @return 更新后的目标状态
          * @details 执行完整的跟踪流程：预测、模型选择、状态更新、异常检测
          */
-        const Target& track(const Eigen::Matrix<double, 4, 1> &measurement, const int same_id_armor_count,
+        const Target& track(const Eigen::Matrix<double, 4, 1> &measurement, const Eigen::Matrix<double, 4, 1> &secondary_measurement, const int same_id_armor_count,
                             const TP &tp, const double attitude_yaw);
 
     }; // class Tracker

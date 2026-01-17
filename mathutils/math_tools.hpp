@@ -179,6 +179,15 @@ namespace mathutils
         auto bx_size = 2 * sqrt((bx_z - bx_a) * (bx_z - bx_b) * (bx_z - bx_c) * (bx_z - bx_d));
         return bx_size;
     }
+
+    Eigen::Vector3d xyz2ypd(const Eigen::Vector3d & xyz)
+    {
+        auto x = xyz[0], y = xyz[1], z = xyz[2];
+        auto yaw = std::atan2(y, x);
+        auto pitch = std::atan2(z, std::sqrt(x * x + y * y));
+        auto distance = std::sqrt(x * x + y * y + z * z);
+        return {yaw, pitch, distance};
+    }
 }
 
 #endif // PREDICT_MATH_TOOLS_H
