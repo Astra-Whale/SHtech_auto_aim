@@ -180,13 +180,20 @@ namespace mathutils
         return bx_size;
     }
 
-    Eigen::Vector3d xyz2ypd(const Eigen::Vector3d & xyz)
+    static inline Eigen::Vector3d xyz2ypd(const Eigen::Vector3d & xyz)
     {
         auto x = xyz[0], y = xyz[1], z = xyz[2];
         auto yaw = std::atan2(y, x);
         auto pitch = std::atan2(z, std::sqrt(x * x + y * y));
         auto distance = std::sqrt(x * x + y * y + z * z);
         return {yaw, pitch, distance};
+    }
+
+    static inline double limit_rad(double angle)
+    {
+        while (angle > CV_PI) angle -= 2 * CV_PI;
+        while (angle <= -CV_PI) angle += 2 * CV_PI;
+        return angle;
     }
 }
 

@@ -15,6 +15,8 @@
 
 namespace predict 
 {
+    int ab = 0;
+
     /**
      * @brief 构造函数 - 初始化跟踪器的所有组件
      * @param debug_ 调试模式标志
@@ -110,7 +112,10 @@ namespace predict
         double min_position_diff = (measured_pw - tracked_pw).norm();
         
         // 更新当前观测值
+        // TODO: add secondary measurement and limit 
         target.tracked_measurement = measurement;
+
+        target.tracked_measurement(3, 0) = mathutils::limit_rad(target.tracked_measurement(3, 0));
 
         // === 扩展卡尔曼滤波预测步骤 ===
         target.tracked_state = whole_state_ekf.predict();
@@ -189,15 +194,39 @@ namespace predict
         // === 整车模型更新 ===
         if (same_id_armor_count) {
             if (target.updating_model_type != UpdatingModelType::ARMOR_MODEL) {
+                if (min_position_diff > same_position_threshold) {
+                    // ab++;
+                    ab--;
+
+                    if (ab >= 4) {
+                        ab = 0;
+                    }
+                    else if (ab < 0) {
+                        ab = 3;
+                    }
+                }
+
                 if (same_id_armor_count == 1) {
+                    // cout << "[predict] 1" << std::endl;
+
                     int id = match_armor_id(target.tracked_measurement);
+                    // int id = ab;
+                    // cout << "[predict] id: " << id << "ab: " << ab << std::endl;
+
                     target.tracked_state = whole_state_ekf.update(target.tracked_measurement, id);
                 }
                 else if (same_id_armor_count == 2) {
+                    // cout << "[predict] 2" << std::endl;
                     int id = match_armor_id(target.tracked_measurement);
+                    // int id = ab;
+                    // cout << "[predict] id: " << id << "ab: " << ab << std::endl;
                     target.tracked_state = whole_state_ekf.update(target.tracked_measurement, id);
 
+                    // id = match_armor_id(target.tracked_measurement);
+
                     id = match_armor_id(secondary_measurement);
+                    // cout << "[predict] id: " << id << std::endl;
+
                     target.tracked_state = whole_state_ekf.update(secondary_measurement, id);
                 }
 
@@ -221,19 +250,20 @@ namespace predict
                         cout << "[predict] armor jump" << std::endl;
                 }
 
+
                 if (debug)
                     cout << "[predict] ekf update" << std::endl;
 
                 // 限制旋转半径在合理范围内
                 radium_limit();
 
-                // 检查EKF是否发散
-                if (check_ekf_divergence(attitude_yaw)) {
-                    reset_whole_state_ekf();
+                // // 检查EKF是否发散
+                // if (check_ekf_divergence(attitude_yaw)) {
+                //     reset_whole_state_ekf();
 
-                    if (debug)
-                        cout << "[predict] vehicle model converge" << endl;
-                }
+                //     if (debug)
+                //         cout << "[predict] vehicle model converge" << endl;
+                // }
             }
             else {
                 // 仅使用装甲板模型时，重置整车模型
@@ -256,15 +286,15 @@ namespace predict
 
     Eigen::Vector3d Tracker::h_armor_xyz(const Eigen::VectorXd & x, int id)
     {
-    auto angle = x[6] + id * 2 * CV_PI / 4;
-    auto use_l_h = id == 1 || id == 3;
+        auto angle = mathutils::limit_rad(x[6] + id * M_PI_2);
+        auto use_l_h = id == 1 || id == 3;
 
-    auto r = (use_l_h) ? x[8] + x[9] : x[8];
-    auto armor_x = x[0] - r * std::cos(angle);
-    auto armor_y = x[2] - r * std::sin(angle);
-    auto armor_z = (use_l_h) ? x[4] + x[10] : x[4];
+        auto r = (use_l_h) ? x[8] + x[9] : x[8];
+        auto armor_x = x[0] - r * std::cos(angle);
+        auto armor_y = x[2] - r * std::sin(angle);
+        auto armor_z = (use_l_h) ? x[4] + x[10] : x[4];
 
-    return {armor_x, armor_y, armor_z};
+        return {armor_x, armor_y, armor_z};
     }
 
     std::vector<Eigen::Vector4d> Tracker::armor_xyza_list()
@@ -272,7 +302,7 @@ namespace predict
         std::vector<Eigen::Vector4d> _armor_xyza_list;
 
         for (int i = 0; i < 4; i++) {
-            auto angle = target.tracked_state(6, 0) + i * 2 * CV_PI / 4;
+            auto angle = mathutils::limit_rad(target.tracked_state(6, 0) + i * M_PI_2);
             Eigen::Vector3d xyz = h_armor_xyz(target.tracked_state, i);
             _armor_xyza_list.push_back({xyz[0], xyz[1], xyz[2], angle});
         }
@@ -306,8 +336,10 @@ namespace predict
         for (int i = 0; i < 3; i++) {
           const auto & xyza = xyza_i_list[i].first;
           Eigen::Vector3d ypd = mathutils::xyz2ypd(xyza.head(3));
-          auto angle_error = std::abs(measurement(3, 0) - xyza[3]) +
-                             std::abs(ypd_measurement[0] - ypd[0]);
+          auto angle_error = std::abs(mathutils::limit_rad(measurement(3, 0) - xyza[3])) +
+                             std::abs(mathutils::limit_rad(ypd_measurement[0] - ypd[0]));
+
+        // auto angle_error = std::abs(mathutils::limit_rad(ypd_measurement[0] - ypd[0]));
       
           if (std::abs(angle_error) < std::abs(min_angle_error)) {
             id = xyza_i_list[i].second;
@@ -506,6 +538,7 @@ namespace predict
             x_pri(2, 0) += x(3, 0) * dt;  // x = x + vx * dt
             x_pri(4, 0) += x(5, 0) * dt;  // z = z + vz * dt
             x_pri(6, 0) += x(7, 0) * dt;  // yaw = yaw + vyaw * dt
+            x_pri(6, 0) = mathutils::limit_rad(x_pri(6, 0)); // 限制yaw在[-π, π]范围内
             return x_pri;
         };
 
@@ -531,7 +564,7 @@ namespace predict
         auto h_ = [](const Eigen::Matrix<double, 11, 1> & x, const int id) {
             Eigen::Matrix<double, 4, 1> z;
 
-            auto angle = x(6, 0) + id / 4 * M_PI * 2;
+            auto angle = mathutils::limit_rad(x(6, 0) + id * M_PI_2);
             auto is_another_r = id == 1 || id == 3;
             auto r = is_another_r ? x(8, 0) + x(9, 0) : x(8, 0);
 
@@ -544,13 +577,14 @@ namespace predict
 
         // === 观测雅可比矩阵 ===
         auto cal_H_ = [](const Eigen::Matrix<double, 11, 1> & x, const int id) {
-            auto angle = x(6, 0) + id / 4 * M_PI * 2;
+            auto angle = mathutils::limit_rad(x(6, 0) + id * M_PI_2);
+
             auto is_another_r = id == 1 || id == 3;
             auto r = is_another_r ? x(8, 0) + x(9, 0) : x(8, 0);
 
             auto dx_dl = is_another_r ? -cos(angle) : 0.0;
             auto dy_dl = is_another_r ? -sin(angle) : 0.0;
-            auto dz_dh = is_another_r ? 1.0 : 0.0;
+            auto dz_dh = is_another_r ? 1.0 : 0.0; 
 
             Eigen::Matrix<double, 4, 11> H;
             H << 1,   0,   0,   0,   0,   0,   r*sin(angle), 0,   -cos(angle),  dx_dl,  0,
@@ -567,17 +601,17 @@ namespace predict
             double q_x_x = pow(dt, 4) / 4 * p_coord, q_x_vx = pow(dt, 3) / 2 * p_coord, q_vx_vx = pow(dt, 2) * p_coord;
             double q_y_y = pow(dt, 4) / 4 * p_yaw, q_y_vy = pow(dt, 3) / 2 * p_yaw, q_vy_vy = pow(dt, 2) * p_yaw;
 
-            Q << q_x_x,  q_x_vx, 0,      0,      0,      0,      0,      0,      0, 0,  0,  0,
-                 q_x_vx, q_vx_vx,0,      0,      0,      0,      0,      0,      0, 0,  0,  0,
-                 0,      0,      q_x_x,  q_x_vx, 0,      0,      0,      0,      0, 0,  0,  0,
-                 0,      0,      q_x_vx, q_vx_vx,0,      0,      0,      0,      0, 0,  0,  0,
-                 0,      0,      0,      0,      q_x_x,  q_x_vx, 0,      0,      0, 0,  0,  0,
-                 0,      0,      0,      0,      q_x_vx, q_vx_vx,0,      0,      0, 0,  0,  0,
-                 0,      0,      0,      0,      0,      0,      q_y_y,  q_y_vy, 0, 0,  0,  0,
-                 0,      0,      0,      0,      0,      0,      q_y_vy, q_vy_vy,0, 0,  0,  0,
-                 0,      0,      0,      0,      0,      0,      0,      0,      0, 0,  0,  0,
-                 0,      0,      0,      0,      0,      0,      0,      0,      0, 0,  0,  0,
-                 0,      0,      0,      0,      0,      0,      0,      0,      0, 0,  0,  0;
+            Q << q_x_x,  q_x_vx, 0,      0,      0,      0,      0,      0,      0, 0,  0,  
+                 q_x_vx, q_vx_vx,0,      0,      0,      0,      0,      0,      0, 0,  0,  
+                 0,      0,      q_x_x,  q_x_vx, 0,      0,      0,      0,      0, 0,  0,  
+                 0,      0,      q_x_vx, q_vx_vx,0,      0,      0,      0,      0, 0,  0,  
+                 0,      0,      0,      0,      q_x_x,  q_x_vx, 0,      0,      0, 0,  0,  
+                 0,      0,      0,      0,      q_x_vx, q_vx_vx,0,      0,      0, 0,  0,  
+                 0,      0,      0,      0,      0,      0,      q_y_y,  q_y_vy, 0, 0,  0,  
+                 0,      0,      0,      0,      0,      0,      q_y_vy, q_vy_vy,0, 0,  0,  
+                 0,      0,      0,      0,      0,      0,      0,      0,      0e-4, 0,  0,  
+                 0,      0,      0,      0,      0,      0,      0,      0,      0, 0e-4,  0,  
+                 0,      0,      0,      0,      0,      0,      0,      0,      0, 0,  0e-4;
             return Q;
         };
 
@@ -653,6 +687,7 @@ namespace predict
         auto x_add_ = [](const Eigen::Matrix<double, 11, 1> & x1, const Eigen::Matrix<double, 11, 1> & x2) {
             Eigen::Matrix<double, 11, 1> res;
             res = x1 + x2;
+            res(6, 0) = mathutils::limit_rad(res(6, 0));  // 归一化 Yaw 角到 [-PI, PI]
             return res;
         };
 
@@ -662,7 +697,7 @@ namespace predict
         auto x_minus_ = [](const Eigen::Matrix<double, 11, 1> & x1, const Eigen::Matrix<double, 11, 1> & x2) {
             Eigen::Matrix<double, 11, 1> res = x1 - x2;
             
-            // 处理 Yaw 角 (索引 6) 的周期性归一化到 [-PI, PI]
+            // // 处理 Yaw 角 (索引 6) 的周期性归一化到 [-PI, PI]
             while(res(6, 0) > M_PI) res(6, 0) -= 2 * M_PI;
             while(res(6, 0) < -M_PI) res(6, 0) += 2 * M_PI;
             
@@ -912,12 +947,19 @@ namespace predict
         // 限制半径范围
         if (target.tracked_state(8, 0) < 0.12) {
             target.tracked_state(8, 0) = 0.12;
-            whole_state_ekf.reset(target.tracked_state);
         }
         else if (target.tracked_state(8, 0) > 0.4) {
             target.tracked_state(8, 0) = 0.4;
-            whole_state_ekf.reset(target.tracked_state);
         }
+
+        if (target.tracked_state(8, 0) + target.tracked_state(9, 0) < 0.12) {
+            target.tracked_state(9, 0) = 0.12 - target.tracked_state(8, 0);
+        }
+        else if (target.tracked_state(8, 0) + target.tracked_state(9, 0) > 0.4) {
+            target.tracked_state(9, 0) = 0.4 - target.tracked_state(8, 0);
+        }
+
+        whole_state_ekf.reset(target.tracked_state);
     }
 
     /**

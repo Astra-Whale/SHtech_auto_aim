@@ -100,15 +100,15 @@ namespace predict
 
         // === 滤波器参数（科学计数法表示，支持实时调整） ===
         /// @brief 坐标过程噪声尾数
-        int p_coord_mant = 5;
+        int p_coord_mant = 1;
         /// @brief 坐标过程噪声指数
-        int p_coord_exp = -2 + 10;
+        int p_coord_exp = 2 + 10;
         /// @brief 偏航角过程噪声尾数
-        int p_yaw_mant = 1;
+        int p_yaw_mant = 4;
         /// @brief 偏航角过程噪声指数
-        int p_yaw_exp = 1 + 10;
+        int p_yaw_exp = 2 + 10;
         /// @brief 旋转半径过程噪声尾数
-        int p_r_mant = 8;
+        int p_r_mant = 0;
         /// @brief 旋转半径过程噪声指数
         int p_r_exp = 1 + 10;
         
@@ -215,11 +215,7 @@ namespace predict
             return mant * std::pow(10.0f, exp);
         }
 
-        Eigen::Vector3d h_armor_xyz(const Eigen::VectorXd & x, int id);
-
         std::vector<Eigen::Vector4d> armor_xyza_list();
-
-        int match_armor_id(const Eigen::Matrix<double, 4, 1> &measurement);
 
         /**
          * @brief 初始化目标状态
@@ -318,6 +314,10 @@ namespace predict
          * @details 用新的观测值重新初始化所有滤波器，进入DETECTING状态
          */
         const Target& reset_target(const Eigen::Matrix<double, 4, 1> &measurement, TP &tp);
+
+        Eigen::Vector3d h_armor_xyz(const Eigen::VectorXd & x, int id);
+
+        int match_armor_id(const Eigen::Matrix<double, 4, 1> &measurement);
 
         /**
          * @brief 执行目标跟踪更新

@@ -218,7 +218,7 @@ namespace predict
 
             // 遍历所有检测到的装甲板
             for (const auto &armor : detected_armors) {
-                if (armor.tag_id == tracked_armor.tag_id) {
+                if (armor.tag_id == tracked_armor.tag_id && armor.color_id == tracked_armor.color_id) {
                     // 找到同ID装甲板，进行PnP解算
                     float yaw_in_camera;
                     Eigen::Matrix<double, 4, 1> measured_measurement;
@@ -397,6 +397,8 @@ namespace predict
         // cout << target.tracked_state(6, 0) << std::endl;
         // cout << target.tracked_state(7, 0) << std::endl;
         // cout << target.tracked_state(8, 0) << std::endl;
+        // cout << target.tracked_state(9, 0) << std::endl;
+        // cout << target.tracked_state(10, 0) << std::endl;
 
         // cout << target.vehicle_model_trust << std::endl;
 
@@ -404,13 +406,13 @@ namespace predict
         // cout << plan.aimed_armor_pos(1, 0) << endl;
         // cout << plan.aimed_armor_pos(2, 0) << endl;
 
-        cout << plan.target_yaw << std::endl;
-        cout << plan.target_yaw_speed << std::endl;
+        // cout << plan.target_yaw << std::endl;
+        // cout << plan.target_yaw_speed << std::endl;
 
-        cout << plan.target_pitch << std::endl;
-        cout << plan.target_pitch_speed << std::endl;
+        // cout << plan.target_pitch << std::endl;
+        // cout << plan.target_pitch_speed << std::endl;
 
-        cout << plan.fire_enable << endl;
+        // cout << plan.fire_enable << endl;
     }
 
     // === 枚举转字符串辅助函数 ===
@@ -511,7 +513,12 @@ namespace predict
         // cv::circle(im2show, pi_ea, 5, {255, 0, 0}, 3); // blue
 
         // estimated armor, vehicle model
-        Eigen::Matrix<double, 4, 1> estimated_armor_m = planner.whole_state_2_measurement(target.tracked_state);
+        int id = tracker.match_armor_id(target.tracked_measurement);
+        cout << "matched armor id: " << id << endl;
+        auto angle = mathutils::limit_rad(target.tracked_state(6, 0) + id * M_PI_2);
+        Eigen::Vector3d xyz = tracker.h_armor_xyz(target.tracked_state, id);
+        Eigen::Matrix<double, 4, 1> estimated_armor_m;
+        estimated_armor_m << xyz[0], xyz[1], xyz[2], angle;
         Pos3D pw_ea(estimated_armor_m(1, 0), estimated_armor_m(0, 0), estimated_armor_m(2, 0));
         Pos3D pc_ea = coord_transformer.pw_to_pc(pw_ea, R_world2imu);
         Pos3D pu_ea = coord_transformer.pc_to_pu(pc_ea);
@@ -546,7 +553,9 @@ namespace predict
         cv::putText(im2show, "yaw: " + std::to_string(target.tracked_state(6, 0)), zero + 6 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
         cv::putText(im2show, "v_yaw: " + std::to_string(target.tracked_state(7, 0)), zero + 7 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
         cv::putText(im2show, std::to_string(target.tracked_state(8, 0)), zero + 8 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
-        cv::putText(im2show, "another_r: " + std::to_string(target.another_r), zero + 13 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
+        cv::putText(im2show, "another_r: " + std::to_string(target.tracked_state(8, 0) + target.tracked_state(9, 0)), zero + 13 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
+        cv::putText(im2show, "dh: " + std::to_string(target.tracked_state(10, 0)), zero + 14 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
+
         cv::putText(im2show, "measurement:" + std::to_string(target.tracked_measurement(1, 0)), zero + 9 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
         cv::putText(im2show, std::to_string(target.tracked_measurement(0, 0)), zero + 10 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
         cv::putText(im2show, std::to_string(target.tracked_measurement(2, 0)), zero + 11 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);

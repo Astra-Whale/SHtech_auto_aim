@@ -196,7 +196,7 @@ namespace mathutils
          *          4. 更新状态估计
          *          5. 检查收敛条件
          */
-        Matrix_x1d update(const Matrix_z1d &Z, const bool is_tracked_armor)
+        Matrix_x1d update(const Matrix_z1d &Z, const int id)
         {
             R = update_R(Z);
             
@@ -206,7 +206,7 @@ namespace mathutils
             for (int i = 0; i < max_iter; ++i)
             {
                 // 1. 在当前迭代点处重新线性化
-                H = calculate_H(X_cur, is_tracked_armor);
+                H = calculate_H(X_cur, id);
                 
                 // 2. 计算卡尔曼增益
                 // K = P_pri * H^T * (H * P_pri * H^T + R)^-1
@@ -215,7 +215,7 @@ namespace mathutils
 
                 // 3. 计算残差
                 // 观测残差: z - h(x_k)
-                Matrix_z1d innovation = Z - h(X_cur, is_tracked_armor);
+                Matrix_z1d innovation = Z - h(X_cur, id);
                 
                 // 先验残差: x_pri - x_k (使用 x_minus 处理角度归一化)
                 Matrix_x1d dx_pri = x_minus(X_pri, X_cur);
