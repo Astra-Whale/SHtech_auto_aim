@@ -99,7 +99,7 @@ namespace predict
         // 以下代码可用于手动强制设置瞄准类型进行调试
         // plan.aimed_target_type = AimedTargetType::ARMOR_WITH_NO_MODEL;
         // plan.aimed_target_type = AimedTargetType::ARMOR_WITH_ARMOR_MODEL;
-        // plan.aimed_target_type = AimedTargetType::ARMOR_WITH_VEHICLE_MODEL;
+        plan.aimed_target_type = AimedTargetType::ARMOR_WITH_VEHICLE_MODEL;
         // plan.aimed_target_type = AimedTargetType::VEHICLE_CENTER_WITH_VEHICLE_MODEL;
         
         // === 策略1: 无模型 ===
@@ -181,7 +181,7 @@ namespace predict
         // 基于整车运动模型预测装甲板位置，使用MPC优化云台轨迹
         else if (plan.aimed_target_type == AimedTargetType::ARMOR_WITH_VEHICLE_MODEL) {
             // 计算平均半径用于初始飞行时间估计
-            double r_average = (target.another_r + target.tracked_state(8, 0)) / 2;
+            double r_average = (target.tracked_state(8, 0) + target.tracked_state(9, 0) + target.tracked_state(8, 0)) / 2;
             Pos3D hit_pos_average;
             hit_pos_average << target.tracked_state(2, 0), target.tracked_state(0, 0), target.tracked_state(4, 0);
             double center_yaw = pw_to_yaw(hit_pos_average);
@@ -271,7 +271,7 @@ namespace predict
         // 瞄准车辆旋转中心，适用于高速旋转目标，预测发射窗口
         else if (plan.aimed_target_type == AimedTargetType::VEHICLE_CENTER_WITH_VEHICLE_MODEL) {
             // 计算平均装甲板位置用于飞行时间估计
-            double r_average = (target.another_r + target.tracked_state(8, 0)) / 2;
+            double r_average = (target.tracked_state(8, 0) + target.tracked_state(9, 0) + target.tracked_state(8, 0)) / 2;
             Pos3D hit_pos_average;
             hit_pos_average << target.tracked_state(2, 0), target.tracked_state(0, 0), target.tracked_state(4, 0);
             double center_yaw = pw_to_yaw(hit_pos_average);
@@ -292,9 +292,10 @@ namespace predict
             // 计算瞄准方向
             double aimed_direction = atan(aimed_center_pos(0, 0) / aimed_center_pos(1, 0));
 
+            // TODO: fix next aimed armor position
             // 构造虚拟装甲板状态用于计算瞄准点
-            Eigen::Matrix<double, 9, 1> aimed_state;
-            aimed_state << aimed_center_pos(1, 0), 0, aimed_center_pos(0, 0), 0, aimed_center_pos(2, 0), 0, aimed_direction, 0, target.tracked_state(8, 0);
+            Eigen::Matrix<double, 11, 1> aimed_state;
+            aimed_state << aimed_center_pos(1, 0), 0, aimed_center_pos(0, 0), 0, aimed_center_pos(2, 0), 0, aimed_direction, 0, target.tracked_state(8, 0), 0, 0;
             Eigen::Matrix<double, 4, 1> aimed_measurement = whole_state_2_measurement(aimed_state);
             plan.aimed_armor_pos << aimed_measurement(1, 0), aimed_measurement(0, 0), aimed_measurement(2, 0);
 
@@ -305,8 +306,8 @@ namespace predict
 
             double shooted_direction = atan(shooted_center_pos(0, 0) / shooted_center_pos(1, 0));
 
-            Eigen::Matrix<double, 9, 1> shooted_state;
-            shooted_state << shooted_center_pos(1, 0), 0, shooted_center_pos(0, 0), 0, shooted_center_pos(2, 0), 0, shooted_direction, 0, target.tracked_state(8, 0);
+            Eigen::Matrix<double, 11, 1> shooted_state;
+            shooted_state << shooted_center_pos(1, 0), 0, shooted_center_pos(0, 0), 0, shooted_center_pos(2, 0), 0, shooted_direction, 0, target.tracked_state(8, 0), 0, 0;
             Eigen::Matrix<double, 4, 1> shooted_measurement = whole_state_2_measurement(shooted_state);
 
             Pos3D shooted_armor_pos;
@@ -379,7 +380,7 @@ namespace predict
      *          ya = yc - r * cos(yaw)  // 装甲板Y坐标 = 车辆中心Y坐标 - 半径*cos(偏航角)
      *          xa = xc - r * sin(yaw)  // 装甲板X坐标 = 车辆中心X坐标 - 半径*sin(偏航角)
      */
-    Eigen::Matrix<double, 4, 1> Planner::whole_state_2_measurement(const Eigen::Matrix<double, 9, 1> &x) 
+    Eigen::Matrix<double, 4, 1> Planner::whole_state_2_measurement(const Eigen::Matrix<double, 11, 1> &x) 
     {
         double ya = x(0, 0) - x(8, 0) * cos(x(6, 0));
         double xa = x(2, 0) - x(8, 0) * sin(x(6, 0));
@@ -421,9 +422,9 @@ namespace predict
             else {
                 // 第1和第3个装甲板：使用另一对装甲板的半径和高度差
                 Pos3D armor_pos;
-                armor_pos << predicted_center_pos(0, 0) + target.another_r * sin(predicted_yaw + 1.57 * i), 
-                                predicted_center_pos(1, 0) + target.another_r * cos(predicted_yaw + 1.57 * i), 
-                                predicted_center_pos(2, 0) + target.dz;
+                armor_pos << predicted_center_pos(0, 0) + (x(8, 0) + x(9, 0)) * sin(predicted_yaw + 1.57 * i), 
+                                predicted_center_pos(1, 0) + (x(8, 0) + x(9, 0)) * cos(predicted_yaw + 1.57 * i), 
+                                predicted_center_pos(2, 0) + x(10, 0);
                 predicted_armors_pos.push_back(armor_pos);
             }
         }

@@ -291,7 +291,7 @@ namespace predict
          * @return 观测向量 [ya, xa, z, yaw] - 装甲板位置和偏航角
          * @details 从整车中心状态计算当前装甲板的观测值
          */
-        Eigen::Matrix<double, 4, 1> whole_state_2_measurement(const Eigen::Matrix<double, 9, 1> &state);
+        Eigen::Matrix<double, 4, 1> whole_state_2_measurement(const Eigen::Matrix<double, 11, 1> &state);
 
     }; // class Planner
 
