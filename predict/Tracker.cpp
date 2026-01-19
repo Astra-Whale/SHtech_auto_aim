@@ -15,8 +15,6 @@
 
 namespace predict 
 {
-    int ab = 0;
-
     /**
      * @brief 构造函数 - 初始化跟踪器的所有组件
      * @param debug_ 调试模式标志
@@ -99,7 +97,7 @@ namespace predict
      * @details 执行完整的跟踪流程：预测、更新、模型选择、异常检测
      */
     const Target& Tracker::track(const Eigen::Matrix<double, 4, 1> &measurement, const Eigen::Matrix<double, 4, 1> &secondary_measurement, const int same_id_armor_count,
-                                    const TP &tp, const double attitude_yaw)
+                                    const int tag_id, const TP &tp, const double attitude_yaw)
     {
         // 注意：以下逻辑都是针对单个车辆的跟踪
 
@@ -119,6 +117,22 @@ namespace predict
 
         // === 扩展卡尔曼滤波预测步骤 ===
         target.tracked_state = whole_state_ekf.predict();
+
+        // special for output
+        if (tag_id == 0) {
+            if (abs(target.tracked_state(7, 0)) > 2.5) {
+                target.tracked_state(7, 0) = target.tracked_state(7, 0) > 0 ? 3.2 : -3.2;
+            }
+            target.tracked_state(8, 0) = 0.33;
+            target.tracked_state(9, 0) = 0.0;
+
+            p_coord = 1e1;
+            p_yaw = 1e1;
+        }
+        else {
+            p_coord = 1e2;
+            p_yaw = 4e2;
+        }
 
         if (debug) {
             cout << "dt: " << dt << std::endl;
@@ -151,6 +165,7 @@ namespace predict
         // === 模型选择策略 ===
         tracker_model_select();
 
+        // target.updating_model_type = UpdatingModelType::ARMOR_MODEL;
         target.updating_model_type = UpdatingModelType::VEHICLE_MODEL;
         
         // === 装甲板模型更新 (x, y, z坐标) ===
@@ -194,39 +209,15 @@ namespace predict
         // === 整车模型更新 ===
         if (same_id_armor_count) {
             if (target.updating_model_type != UpdatingModelType::ARMOR_MODEL) {
-                if (min_position_diff > same_position_threshold) {
-                    // ab++;
-                    ab--;
-
-                    if (ab >= 4) {
-                        ab = 0;
-                    }
-                    else if (ab < 0) {
-                        ab = 3;
-                    }
-                }
-
                 if (same_id_armor_count == 1) {
-                    // cout << "[predict] 1" << std::endl;
-
                     int id = match_armor_id(target.tracked_measurement);
-                    // int id = ab;
-                    // cout << "[predict] id: " << id << "ab: " << ab << std::endl;
-
                     target.tracked_state = whole_state_ekf.update(target.tracked_measurement, id);
                 }
                 else if (same_id_armor_count == 2) {
-                    // cout << "[predict] 2" << std::endl;
                     int id = match_armor_id(target.tracked_measurement);
-                    // int id = ab;
-                    // cout << "[predict] id: " << id << "ab: " << ab << std::endl;
                     target.tracked_state = whole_state_ekf.update(target.tracked_measurement, id);
 
-                    // id = match_armor_id(target.tracked_measurement);
-
                     id = match_armor_id(secondary_measurement);
-                    // cout << "[predict] id: " << id << std::endl;
-
                     target.tracked_state = whole_state_ekf.update(secondary_measurement, id);
                 }
 
@@ -256,6 +247,15 @@ namespace predict
 
                 // 限制旋转半径在合理范围内
                 radium_limit();
+
+                // special for output
+                if (tag_id == 0) {
+                    if (abs(target.tracked_state(7, 0)) > 2.5) {
+                        target.tracked_state(7, 0) = target.tracked_state(7, 0) > 0 ? 3.2 : -3.2;
+                    }
+                    target.tracked_state(8, 0) = 0.33;
+                    target.tracked_state(9, 0) = 0.0;
+                }
 
                 // // 检查EKF是否发散
                 // if (check_ekf_divergence(attitude_yaw)) {
@@ -409,7 +409,7 @@ namespace predict
         auto yaw_update_R = [this](const Eigen::Matrix<double, 1, 1> & z) {
             Eigen::Matrix<double, 1, 1> R;
 
-            R << 1.0;//r_yaw;
+            R << r_yaw;
 
             return R;
         };
@@ -447,7 +447,7 @@ namespace predict
         auto y_update_R = [this](const Eigen::Matrix<double, 1, 1> & z) {
             Eigen::Matrix<double, 1, 1> R;
 
-            R << 1.0;//r_rad_coeff;
+            R << r_ycoord;
 
             return R;
         };
@@ -483,7 +483,7 @@ namespace predict
 
         auto x_update_R = [this](const Eigen::Matrix<double, 1, 1> & z) {
             Eigen::Matrix<double, 1, 1> R;
-            R << 1.0;//r_tan_coeff;  // X坐标观测噪声方差
+            R << r_xcoord;  // X坐标观测噪声方差
             return R;
         };
 
@@ -513,7 +513,7 @@ namespace predict
 
         auto z_update_R = [this](const Eigen::Matrix<double, 1, 1> & z) {
             Eigen::Matrix<double, 1, 1> R;
-            R << 1.0;//r_z_coeff;  // Z坐标观测噪声方差
+            R << r_zcoord;  // Z坐标观测噪声方差
             return R;
         };
 
@@ -539,10 +539,6 @@ namespace predict
             x_pri(4, 0) += x(5, 0) * dt;  // z = z + vz * dt
             x_pri(6, 0) += x(7, 0) * dt;  // yaw = yaw + vyaw * dt
             x_pri(6, 0) = mathutils::limit_rad(x_pri(6, 0)); // 限制yaw在[-π, π]范围内
-
-            x_pri(7, 0) = 3.2;
-            x_pri(8, 0) = 0.32;
-            x_pri(9, 0) = 0.0;
 
             return x_pri;
         };
@@ -963,10 +959,6 @@ namespace predict
         else if (target.tracked_state(8, 0) + target.tracked_state(9, 0) > 0.4) {
             target.tracked_state(9, 0) = 0.4 - target.tracked_state(8, 0);
         }
-
-        target.tracked_state(7, 0) = 3.2;
-        target.tracked_state(8, 0) = 0.32;
-        target.tracked_state(9, 0) = 0.0;
 
         whole_state_ekf.reset(target.tracked_state);
     }

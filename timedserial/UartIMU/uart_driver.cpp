@@ -140,13 +140,15 @@ void UartDriver::on_receive_sts(drivers::packet_data_t* packet_ptr, drivers::pac
  * 
  * 保持原有逻辑不变
  */
-void UartDriver::transmit_cmd(float yaw, float pitch, float yaw_spd, float pitch_spd, float dist, uint8_t shoot, uint8_t target_id)
+void UartDriver::transmit_cmd(float yaw, float pitch, float yaw_spd, float pitch_spd, float yaw_acc, float pitch_acc, float dist, uint8_t shoot, uint8_t target_id)
 {
     advv_detection_t data_to_send;
     data_to_send.yaw = yaw;
     data_to_send.yaw_spd = yaw_spd;
     data_to_send.pit = pitch;
     data_to_send.pitch_spd = pitch_spd;
+    data_to_send.yaw_acc = yaw_acc;
+    data_to_send.pitch_acc = pitch_acc;
     data_to_send.dist = dist;
     data_to_send.shoot = shoot;
     data_to_send.target_id = target_id;

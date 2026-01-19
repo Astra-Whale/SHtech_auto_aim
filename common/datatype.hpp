@@ -113,8 +113,10 @@ struct RobotCommand
     float distance;
     float yaw_angle;
     float yaw_speed;
+    float yaw_acc;
     float pitch_angle;
     float pitch_speed;
+    float pitch_acc;
     int fire_enable; // 0 is disable, 1 is enable, 2 is self-determined
     int target_id; // 1-7: robot, 8: outpost, 9: base, 0: none
 };

@@ -73,11 +73,17 @@ namespace predict
         /// @brief 目标偏航角速度 (弧度/秒)，云台偏航轴应达到的角速度
         double target_yaw_speed;
 
+        /// @brief 目标偏航角速度 (弧度/秒2)，云台偏航轴应达到的角加速度
+        double target_yaw_acc;
+
         /// @brief 目标俯仰角 (弧度)，云台应达到的俯仰角度
         double target_pitch;
         
         /// @brief 目标俯仰角速度 (弧度/秒)，云台俯仰轴应达到的角速度
         double target_pitch_speed;
+
+        /// @brief 目标俯仰角速度 (弧度/秒2)，云台俯仰轴应达到的角加速度
+        double target_pitch_acc;
 
         /// @brief 射击使能标志 (0=禁止, 1=允许, 2=下位机决策)
         int fire_enable;

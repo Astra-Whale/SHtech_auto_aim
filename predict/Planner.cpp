@@ -126,6 +126,11 @@ namespace predict
             plan.target_yaw_speed = res(0, 0);
             plan.target_pitch_speed = res(1, 0);
 
+            res = cal_target_acc(target.armor_x_state, target.armor_y_state, target.armor_z_state);
+
+            plan.target_yaw_acc = res(0, 0);
+            plan.target_pitch_acc = res(1, 0);
+
             plan.target_distance = distance_3D(plan.aimed_armor_pos);
             plan.fire_enable = 2;
 
@@ -169,6 +174,11 @@ namespace predict
 
             plan.target_yaw_speed = res(0, 0);
             plan.target_pitch_speed = res(1, 0);
+
+            res = cal_target_acc(target.armor_x_state, target.armor_y_state, target.armor_z_state);
+
+            plan.target_yaw_acc = res(0, 0);
+            plan.target_pitch_acc = res(1, 0);
 
             plan.target_distance = distance_3D(plan.aimed_armor_pos);
             plan.fire_enable = 2;
@@ -225,9 +235,11 @@ namespace predict
             // 提取MPC优化结果
             plan.target_yaw = yaw_solver_->work->x(0, HALF_HORIZON) + yaw0;
             plan.target_yaw_speed = yaw_solver_->work->x(1, HALF_HORIZON);
+            plan.target_yaw_acc = yaw_solver_->work->u(0, HALF_HORIZON);
 
             plan.target_pitch = pitch_solver_->work->x(0, HALF_HORIZON);
             plan.target_pitch_speed = pitch_solver_->work->x(1, HALF_HORIZON);
+            plan.target_pitch_acc = pitch_solver_->work->u(0, HALF_HORIZON);
 
             Pos3D shooted_armor_pos = predict_closest_armor(target, total_delay + shoot_latency);
             // === 装甲板切换检测 ===
@@ -335,6 +347,11 @@ namespace predict
 
             plan.target_yaw_speed = res(0, 0);
             plan.target_pitch_speed = res(1, 0);
+
+            res = cal_target_acc(x_state, y_state, z_state);
+
+            plan.target_yaw_acc = res(0, 0);
+            plan.target_pitch_acc = res(1, 0);
 
             plan.target_distance = distance_3D(aimed_center_pos) - target.tracked_state(8, 0);
 
@@ -731,6 +748,53 @@ namespace predict
         }
 
         return {target_yaw_speed, target_pitch_speed};
+    }
+
+    /**
+     * @brief 计算目标角加速度
+     * @param x_state X坐标状态 [x, vx]
+     * @param y_state Y坐标状态 [y, vy]
+     * @param z_state Z坐标状态 [z, vz]
+     * @return [yaw_acc, pitch_acc] 目标角加速度
+     * @details 基于恒定线速度模型(CV)计算角加速度
+     *          alpha = -2 * omega * (r · v) / |r|²
+     */
+    Eigen::Matrix<double, 2, 1> Planner::cal_target_acc(const Eigen::Matrix<double, 2, 1> &x_state, 
+                                                            const Eigen::Matrix<double, 2, 1> &y_state, 
+                                                            const Eigen::Matrix<double, 2, 1> &z_state)
+    {
+        double target_yaw_acc;
+        double target_pitch_acc;
+
+        // === 计算偏航角加速度 ===
+        Eigen::Vector2d r_vec(x_state(0, 0), y_state(0, 0));
+        Eigen::Vector2d v_vec(x_state(1, 0), y_state(1, 0));
+
+        double r2 = r_vec.squaredNorm();
+        if (r2 < 1e-6) {
+            target_yaw_acc = 0.0;
+        } else {
+            double cross = r_vec.x() * v_vec.y() - r_vec.y() * v_vec.x();
+            double dot = r_vec.x() * v_vec.x() + r_vec.y() * v_vec.y();
+            double omega = cross / r2;
+            target_yaw_acc = -2 * omega * dot / r2;
+        }
+
+        // === 计算俯仰角加速度 ===
+        r_vec << y_state(0, 0), z_state(0, 0);
+        v_vec << y_state(1, 0), z_state(1, 0);
+
+        r2 = r_vec.squaredNorm();
+        if (r2 < 1e-6) {
+            target_pitch_acc = 0.0;
+        } else {
+            double cross = r_vec.x() * v_vec.y() - r_vec.y() * v_vec.x();
+            double dot = r_vec.x() * v_vec.x() + r_vec.y() * v_vec.y();
+            double omega = cross / r2;
+            target_pitch_acc = -2 * omega * dot / r2;
+        }
+
+        return {target_yaw_acc, target_pitch_acc};
     }
 
 }

@@ -107,7 +107,7 @@ public:
     }
     
     // 实现发送接口 - 空操作
-    void transmit_cmd(float yaw, float yaw_spd, float pitch, float pitch_spd, float dist, uint8_t shoot = 1, uint8_t target_id = 0) override
+    void transmit_cmd(float yaw, float yaw_spd, float pitch, float pitch_spd, float yaw_acc, float pitch_acc, float dist, uint8_t shoot = 1, uint8_t target_id = 0) override
     {
         // Mock driver does nothing on transmit
         // Optionally log for debugging
