@@ -539,6 +539,11 @@ namespace predict
             x_pri(4, 0) += x(5, 0) * dt;  // z = z + vz * dt
             x_pri(6, 0) += x(7, 0) * dt;  // yaw = yaw + vyaw * dt
             x_pri(6, 0) = mathutils::limit_rad(x_pri(6, 0)); // 限制yaw在[-π, π]范围内
+
+            x_pri(7, 0) = 3.2;
+            x_pri(8, 0) = 0.32;
+            x_pri(9, 0) = 0.0;
+
             return x_pri;
         };
 
@@ -609,9 +614,9 @@ namespace predict
                  0,      0,      0,      0,      q_x_vx, q_vx_vx,0,      0,      0, 0,  0,  
                  0,      0,      0,      0,      0,      0,      q_y_y,  q_y_vy, 0, 0,  0,  
                  0,      0,      0,      0,      0,      0,      q_y_vy, q_vy_vy,0, 0,  0,  
-                 0,      0,      0,      0,      0,      0,      0,      0,      0e-4, 0,  0,  
-                 0,      0,      0,      0,      0,      0,      0,      0,      0, 0e-4,  0,  
-                 0,      0,      0,      0,      0,      0,      0,      0,      0, 0,  0e-4;
+                 0,      0,      0,      0,      0,      0,      0,      0,      p_r, 0,  0,  
+                 0,      0,      0,      0,      0,      0,      0,      0,      0, p_r,  0,  
+                 0,      0,      0,      0,      0,      0,      0,      0,      0, 0,  p_r;
             return Q;
         };
 
@@ -958,6 +963,10 @@ namespace predict
         else if (target.tracked_state(8, 0) + target.tracked_state(9, 0) > 0.4) {
             target.tracked_state(9, 0) = 0.4 - target.tracked_state(8, 0);
         }
+
+        target.tracked_state(7, 0) = 3.2;
+        target.tracked_state(8, 0) = 0.32;
+        target.tracked_state(9, 0) = 0.0;
 
         whole_state_ekf.reset(target.tracked_state);
     }

@@ -121,7 +121,7 @@ namespace mathutils
 
         // === 装甲板模型尺寸 (毫米) (支持实时调参) ===
         int pw_length = 135; // 小装甲板长度，单位毫米
-        int pw_width = 48; // 小装甲板宽度，单位毫米
+        int pw_width = 56; // 小装甲板宽度，单位毫米
                       
         /**
          * @brief 默认构造函数（私有）

@@ -514,7 +514,7 @@ namespace predict
 
         // estimated armor, vehicle model
         int id = tracker.match_armor_id(target.tracked_measurement);
-        cout << "matched armor id: " << id << endl;
+        // cout << "matched armor id: " << id << endl;
         auto angle = mathutils::limit_rad(target.tracked_state(6, 0) + id * M_PI_2);
         Eigen::Vector3d xyz = tracker.h_armor_xyz(target.tracked_state, id);
         Eigen::Matrix<double, 4, 1> estimated_armor_m;
@@ -554,7 +554,8 @@ namespace predict
         cv::putText(im2show, "v_yaw: " + std::to_string(target.tracked_state(7, 0)), zero + 7 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
         cv::putText(im2show, std::to_string(target.tracked_state(8, 0)), zero + 8 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
         cv::putText(im2show, "another_r: " + std::to_string(target.tracked_state(8, 0) + target.tracked_state(9, 0)), zero + 13 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
-        cv::putText(im2show, "dh: " + std::to_string(target.tracked_state(10, 0)), zero + 14 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
+        cv::putText(im2show, "dh: " + std::to_string(target.tracked_state(10, 0)), zero + 15 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
+        cv::putText(im2show, "dl: " + std::to_string(target.tracked_state(9, 0)), zero + 14 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
 
         cv::putText(im2show, "measurement:" + std::to_string(target.tracked_measurement(1, 0)), zero + 9 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
         cv::putText(im2show, std::to_string(target.tracked_measurement(0, 0)), zero + 10 * offset, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);
