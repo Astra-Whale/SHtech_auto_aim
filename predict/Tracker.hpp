@@ -102,16 +102,16 @@ namespace predict
         /// @brief 坐标过程噪声尾数
         int p_coord_mant = 1;
         /// @brief 坐标过程噪声指数
-        int p_coord_exp = 2 + 10;
+        int p_coord_exp = 1 + 10;
         /// @brief 偏航角过程噪声尾数
-        int p_yaw_mant = 4;
+        int p_yaw_mant = 1;
         /// @brief 偏航角过程噪声指数
-        int p_yaw_exp = 2 + 10;
+        int p_yaw_exp = -1 + 10;
         /// @brief 旋转半径过程噪声尾数
-        int p_r_mant = 0;
+        int p_r_mant = 1;
         /// @brief 旋转半径过程噪声指数
-        int p_r_exp = 1 + 10;
-        
+        int p_r_exp = -5 + 10;
+
         // === 观测噪声参数 (基于球坐标系 YPD + Yaw 物理模型) ===
         
         // 1. 方位角标准差 (Azimuth Angle Std Dev) - 单位: 度
