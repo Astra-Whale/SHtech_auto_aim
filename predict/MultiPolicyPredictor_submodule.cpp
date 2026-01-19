@@ -296,7 +296,8 @@ namespace predict
             }
 
             // === 执行跟踪更新 ===
-            auto &target = tracker.track(tracked_measurement, secondary_tracked_measurement, same_id_armor_count, tp, attitude_yaw);
+            // auto &target = tracker.track(tracked_measurement, secondary_tracked_measurement, same_id_armor_count, tracked_armor.tag_id, tp, attitude_yaw);
+            auto &target = tracker.track(tracked_measurement, secondary_tracked_measurement, same_id_armor_count, 0, tp, attitude_yaw);
 
             // === 生成预测计划 ===
             auto &plan = planner.make_plan(target, robot_status.robot_speed_mps,
@@ -336,9 +337,17 @@ namespace predict
             send.fire_enable = plan.fire_enable;                          // 射击使能
             send.pitch_angle = (plan.target_pitch - attitude_pitch) / M_PI * 180.0f;         // 俯仰角（转换为度数）
             send.pitch_speed = plan.target_pitch_speed;                   // 俯仰角速度
+            send.pitch_acc = plan.target_pitch_acc;
             send.yaw_angle = (plan.target_yaw - attitude_yaw) / M_PI * 180.0f;            // 偏航角（转换为度数）
             send.yaw_speed = plan.target_yaw_speed;                       // 偏航角速度
-            send.target_id = tracked_armor.tag_id;                        // 目标ID
+            send.yaw_acc = plan.target_yaw_acc;
+
+            if (tracked_armor.tag_id == 0) {
+                send.target_id = 8;
+            }
+            else {
+                send.target_id = tracked_armor.tag_id;                        // 目标ID
+            }   
         }
         else {
             // 无有效目标时，清除目标ID
@@ -406,11 +415,13 @@ namespace predict
         // cout << plan.aimed_armor_pos(1, 0) << endl;
         // cout << plan.aimed_armor_pos(2, 0) << endl;
 
-        // cout << plan.target_yaw << std::endl;
-        // cout << plan.target_yaw_speed << std::endl;
+        cout << plan.target_yaw << std::endl;
+        cout << plan.target_yaw_speed << std::endl;
+        cout << plan.target_yaw_acc << endl;
 
-        // cout << plan.target_pitch << std::endl;
-        // cout << plan.target_pitch_speed << std::endl;
+        cout << plan.target_pitch << std::endl;
+        cout << plan.target_pitch_speed << std::endl;
+        cout << plan.target_pitch_acc << endl;
 
         // cout << plan.fire_enable << endl;
     }

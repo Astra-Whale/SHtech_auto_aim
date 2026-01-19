@@ -51,7 +51,7 @@ public:
     void close() override;
     
     // 实现发送接口
-    void transmit_cmd(float yaw, float yaw_spd, float pitch, float pitch_spd, float dist, uint8_t shoot = 1, uint8_t target_id = 0);
+    void transmit_cmd(float yaw, float yaw_spd, float pitch, float pitch_spd, float yaw_acc, float pitch_acc, float dist, uint8_t shoot = 0, uint8_t target_id = 0);
 
     // 检查串口是否打开
     bool is_open() { return m_serial.is_open(); }

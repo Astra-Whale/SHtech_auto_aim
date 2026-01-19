@@ -102,11 +102,11 @@ namespace predict
         /// @brief 坐标过程噪声尾数
         int p_coord_mant = 1;
         /// @brief 坐标过程噪声指数
-        int p_coord_exp = 1 + 10;
+        int p_coord_exp = 2 + 10;
         /// @brief 偏航角过程噪声尾数
-        int p_yaw_mant = 1;
+        int p_yaw_mant = 4;
         /// @brief 偏航角过程噪声指数
-        int p_yaw_exp = -1 + 10;
+        int p_yaw_exp = 2 + 10;
         /// @brief 旋转半径过程噪声尾数
         int p_r_mant = 1;
         /// @brief 旋转半径过程噪声指数
@@ -138,6 +138,16 @@ namespace predict
         // 默认: 10°
         int tgt_yaw_deg_int = 200;     // 0.1度 * 200 = 20°
         int tgt_yaw_deg_frac = 0;     // 小数部分 (0.0)
+
+        // 观测噪声参数
+        int r_ycoord_mant = 3;
+        int r_ycoord_exp = -4 + 10;
+        int r_xcoord_mant = 3;
+        int r_xcoord_exp = -4 + 10;
+        int r_zcoord_mant = 3;
+        int r_zcoord_exp = -4 + 10;
+        int r_yaw_mant = 3;
+        int r_yaw_exp = -3 + 10;
         
         // 装甲板KF噪声参数
         int kf_yaw_mant = 15;
@@ -161,6 +171,10 @@ namespace predict
         double p_r = sci_to_float(p_r_mant, p_r_exp - 10);
         
         // 装甲板KF参数
+        double r_xcoord = sci_to_float(r_xcoord_mant, r_xcoord_exp - 10);
+        double r_ycoord = sci_to_float(r_ycoord_mant, r_ycoord_exp - 10);
+        double r_zcoord = sci_to_float(r_zcoord_mant, r_zcoord_exp - 10);
+        double r_yaw = sci_to_float(r_yaw_mant, r_yaw_exp - 10);
         double q_kf_yaw = sci_to_float(kf_yaw_mant, kf_yaw_exp - 10);
         double q_kf_y = sci_to_float(kf_y_mant, kf_y_exp - 10);
         double q_kf_x = sci_to_float(kf_x_mant, kf_x_exp - 10);
@@ -330,7 +344,7 @@ namespace predict
          * @details 执行完整的跟踪流程：预测、模型选择、状态更新、异常检测
          */
         const Target& track(const Eigen::Matrix<double, 4, 1> &measurement, const Eigen::Matrix<double, 4, 1> &secondary_measurement, const int same_id_armor_count,
-                            const TP &tp, const double attitude_yaw);
+                                const int tag_id, const TP &tp, const double attitude_yaw);
 
     }; // class Tracker
 

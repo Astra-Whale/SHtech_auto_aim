@@ -55,7 +55,7 @@ public:
      * @param dist 目标距离
      * @param shoot 射击指令 (默认值1表示射击)
      */
-    virtual void transmit_cmd(float yaw, float yaw_spd, float pitch, float pitch_spd, float dist, uint8_t shoot = 1, uint8_t target_id = 0) = 0;
+    virtual void transmit_cmd(float yaw, float yaw_spd, float pitch, float pitch_spd, float yaw_acc, float pitch_acc, float dist, uint8_t shoot = 0, uint8_t target_id = 0) = 0;
 };
 
 #endif // SENSOR_SERIAL_INTERFACE_H

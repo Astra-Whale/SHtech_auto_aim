@@ -225,6 +225,10 @@ namespace predict
                                                         const Eigen::Matrix<double, 2, 1> &y_state, 
                                                         const Eigen::Matrix<double, 2, 1> &z_state);
 
+        Eigen::Matrix<double, 2, 1> cal_target_acc(const Eigen::Matrix<double, 2, 1> &x_state, 
+                                                        const Eigen::Matrix<double, 2, 1> &y_state, 
+                                                        const Eigen::Matrix<double, 2, 1> &z_state);
+
         /**
          * @brief 角度限制在(-π, π]范围内
          * @param angle 输入角度
