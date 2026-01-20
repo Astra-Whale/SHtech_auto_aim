@@ -216,7 +216,6 @@ namespace predict
             target_yaw_raw = traj(0, HALF_HORIZON) + yaw0;
             target_pitch_raw = traj(2, HALF_HORIZON);
 
-            // TODO: 用闭式求解
             // === 求解偏航轴MPC ===
             Eigen::VectorXd x0(2);
             x0 << traj(0, 0), traj(1, 0);
@@ -304,7 +303,7 @@ namespace predict
             // 计算瞄准方向
             double aimed_direction = atan(aimed_center_pos(0, 0) / aimed_center_pos(1, 0));
 
-            // TODO: fix next aimed armor position
+            // todo: fix next aimed armor position
             // 构造虚拟装甲板状态用于计算瞄准点
             Eigen::Matrix<double, 11, 1> aimed_state;
             aimed_state << aimed_center_pos(1, 0), 0, aimed_center_pos(0, 0), 0, aimed_center_pos(2, 0), 0, aimed_direction, 0, target.tracked_state(8, 0), 0, 0;

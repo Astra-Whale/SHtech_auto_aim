@@ -15,7 +15,5 @@ include_directories(${EIGEN3_INCLUDE_DIR})
 
 FILE(GLOB PREDICT_SRC_LIST *.cpp)
 
-add_subdirectory(./tinympc)
-
 add_library(predict OBJECT ${PREDICT_SRC_LIST})
 target_link_libraries(predict ${OpenCV_LIBS} tinympcstatic)

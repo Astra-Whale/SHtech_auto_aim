@@ -16,7 +16,6 @@
 
 // modules
 #include "common.hpp"
-#include "types.hpp"
 #include "tinympc/tiny_api.hpp"
 #include "CoordTransformer.hpp"
 #include "math_tools.hpp"
@@ -101,8 +100,6 @@ namespace predict
 
         /// @brief 位置变化阈值 (米)，用于检测装甲板切换
         const double same_position_threshold = 0.2;
-
-        // TODO: estimate shoot start delay
 
     private:
         // === 配置参数 ===

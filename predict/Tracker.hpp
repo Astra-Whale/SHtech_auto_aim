@@ -16,7 +16,6 @@
 
 // modules
 #include "common.hpp"
-#include "types.hpp"
 #include "IESEKF.hpp"
 #include "Kalman.hpp"
 #include "math_tools.hpp"
