@@ -110,9 +110,7 @@ namespace predict
         double min_position_diff = (measured_pw - tracked_pw).norm();
         
         // 更新当前观测值
-        // TODO: add secondary measurement and limit 
         target.tracked_measurement = measurement;
-
         target.tracked_measurement(3, 0) = mathutils::limit_rad(target.tracked_measurement(3, 0));
 
         // === 扩展卡尔曼滤波预测步骤 ===

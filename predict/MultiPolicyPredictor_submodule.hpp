@@ -16,9 +16,7 @@
 
 // modules
 #include "common.hpp"
-#include "types.hpp"
 #include "Tracker.hpp"
-#include "Planner.hpp"
 #include "CoordTransformer.hpp"
 #include "math_tools.hpp"
 
@@ -58,9 +56,7 @@ namespace predict
          * @param adjust_ 参数调整模式标志
          * @details 初始化所有核心组件，设置配置参数
          */
-        MultiPolicyPredictorSubModule(int comm_latency_, int shoot_latency_,
-                                        double pitch_comp, double yaw_comp, bool disable_vehicle_center_shoot_mode,
-                                        bool debug_, bool show_, bool plot_, bool adjust_);
+        MultiPolicyPredictorSubModule(bool debug_, bool adjust_);
         virtual ~MultiPolicyPredictorSubModule() = default;
 
         bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
@@ -86,21 +82,12 @@ namespace predict
         /// @brief 调试模式标志 - 控制调试信息输出
         bool debug;
         
-        /// @brief 显示模式标志 - 控制可视化界面显示
-        bool show;
-        
-        /// @brief 绘图模式标志 - 控制数据绘图输出
-        bool plot;
-        
         /// @brief 参数调整模式标志 - 控制实时参数调整界面
         bool adjust;
 
         // === 核心组件 ===
         /// @brief 目标跟踪器 - 执行多模型自适应跟踪
         Tracker tracker;
-        
-        /// @brief 弹道规划器 - 执行预测和轨迹优化
-        Planner planner;
 
         /// @brief 当前跟踪的观测值 [y, x, z, yaw]
         Eigen::Matrix<double, 4, 1> tracked_measurement;
@@ -113,73 +100,6 @@ namespace predict
 
         /// @brief 坐标变换器单例 - 负责坐标系转换
         CoordTransformer& coord_transformer;
-
-    private:
-        /**
-         * @brief 更新发送给下位机的信息
-         * @param plan 预测计划结构体
-         * @param send 机器人控制指令结构体
-         * @details 将预测结果转换为机器人控制指令，包括云台角度、角速度、射击使能等
-         */
-        void update_information_to_send(const Plan &plan, RobotCommand &send, 
-                                        float attitude_yaw, float attitude_pitch);
-
-        /**
-         * @brief 输出数据用于绘图分析
-         * @param target 目标跟踪状态
-         * @param plan 预测计划
-         * @details 输出跟踪和预测的关键数据，用于离线分析和调优
-         */
-        void output_data_to_plot(const Target &target, const Plan &plan);
-        
-        /**
-         * @brief 显示真实世界视图
-         * @param target 目标跟踪状态
-         * @param plan 预测计划
-         * @param data 线程数据包，包含图像和传感器数据
-         * @param show_armor 是否显示装甲板边界框
-         * @details 在原始图像上叠加显示：
-         *          - 检测到的装甲板边界框
-         *          - 估计的车辆中心位置
-         *          - 预测的瞄准点
-         *          - 跟踪状态信息
-         */
-        void show_real_world(const Target &target, const Plan &plan, 
-                                std::shared_ptr<ThreadDataPack> &data,const Eigen::Matrix3d &R_world2imu, bool show_armor);
-        
-        /**
-         * @brief 显示仿真俯视图
-         * @param target 目标跟踪状态
-         * @param plan 预测计划
-         * @details 显示俯视角度的2D仿真图，包括：
-         *          - 车辆中心位置
-         *          - 装甲板位置（实测和估计）
-         *          - 预测瞄准点
-         *          - 装甲板朝向
-         */
-        void show_sim(const Target &target, const Plan &plan);
-
-        // === 枚举转字符串函数 ===
-        /**
-         * @brief 跟踪状态转字符串
-         * @param x 跟踪状态枚举
-         * @return 对应的字符串描述
-         */
-        std::string TrackingState2String(const TrackingState & x);
-        
-        /**
-         * @brief 瞄准目标类型转字符串
-         * @param x 瞄准目标类型枚举
-         * @return 对应的字符串描述
-         */
-        std::string AimedTargetType2String(const AimedTargetType & x);
-        
-        /**
-         * @brief 模型更新类型转字符串
-         * @param x 模型更新类型枚举
-         * @return 对应的字符串描述
-         */
-        std::string UpdatingModelType2String(const UpdatingModelType & x);
 
     public:
         /**

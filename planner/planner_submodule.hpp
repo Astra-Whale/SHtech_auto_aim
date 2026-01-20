@@ -8,6 +8,7 @@
 // modules
 #include "common.hpp"
 #include "message_bridge.hpp"
+#include "Planner.hpp"
 
 // packages
 #include <ctime>
@@ -23,6 +24,8 @@
 
 namespace plan
 {
+    using namespace predict;
+
     /**
      * @brief   入口阶段子模块
      */
@@ -33,7 +36,9 @@ namespace plan
          * @brief   构造函数
          * @param[in] message_bridge 消息桥接对象引用
          */
-        PlannerSubModule(pipeline::bridge::PlannerToSerialBridge &message_bridge);
+        PlannerSubModule(pipeline::bridge::PlannerToSerialBridge &message_bridge, int comm_latency_, int shoot_latency_,
+                            double pitch_comp, double yaw_comp, bool disable_vehicle_center_shoot_mode,
+                            bool debug_, bool show_, bool plot_);
         virtual ~PlannerSubModule() = default;
 
         bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
@@ -55,6 +60,81 @@ namespace plan
         command_array_t generate_command_array(const RobotCommand& command);
 
         pipeline::bridge::PlannerToSerialBridge &planner_bridge;
+
+        bool debug;
+        bool show;
+        bool plot;
+
+        Planner planner;
+
+        /// @brief 坐标变换器单例 - 负责坐标系转换
+        CoordTransformer& coord_transformer;
+
+        /**
+         * @brief 更新发送给下位机的信息
+         * @param plan 预测计划结构体
+         * @param send 机器人控制指令结构体
+         * @details 将预测结果转换为机器人控制指令，包括云台角度、角速度、射击使能等
+         */
+        void update_information_to_send(const Target &target, const Plan &plan, RobotCommand &send, 
+            float attitude_yaw, float attitude_pitch);
+
+        /**
+        * @brief 输出数据用于绘图分析
+        * @param target 目标跟踪状态
+        * @param plan 预测计划
+        * @details 输出跟踪和预测的关键数据，用于离线分析和调优
+        */
+        void output_data_to_plot(const Target &target, const Plan &plan);
+
+        /**
+        * @brief 显示真实世界视图
+        * @param target 目标跟踪状态
+        * @param plan 预测计划
+        * @param data 线程数据包，包含图像和传感器数据
+        * @param show_armor 是否显示装甲板边界框
+        * @details 在原始图像上叠加显示：
+        *          - 检测到的装甲板边界框
+        *          - 估计的车辆中心位置
+        *          - 预测的瞄准点
+        *          - 跟踪状态信息
+        */
+        void show_real_world(const Target &target, const Plan &plan, 
+            std::shared_ptr<ThreadDataPack> &data,const Eigen::Matrix3d &R_world2imu);
+
+        /**
+        * @brief 显示仿真俯视图
+        * @param target 目标跟踪状态
+        * @param plan 预测计划
+        * @details 显示俯视角度的2D仿真图，包括：
+        *          - 车辆中心位置
+        *          - 装甲板位置（实测和估计）
+        *          - 预测瞄准点
+        *          - 装甲板朝向
+        */
+        void show_sim(const Target &target, const Plan &plan);
+
+        // === 枚举转字符串函数 ===
+        /**
+        * @brief 跟踪状态转字符串
+        * @param x 跟踪状态枚举
+        * @return 对应的字符串描述
+        */
+        std::string TrackingState2String(const TrackingState & x);
+
+        /**
+        * @brief 瞄准目标类型转字符串
+        * @param x 瞄准目标类型枚举
+        * @return 对应的字符串描述
+        */
+        std::string AimedTargetType2String(const AimedTargetType & x);
+
+        /**
+        * @brief 模型更新类型转字符串
+        * @param x 模型更新类型枚举
+        * @return 对应的字符串描述
+        */
+        std::string UpdatingModelType2String(const UpdatingModelType & x);
     };
 }
 
