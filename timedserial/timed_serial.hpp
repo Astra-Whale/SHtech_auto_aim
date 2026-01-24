@@ -83,7 +83,7 @@ namespace hardware
 
         // 常量定义
         static constexpr size_t CMDARRAYLENGTH = 10;
-        static constexpr std::chrono::microseconds send_period{3000};
+        static constexpr std::chrono::microseconds send_period{5000};
         using command_array_t = std::array<RobotCommand, CMDARRAYLENGTH>;
         
         // 通讯相关成员变量

@@ -257,7 +257,7 @@ namespace predict
                 tracked_measurement = selected_measurement;
                 secondary_tracked_measurement = secondary_measurement;
             }
-            else {
+            else if (same_id_armor_count == 2) {
                 if (selected_armor.source == DetectionSource::TRADITIONAL) {
                     tracked_armor = selected_armor;
                     tracked_measurement = selected_measurement;

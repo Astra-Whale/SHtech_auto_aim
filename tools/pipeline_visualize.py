@@ -224,7 +224,7 @@ def visualize_by_stage(frames, start_idx=None, end_idx=None):
 # ==========================================
 
 # 模拟读取你的 log.txt 内容
-with open('log/2025-12-05-22:22:00.txt', 'r', encoding='utf-8') as f: log_content = f.read()
+with open('log/2026-01-23-02:49:58.txt', 'r', encoding='utf-8') as f: log_content = f.read()
 
 if __name__ == "__main__":
     # 1. 解析

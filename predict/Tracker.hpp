@@ -89,6 +89,10 @@ namespace predict
         /// @brief 最少旋转计数阈值，低于此值不信任整车模型
         const int least_rotate_count = 3;
 
+        const double outpost_r = 0.33;
+        const double outpost_yaw_speed = 3.14;
+        const double outpost_fix_yaw_speed_threshold = 2.5; 
+
     private:
         // === 配置参数 ===
         /// @brief 调试模式标志

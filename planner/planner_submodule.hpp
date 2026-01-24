@@ -85,7 +85,7 @@ namespace plan
         * @param plan 预测计划
         * @details 输出跟踪和预测的关键数据，用于离线分析和调优
         */
-        void output_data_to_plot(const Target &target, const Plan &plan);
+        void output_data_to_plot(const Target &target, const Plan &plan, std::shared_ptr<ThreadDataPack> data);
 
         /**
         * @brief 显示真实世界视图
