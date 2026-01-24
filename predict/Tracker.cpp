@@ -110,18 +110,20 @@ namespace predict
         double min_position_diff = (measured_pw - tracked_pw).norm();
         
         // 更新当前观测值
-        target.tracked_measurement = measurement;
-        target.tracked_measurement(3, 0) = mathutils::limit_rad(target.tracked_measurement(3, 0));
+        if (same_id_armor_count) {
+            target.tracked_measurement = measurement;
+            target.tracked_measurement(3, 0) = mathutils::limit_rad(target.tracked_measurement(3, 0));
+        }
 
         // === 扩展卡尔曼滤波预测步骤 ===
         target.tracked_state = whole_state_ekf.predict();
 
         // special for output
         if (tag_id == 0) {
-            if (abs(target.tracked_state(7, 0)) > 2.5) {
-                target.tracked_state(7, 0) = target.tracked_state(7, 0) > 0 ? 3.2 : -3.2;
+            if (abs(target.tracked_state(7, 0)) > outpost_fix_yaw_speed_threshold) {
+                target.tracked_state(7, 0) = target.tracked_state(7, 0) > 0 ? outpost_yaw_speed : -outpost_yaw_speed;
             }
-            target.tracked_state(8, 0) = 0.33;
+            target.tracked_state(8, 0) = outpost_r;
             target.tracked_state(9, 0) = 0.0;
 
             p_coord = 1e1;
@@ -248,10 +250,10 @@ namespace predict
 
                 // special for output
                 if (tag_id == 0) {
-                    if (abs(target.tracked_state(7, 0)) > 2.5) {
-                        target.tracked_state(7, 0) = target.tracked_state(7, 0) > 0 ? 3.2 : -3.2;
+                    if (abs(target.tracked_state(7, 0)) > outpost_fix_yaw_speed_threshold) {
+                        target.tracked_state(7, 0) = target.tracked_state(7, 0) > 0 ? outpost_yaw_speed : -outpost_yaw_speed;
                     }
-                    target.tracked_state(8, 0) = 0.33;
+                    target.tracked_state(8, 0) = outpost_r;
                     target.tracked_state(9, 0) = 0.0;
                 }
 

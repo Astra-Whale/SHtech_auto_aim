@@ -153,6 +153,11 @@ namespace hardware
 
         auto now = std::chrono::steady_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(now - command_start_time_);
+
+        if (plan_period_.count() <= 0)
+        {
+            return false;
+        }
         int64_t expectedIndexOne = static_cast<int64_t>(elapsed.count() / plan_period_.count());
 
         assert(expectedIndexOne >= 0 && "[timedserial_new] Elapsed time calculation error!");
@@ -225,13 +230,15 @@ namespace hardware
                         attitude_cache_.pitch() + command_cache_.pitch_angle,
                         command_cache_.yaw_speed,
                         command_cache_.pitch_speed,
+                        command_cache_.yaw_acc,
+                        command_cache_.pitch_acc,
                         command_cache_.distance,
                         command_cache_.fire_enable,
                         command_cache_.target_id);
 
                     if (_debugprint)
                     {
-                        LOGM_S("[TimedSerial][transmit] p-m:%6.2f | p-s:%6.2f | ps-s:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f | shoot_s:%6.2f | enemy:%d",
+                        LOGM_S("[TimedSerial][transmit] p-m:%6.2f | p-s:%6.2f | ps-s:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f | shoot_s:%6.2f | enemy:%d | fire:%d",
                                attitude_cache_.pitch(),
                                attitude_cache_.pitch() + command_cache_.pitch_angle,
                                command_cache_.pitch_speed,
@@ -239,7 +246,8 @@ namespace hardware
                                attitude_cache_.yaw() + command_cache_.yaw_angle,
                                command_cache_.yaw_speed,
                                latest_robot_status_.robot_speed_mps,
-                               latest_robot_status_.enemy_color==EnemyColor::RED);
+                               latest_robot_status_.enemy_color==EnemyColor::RED,
+                               command_cache_.fire_enable);
                     }
                 }
                 else

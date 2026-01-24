@@ -134,8 +134,8 @@ inline RobotCommand command_linear_interpolation(const RobotCommand& cmd1, const
             cmd1.pitch_angle * (1-cmdTwoWeight) + cmd2.pitch_angle * cmdTwoWeight,   
             cmd1.pitch_speed * (1-cmdTwoWeight) + cmd2.pitch_speed * cmdTwoWeight,
             cmd1.pitch_acc * (1-cmdTwoWeight) + cmd2.pitch_acc * cmdTwoWeight,
-            cmd1.target_id,
-            cmd1.fire_enable
+            cmd1.fire_enable,
+            cmd1.target_id
         };
     return RobotCommand{
             cmd1.distance * (1-cmdTwoWeight) + cmd2.distance * cmdTwoWeight,
@@ -145,8 +145,8 @@ inline RobotCommand command_linear_interpolation(const RobotCommand& cmd1, const
             cmd1.pitch_angle * (1-cmdTwoWeight) + cmd2.pitch_angle * cmdTwoWeight,   
             cmd1.pitch_speed * (1-cmdTwoWeight) + cmd2.pitch_speed * cmdTwoWeight,
             cmd1.pitch_acc * (1-cmdTwoWeight) + cmd2.pitch_acc * cmdTwoWeight,
+            cmd2.fire_enable,
             cmd2.target_id,
-            cmd2.fire_enable
         };
 }
 

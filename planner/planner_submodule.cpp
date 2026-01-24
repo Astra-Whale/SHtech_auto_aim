@@ -67,7 +67,7 @@ namespace plan
 
             // 输出数据用于绘图分析（可选）
             if (plot)
-                output_data_to_plot(target, plan);
+                output_data_to_plot(target, plan, data);
         }
 
         auto &plan = planner.get_plan();
@@ -103,6 +103,11 @@ namespace plan
             // 有有效目标时，更新控制指令
             send.distance = plan.target_distance;                          // 目标距离
             send.fire_enable = plan.fire_enable;                          // 射击使能
+
+            // if (send.fire_enable == 1) {
+            //     cout << "fire 11111111111111111111111111111111" << endl;
+            // }
+
             send.pitch_angle = (plan.target_pitch - attitude_pitch) / M_PI * 180.0f;         // 俯仰角（转换为度数）
             send.pitch_speed = plan.target_pitch_speed;                   // 俯仰角速度
             send.pitch_acc = plan.target_pitch_acc;
@@ -133,9 +138,14 @@ namespace plan
     * @details 输出关键跟踪和预测数据，用于离线分析和系统调优
     *          当前实现中的输出语句已被注释，可根据需要启用特定数据的输出
     */
-    void PlannerSubModule::output_data_to_plot(const Target &target, const Plan &plan) 
+    void PlannerSubModule::output_data_to_plot(const Target &target, const Plan &plan, std::shared_ptr<ThreadDataPack> data) 
     {
         LOGT_S();
+
+        cout << data->robotstatus.robot_speed_mps << endl;
+
+        cout << data->attitude.yaw() << endl;
+        cout << data->attitude.pitch() << endl;
 
         // cout << (tracked_armor.source == DetectionSource::TRADITIONAL ? 1 : 0) << endl;
 
@@ -181,17 +191,17 @@ namespace plan
 
         // cout << plan.aimed_armor_pos(0, 0) << endl;
         // cout << plan.aimed_armor_pos(1, 0) << endl;
-        // cout << plan.aimed_armor_pos(2, 0) << endl;
+        cout << plan.aimed_armor_pos(2, 0) << endl;
 
-        // cout << plan.target_yaw << std::endl;
-        // cout << plan.target_yaw_speed << std::endl;
-        // cout << plan.target_yaw_acc << endl;
+        cout << plan.target_yaw / M_PI * 180.0f << std::endl;
+        cout << plan.target_yaw_speed / M_PI * 180.0f << std::endl;
+        // cout << plan.target_yaw_acc / M_PI * 180.0f << endl;
 
-        // cout << plan.target_pitch << std::endl;
-        // cout << plan.target_pitch_speed << std::endl;
-        // cout << plan.target_pitch_acc << endl;
+        cout << plan.target_pitch / M_PI * 180.0f << std::endl;
+        cout << plan.target_pitch_speed / M_PI * 180.0f << std::endl;
+        // cout << plan.target_pitch_acc / M_PI * 180.0f << endl;
 
-        // cout << plan.fire_enable << endl;
+        cout << plan.fire_enable << endl;
     }
 
     // === 枚举转字符串辅助函数 ===

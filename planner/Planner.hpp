@@ -96,10 +96,12 @@ namespace predict
         const double same_trace_threshold = 0.01;
         
         /// @brief 射击精度阈值 (弧度) - 约等于atan(0.05/0.4)
-        const double fire_threshold = 0.125;
+        const double fire_threshold = 0.05; // 0.125;
 
         /// @brief 位置变化阈值 (米)，用于检测装甲板切换
         const double same_position_threshold = 0.2;
+
+        const double shoot_interval = 0.3;
 
     private:
         // === 配置参数 ===
@@ -149,6 +151,9 @@ namespace predict
         /// @brief 坐标变换器单例 - 负责坐标系转换
         CoordTransformer& coord_transformer;
 
+        /// @brief 允许发弹时间戳
+        std::chrono::_V2::system_clock::time_point fire_enable_tp;
+
     private:
         /**
          * @brief 设置偏航轴MPC求解器
@@ -169,7 +174,7 @@ namespace predict
          * @return 预测的装甲板位置 [x, y, z]
          * @details 基于整车模型预测四个装甲板位置，返回距离最近的一个
          */
-        Eigen::Matrix<double, 3, 1> predict_closest_armor(const Target &target, const double delay);
+        Eigen::Matrix<double, 3, 1> predict_closest_armor(const Target &target, const double delay, int &armor_index);
 
         /**
          * @brief 计算云台目标角度
