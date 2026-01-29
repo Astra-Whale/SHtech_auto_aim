@@ -7,11 +7,12 @@
 
 namespace plan
 {
-
-    PlannerSubModule::PlannerSubModule(pipeline::bridge::PlannerToSerialBridge &message_bridge, int comm_latency_, int shoot_latency_,
-        double pitch_comp, double yaw_comp, bool disable_vehicle_center_shoot_mode, bool debug_, bool show_, bool plot_) 
+    PlannerSubModule::PlannerSubModule(pipeline::bridge::PlannerToSerialBridge &message_bridge, int comm_latency_, int single_shoot_latency_, 
+        int continue_shoot_latency_, double pitch_comp, double yaw_comp, bool disable_vehicle_center_shoot_mode, 
+        bool debug_, bool show_, bool plot_) 
         : SubModule(SubModuleName::PLANNER), planner_bridge(message_bridge),
-          planner(comm_latency_ / 1e3, shoot_latency_ / 1e3, pitch_comp, yaw_comp, disable_vehicle_center_shoot_mode, debug_),
+          planner(comm_latency_ / 1e3, single_shoot_latency_ / 1e3, continue_shoot_latency_ / 1e3, 
+                    pitch_comp, yaw_comp, disable_vehicle_center_shoot_mode, debug_),
           coord_transformer(CoordTransformer::Get()),
           debug(debug_),
           show(show_),
@@ -104,7 +105,7 @@ namespace plan
             send.distance = plan.target_distance;                          // 目标距离
             send.fire_enable = plan.fire_enable;                          // 射击使能
 
-            // if (send.fire_enable == 1) {
+            // if (send.fire_enable == 3) {
             //     cout << "fire 11111111111111111111111111111111" << endl;
             // }
 
@@ -191,14 +192,14 @@ namespace plan
 
         // cout << plan.aimed_armor_pos(0, 0) << endl;
         // cout << plan.aimed_armor_pos(1, 0) << endl;
-        cout << plan.aimed_armor_pos(2, 0) << endl;
+        // cout << plan.aimed_armor_pos(2, 0) << endl;
 
         cout << plan.target_yaw / M_PI * 180.0f << std::endl;
-        cout << plan.target_yaw_speed / M_PI * 180.0f << std::endl;
-        // cout << plan.target_yaw_acc / M_PI * 180.0f << endl;
+        // cout << plan.target_yaw_speed << std::endl;
+        // cout << plan.target_yaw_acc << endl;
 
         cout << plan.target_pitch / M_PI * 180.0f << std::endl;
-        cout << plan.target_pitch_speed / M_PI * 180.0f << std::endl;
+        // cout << plan.target_pitch_speed / M_PI * 180.0f << std::endl;
         // cout << plan.target_pitch_acc / M_PI * 180.0f << endl;
 
         cout << plan.fire_enable << endl;

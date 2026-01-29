@@ -22,20 +22,21 @@ namespace predict
      * @param debug_ 调试模式标志
      * @details 初始化MPC求解器和默认参数
      */
-    Planner::Planner(double comm_latency_, double shoot_latency_, double pitch_comp_, double yaw_comp_, 
+    Planner::Planner(double comm_latency_, double single_shoot_latency_, double continue_shoot_latency_, double pitch_comp_, double yaw_comp_, 
                         bool disable_vehicle_center_shoot_mode_, bool debug_)
     : armor_jump_tp(std::chrono::high_resolution_clock::now()),
       fire_enable_tp(std::chrono::high_resolution_clock::now()),
       armor_jump(false),
       comm_latency(comm_latency_),
-      shoot_latency(shoot_latency_),
+      single_shoot_latency(single_shoot_latency_),
+      continue_shoot_latency(continue_shoot_latency_),
       pitch_comp(pitch_comp_),
       yaw_comp(yaw_comp_),
       disable_vehicle_center_shoot_mode(disable_vehicle_center_shoot_mode_),
       debug(debug_),
       coord_transformer(CoordTransformer::Get())
     {
-        shoot_offset = static_cast<int>(shoot_latency / DT);
+        shoot_offset = static_cast<int>(continue_shoot_latency / DT);
 
         plan.aimed_target_type = AimedTargetType::NONE;
 
@@ -99,8 +100,8 @@ namespace predict
         // 以下代码可用于手动强制设置瞄准类型进行调试
         // plan.aimed_target_type = AimedTargetType::ARMOR_WITH_NO_MODEL;
         // plan.aimed_target_type = AimedTargetType::ARMOR_WITH_ARMOR_MODEL;
-        // plan.aimed_target_type = AimedTargetType::ARMOR_WITH_VEHICLE_MODEL;
-        plan.aimed_target_type = AimedTargetType::VEHICLE_CENTER_WITH_VEHICLE_MODEL;
+        plan.aimed_target_type = AimedTargetType::ARMOR_WITH_VEHICLE_MODEL;
+        // plan.aimed_target_type = AimedTargetType::VEHICLE_CENTER_WITH_VEHICLE_MODEL;
         
         // === 策略1: 无模型 ===
         // 直接瞄准当前检测到的装甲板位置，适用于初始检测阶段
@@ -155,9 +156,9 @@ namespace predict
                             hit_pos(2, 0) + total_delay * target.armor_z_state(1, 0);
 
             Pos3D shooted_armor_pos;
-            shooted_armor_pos << hit_pos(0, 0) + (total_delay + shoot_latency) * target.armor_x_state(1, 0), 
-                            hit_pos(1, 0) + (total_delay + shoot_latency) * target.armor_y_state(1, 0), 
-                            hit_pos(2, 0) + (total_delay + shoot_latency) * target.armor_z_state(1, 0);
+            shooted_armor_pos << hit_pos(0, 0) + (total_delay + continue_shoot_latency) * target.armor_x_state(1, 0), 
+                            hit_pos(1, 0) + (total_delay + continue_shoot_latency) * target.armor_y_state(1, 0), 
+                            hit_pos(2, 0) + (total_delay + continue_shoot_latency) * target.armor_z_state(1, 0);
 
             last_shooted_armor_pos = shooted_armor_pos;
             armor_jump = false;
@@ -241,7 +242,7 @@ namespace predict
             plan.target_pitch_speed = pitch_solver_->work->x(1, HALF_HORIZON);
             plan.target_pitch_acc = pitch_solver_->work->u(0, HALF_HORIZON);
 
-            Pos3D shooted_armor_pos = predict_closest_armor(target, total_delay + shoot_latency, armor_index);
+            Pos3D shooted_armor_pos = predict_closest_armor(target, total_delay + continue_shoot_latency, armor_index);
             // === 装甲板切换检测 ===
             if (distance_3D(last_shooted_armor_pos - shooted_armor_pos) > same_position_threshold) {
                 armor_jump_tp = std::chrono::high_resolution_clock::now();
@@ -294,7 +295,7 @@ namespace predict
             double total_delay = process_latency + comm_latency + fly_time;
 
             // 估计预瞄准的装甲板半径
-            double next_predicted_yaw = target.tracked_state(6, 0) + target.tracked_state(7, 0) * (total_delay + shoot_latency);
+            double next_predicted_yaw = target.tracked_state(6, 0) + target.tracked_state(7, 0) * (total_delay + single_shoot_latency);
             int next_aimed_armor_index = 0;
             for (int i = 0; i != 2; i++) {
                 double predicted_armor_yaw = next_predicted_yaw + i * 1.57;
@@ -348,9 +349,9 @@ namespace predict
             plan.aimed_armor_pos << aimed_measurement(1, 0), aimed_measurement(0, 0), aimed_measurement(2, 0);
 
             Pos3D shooted_center_pos;
-            shooted_center_pos << target.tracked_state(2, 0) + (total_delay + shoot_latency) * target.tracked_state(3, 0), 
-                                target.tracked_state(0, 0) + (total_delay + shoot_latency) * target.tracked_state(1, 0), 
-                                target.tracked_state(4, 0) + (total_delay + shoot_latency) * target.tracked_state(5, 0);
+            shooted_center_pos << target.tracked_state(2, 0) + (total_delay + single_shoot_latency) * target.tracked_state(3, 0), 
+                                target.tracked_state(0, 0) + (total_delay + single_shoot_latency) * target.tracked_state(1, 0), 
+                                target.tracked_state(4, 0) + (total_delay + single_shoot_latency) * target.tracked_state(5, 0);
 
             double shooted_direction = atan(shooted_center_pos(0, 0) / shooted_center_pos(1, 0));
 
@@ -403,7 +404,7 @@ namespace predict
 
             // === 射击决策 ===
             // 根据预测装甲板偏航角是否处于发射窗口判断是否发射
-            double predicted_yaw = target.tracked_state(6, 0) + target.tracked_state(7, 0) * (total_delay + shoot_latency);
+            double predicted_yaw = target.tracked_state(6, 0) + target.tracked_state(7, 0) * (total_delay + single_shoot_latency);
             int aimed_armor_index = -1;
             for (int i = 0; i != 4; i++) {
                 double predicted_armor_yaw = predicted_yaw + i * 1.57;
@@ -422,7 +423,7 @@ namespace predict
 
             if (duration_cast<microseconds>(std::chrono::high_resolution_clock::now() - fire_enable_tp).count() / 1e6 > shoot_interval) {
                 if (aimed_armor_index != -1){
-                    plan.fire_enable = 1;
+                    plan.fire_enable = 3;
                     fire_enable_tp = std::chrono::high_resolution_clock::now();
                 }
                 else {
@@ -586,11 +587,11 @@ namespace predict
             auto yaw_pitch_next = cal_gimbal_target(next_pos, bullet_speed, attitude_yaw, attitude_pitch, R_world2imu);
 
             // 使用中心差分法计算角速度
-            auto yaw_vel = (yaw_pitch_next(0) - yaw_pitch_last(0)) / (2 * DT);
+            auto yaw_vel = limit_rad(yaw_pitch_next(0) - yaw_pitch_last(0)) / (2 * DT);
             auto pitch_vel = (yaw_pitch_next(1) - yaw_pitch_last(1)) / (2 * DT);
 
             // 构建轨迹点：[yaw_relative, yaw_vel, pitch, pitch_vel]
-            traj.col(i) << (yaw_pitch_cur(0) - yaw0), yaw_vel, yaw_pitch_cur(1), pitch_vel;
+            traj.col(i) << limit_rad(yaw_pitch_cur(0) - yaw0), yaw_vel, yaw_pitch_cur(1), pitch_vel;
 
             // 更新时间序列
             yaw_pitch_last = yaw_pitch_cur;
