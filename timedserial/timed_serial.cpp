@@ -238,13 +238,15 @@ namespace hardware
 
                     if (_debugprint)
                     {
-                        LOGM_S("[TimedSerial][transmit] p-m:%6.2f | p-s:%6.2f | ps-s:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f | shoot_s:%6.2f | enemy:%d | fire:%d",
+                        LOGM_S("[TimedSerial][transmit] p-m:%6.2f | p-s:%6.2f | ps-s:%6.2f | pa-s:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f | ya-s:%6.2f | shoot_s:%6.2f | enemy_color:%d | fire:%d",
                                attitude_cache_.pitch(),
                                attitude_cache_.pitch() + command_cache_.pitch_angle,
                                command_cache_.pitch_speed,
+                               command_cache_.pitch_acc,
                                attitude_cache_.yaw(),
                                attitude_cache_.yaw() + command_cache_.yaw_angle,
                                command_cache_.yaw_speed,
+                               command_cache_.yaw_acc,
                                latest_robot_status_.robot_speed_mps,
                                latest_robot_status_.enemy_color==EnemyColor::RED,
                                command_cache_.fire_enable);

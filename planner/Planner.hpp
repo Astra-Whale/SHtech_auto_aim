@@ -108,8 +108,11 @@ namespace predict
         /// @brief 通信延迟 (秒)
         double comm_latency;
 
-        /// @brief 发射延迟 (秒)
-        double shoot_latency;
+        /// @brief 单次发射延迟 (秒)
+        double single_shoot_latency;
+
+        /// @brief 连续射击延迟 (秒)
+        double continue_shoot_latency;
 
         /// @brief 射击时机偏移（MPC步数）(与shoot_latency配合使用)
         int shoot_offset = 2;
@@ -255,8 +258,8 @@ namespace predict
          * @param shoot_latency_ 发射延迟时间 (s)
          * @param debug_ 调试模式标志
          */
-        explicit Planner(double comm_latency_, double shoot_latency_,double pitch_comp_, double yaw_comp_, 
-                        bool disable_vehicle_center_shoot_mode_, bool debug_);
+        explicit Planner(double comm_latency_, double single_shoot_latency_, double continue_shoot_latency_, 
+                        double pitch_comp_, double yaw_comp_, bool disable_vehicle_center_shoot_mode_, bool debug_);
 
         /**
          * @brief 重置规划器状态
