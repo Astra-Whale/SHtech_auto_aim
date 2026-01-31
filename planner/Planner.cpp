@@ -15,6 +15,8 @@
 
 namespace predict
 {
+    int a=0;
+
     /**
      * @brief 构造函数 - 初始化弹道规划器
      * @param comm_latency_ 通信延迟时间 (秒)
@@ -249,7 +251,10 @@ namespace predict
             }
 
             int dt_since_jump = duration_cast<microseconds>(std::chrono::high_resolution_clock::now() - armor_jump_tp).count();
-            if (dt_since_jump > armor_jump_interval / 6.28f * target.yaw_state(1, 0)) {
+
+            // TODO
+            // if (dt_since_jump > armor_jump_interval / 6.28f * target.yaw_state(1, 0)) {
+            if (dt_since_jump > 0.02f) {
                 armor_jump = false;
             }
             else {
@@ -258,8 +263,23 @@ namespace predict
 
             last_shooted_armor_pos = shooted_armor_pos;
 
-            // cout << traj(0, HALF_HORIZON + shoot_offset)+yaw0 << endl;
-            // cout << yaw_solver_->work->x(0, HALF_HORIZON + shoot_offset)+yaw0 << endl;
+            // if (a % 10 == 0) {
+            //     LOGT_S();
+
+            //     for (int i=0; i != HORIZON; i++) {
+            //         cout << traj(0, i) + yaw0 << endl;
+            //     }
+
+            //     for (int i=0; i != HORIZON; i++) {
+            //         cout << (yaw_solver_->work->x(0, i) + yaw0) << endl;
+            //     }
+            // }
+            // a++;
+
+            // LOGT_S();
+
+            // cout << traj(0, HALF_HORIZON + shoot_offset) + yaw0 << endl;
+            // cout << (yaw_solver_->work->x(0, HALF_HORIZON + shoot_offset) + yaw0) << endl;
 
             // cout << target_yaw_raw << endl;
             // cout << armor_jump << endl;
@@ -278,6 +298,7 @@ namespace predict
                 cout << "[predictor] target: armor with vehicle model" << endl;
         }
         
+        // TODO: current parameter is not suitable for different target distance (?)
         // === 策略4: 整车模型瞄准车辆中心 ===
         // 瞄准车辆旋转中心，适用于高速旋转目标，预测发射窗口
         else if (plan.aimed_target_type == AimedTargetType::VEHICLE_CENTER_WITH_VEHICLE_MODEL) {
@@ -295,7 +316,7 @@ namespace predict
             double total_delay = process_latency + comm_latency + fly_time;
 
             // 估计预瞄准的装甲板半径
-            double next_predicted_yaw = target.tracked_state(6, 0) + target.tracked_state(7, 0) * (total_delay + single_shoot_latency);
+            double next_predicted_yaw = target.tracked_state(6, 0) + target.tracked_state(7, 0) * (total_delay - comm_latency + single_shoot_latency);
             int next_aimed_armor_index = 0;
             for (int i = 0; i != 2; i++) {
                 double predicted_armor_yaw = next_predicted_yaw + i * 1.57;
@@ -349,9 +370,9 @@ namespace predict
             plan.aimed_armor_pos << aimed_measurement(1, 0), aimed_measurement(0, 0), aimed_measurement(2, 0);
 
             Pos3D shooted_center_pos;
-            shooted_center_pos << target.tracked_state(2, 0) + (total_delay + single_shoot_latency) * target.tracked_state(3, 0), 
-                                target.tracked_state(0, 0) + (total_delay + single_shoot_latency) * target.tracked_state(1, 0), 
-                                target.tracked_state(4, 0) + (total_delay + single_shoot_latency) * target.tracked_state(5, 0);
+            shooted_center_pos << target.tracked_state(2, 0) + (total_delay - comm_latency + single_shoot_latency) * target.tracked_state(3, 0), 
+                                target.tracked_state(0, 0) + (total_delay - comm_latency + single_shoot_latency) * target.tracked_state(1, 0), 
+                                target.tracked_state(4, 0) + (total_delay - comm_latency + single_shoot_latency) * target.tracked_state(5, 0);
 
             double shooted_direction = atan(shooted_center_pos(0, 0) / shooted_center_pos(1, 0));
 
@@ -404,7 +425,7 @@ namespace predict
 
             // === 射击决策 ===
             // 根据预测装甲板偏航角是否处于发射窗口判断是否发射
-            double predicted_yaw = target.tracked_state(6, 0) + target.tracked_state(7, 0) * (total_delay + single_shoot_latency);
+            double predicted_yaw = target.tracked_state(6, 0) + target.tracked_state(7, 0) * (total_delay - comm_latency + single_shoot_latency);
             int aimed_armor_index = -1;
             for (int i = 0; i != 4; i++) {
                 double predicted_armor_yaw = predicted_yaw + i * 1.57;

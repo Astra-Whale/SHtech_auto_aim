@@ -93,7 +93,7 @@ namespace predict
 
         // === 射击决策参数 ===
         /// @brief 轨迹跟踪一致性阈值 (弧度)
-        const double same_trace_threshold = 0.01;
+        const double same_trace_threshold = 0.0035;
         
         /// @brief 射击精度阈值 (弧度) - 约等于atan(0.05/0.4)
         const double fire_threshold = 0.05; // 0.125;
