@@ -141,12 +141,12 @@ namespace plan
     */
     void PlannerSubModule::output_data_to_plot(const Target &target, const Plan &plan, std::shared_ptr<ThreadDataPack> data) 
     {
-        LOGT_S();
+        // LOGT_S();
 
-        cout << data->robotstatus.robot_speed_mps << endl;
+        // cout << data->robotstatus.robot_speed_mps << endl;
 
-        cout << data->attitude.yaw() << endl;
-        cout << data->attitude.pitch() << endl;
+        // cout << data->attitude.yaw() << endl;
+        // cout << data->attitude.pitch() << endl;
 
         // cout << (tracked_armor.source == DetectionSource::TRADITIONAL ? 1 : 0) << endl;
 
@@ -194,11 +194,12 @@ namespace plan
         // cout << plan.aimed_armor_pos(1, 0) << endl;
         // cout << plan.aimed_armor_pos(2, 0) << endl;
 
-        cout << plan.target_yaw / M_PI * 180.0f << std::endl;
+        cout << plan.target_yaw << std::endl;
+        // cout << plan.target_yaw / M_PI * 180.0f << std::endl;
         // cout << plan.target_yaw_speed << std::endl;
         // cout << plan.target_yaw_acc << endl;
 
-        cout << plan.target_pitch / M_PI * 180.0f << std::endl;
+        // cout << plan.target_pitch / M_PI * 180.0f << std::endl;
         // cout << plan.target_pitch_speed / M_PI * 180.0f << std::endl;
         // cout << plan.target_pitch_acc / M_PI * 180.0f << endl;
 
