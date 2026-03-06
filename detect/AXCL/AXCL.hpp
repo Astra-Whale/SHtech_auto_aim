@@ -24,13 +24,6 @@
 #include "ax_sys_api.h"
 #include "ax_engine_api.h"
 
-struct LayerConfig {
-    int grid_h;
-    int grid_w;
-    float anchors[3][2];
-    int stride;
-};
-
 /*
  * 四点模型
  */
