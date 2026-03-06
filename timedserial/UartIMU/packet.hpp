@@ -16,7 +16,7 @@ typedef struct __attribute__((packed))
     float yaw_acc;
     float pitch_acc;
     float dist;
-    uint8_t shoot; // 0 is disable, 1 is enable, 2 is self-determined
+    uint8_t shoot; // 0 is disable, 1 is enable continue shoot, 2 is self-determined, 3 is single shoot
     uint8_t target_id; // 1-7: robot, 8: outpost, 9: base, 0: none
 } advv_detection_t;
 

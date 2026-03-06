@@ -36,8 +36,7 @@ namespace plan
          * @brief   构造函数
          * @param[in] message_bridge 消息桥接对象引用
          */
-        PlannerSubModule(pipeline::bridge::PlannerToSerialBridge &message_bridge, int comm_latency_, int single_shoot_latency_, 
-                            int continue_shoot_latency_, double pitch_comp, double yaw_comp, bool disable_vehicle_center_shoot_mode,
+        PlannerSubModule(pipeline::bridge::PlannerToSerialBridge &message_bridge, const std::string planner_param,
                             bool debug_, bool show_, bool plot_);
         virtual ~PlannerSubModule() = default;
 
