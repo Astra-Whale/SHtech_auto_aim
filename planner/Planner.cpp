@@ -24,20 +24,26 @@ namespace predict
      * @param debug_ 调试模式标志
      * @details 初始化MPC求解器和默认参数
      */
-    Planner::Planner(double comm_latency_, double single_shoot_latency_, double continue_shoot_latency_, double pitch_comp_, double yaw_comp_, 
-                        bool disable_vehicle_center_shoot_mode_, bool debug_)
+    Planner::Planner(const std::string planner_param, bool debug_)
     : armor_jump_tp(std::chrono::high_resolution_clock::now()),
       fire_enable_tp(std::chrono::high_resolution_clock::now()),
       armor_jump(false),
-      comm_latency(comm_latency_),
-      single_shoot_latency(single_shoot_latency_),
-      continue_shoot_latency(continue_shoot_latency_),
-      pitch_comp(pitch_comp_),
-      yaw_comp(yaw_comp_),
-      disable_vehicle_center_shoot_mode(disable_vehicle_center_shoot_mode_),
       debug(debug_),
       coord_transformer(CoordTransformer::Get())
     {
+        cv::FileStorage fin(planner_param, cv::FileStorage::READ);
+
+        // 读取规划器参数
+        fin["planner"]["latency"] >> comm_latency;
+        comm_latency /= 1e3; 
+        fin["planner"]["single_shoot_latency"] >> single_shoot_latency;
+        single_shoot_latency /= 1e3; 
+        fin["planner"]["continue_shoot_latency"] >> continue_shoot_latency;
+        continue_shoot_latency /= 1e3; 
+        fin["planner"]["pitch_comp"] >> pitch_comp;
+        fin["planner"]["yaw_comp"] >> yaw_comp;
+        fin["planner"]["disable_vehicle_center_shoot_mode"] >> disable_vehicle_center_shoot_mode;
+
         shoot_offset = static_cast<int>(continue_shoot_latency / DT);
 
         plan.aimed_target_type = AimedTargetType::NONE;
@@ -102,8 +108,8 @@ namespace predict
         // 以下代码可用于手动强制设置瞄准类型进行调试
         // plan.aimed_target_type = AimedTargetType::ARMOR_WITH_NO_MODEL;
         // plan.aimed_target_type = AimedTargetType::ARMOR_WITH_ARMOR_MODEL;
-        plan.aimed_target_type = AimedTargetType::ARMOR_WITH_VEHICLE_MODEL;
-        // plan.aimed_target_type = AimedTargetType::VEHICLE_CENTER_WITH_VEHICLE_MODEL;
+        // plan.aimed_target_type = AimedTargetType::ARMOR_WITH_VEHICLE_MODEL;
+        plan.aimed_target_type = AimedTargetType::VEHICLE_CENTER_WITH_VEHICLE_MODEL;
         
         // === 策略1: 无模型 ===
         // 直接瞄准当前检测到的装甲板位置，适用于初始检测阶段

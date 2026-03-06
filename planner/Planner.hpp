@@ -258,8 +258,7 @@ namespace predict
          * @param shoot_latency_ 发射延迟时间 (s)
          * @param debug_ 调试模式标志
          */
-        explicit Planner(double comm_latency_, double single_shoot_latency_, double continue_shoot_latency_, 
-                        double pitch_comp_, double yaw_comp_, bool disable_vehicle_center_shoot_mode_, bool debug_);
+        explicit Planner(const std::string planner_param, bool debug_);
 
         /**
          * @brief 重置规划器状态

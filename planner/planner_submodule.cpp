@@ -7,12 +7,10 @@
 
 namespace plan
 {
-    PlannerSubModule::PlannerSubModule(pipeline::bridge::PlannerToSerialBridge &message_bridge, int comm_latency_, int single_shoot_latency_, 
-        int continue_shoot_latency_, double pitch_comp, double yaw_comp, bool disable_vehicle_center_shoot_mode, 
+    PlannerSubModule::PlannerSubModule(pipeline::bridge::PlannerToSerialBridge &message_bridge, const std::string planner_param,
         bool debug_, bool show_, bool plot_) 
         : SubModule(SubModuleName::PLANNER), planner_bridge(message_bridge),
-          planner(comm_latency_ / 1e3, single_shoot_latency_ / 1e3, continue_shoot_latency_ / 1e3, 
-                    pitch_comp, yaw_comp, disable_vehicle_center_shoot_mode, debug_),
+          planner(planner_param, debug_),
           coord_transformer(CoordTransformer::Get()),
           debug(debug_),
           show(show_),
