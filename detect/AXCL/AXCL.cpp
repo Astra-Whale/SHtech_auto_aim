@@ -216,7 +216,13 @@ constexpr float sigmoid(float x)
     return 1 / (1 + std::exp(-x));
 }
 
-AXCL::AXCL(const std::string &AXCL_file) : BackEnd(), inputTensorValues(3*384*640, 0)
+static const LayerConfig layer_configs[3] = {
+    {64, 80, {{10, 13}, {16, 30}, {33, 23}}, 8},
+    {32, 40, {{30, 61}, {62, 45}, {59, 119}}, 16},
+    {16, 20, {{116, 90}, {156, 198}, {373, 326}}, 32}
+};
+
+AXCL::AXCL(const std::string &AXCL_file) : BackEnd(), inputTensorValues(3*512*640, 0)
 {
     AX_SYS_Init();
     AX_ENGINE_NPU_ATTR_T npu_attr;
@@ -276,15 +282,18 @@ void AXCL::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
 {
     // pre-process [bgr2rgb & resize]
     det.clear();
-    cv::Mat img_new(384, 640, CV_8UC3, inputTensorValues.data());
-    float fx = (float)src.cols / 640.f, fy = (float)src.rows / 384.f;
+    cv::Mat img_new(512, 640, CV_8UC3, inputTensorValues.data());
+    constexpr float inv_w = 1.0f / 640.f, inv_h = 1.0f / 512.f;
+    const float fx = (float)src.cols * inv_w, fy = (float)src.rows * inv_h;
     
-    if (src.cols != 640 || src.rows != 384)
+    if (src.cols != 640 || src.rows != 512)
     {
-        cv::resize(src, img_new, {640, 384});
-        cv::cvtColor(img_new, img_new, cv::COLOR_BGR2RGB);
+        cv::resize(src, img_new, {640, 512});
     }
-    cv::cvtColor(src, img_new, cv::COLOR_BGR2RGB);
+    else
+    {
+        src.copyTo(img_new);
+    }
     // 7. insert input
     memcpy(io_data.pInputs[0].pVirAddr, inputTensorValues.data(), inputTensorValues.size());
     
@@ -292,38 +301,82 @@ void AXCL::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
     SAMPLE_AX_ENGINE_DEAL_HANDLE_IO
 
     std::vector<bbox_t> candidates;
-    float* out = (float*)io_data.pOutputs[0].pVirAddr;
-    for (size_t i = 0; i < 15120; i++)
-    {
-        const float* box_buffer = out+20*i;
-        if (box_buffer[8] < inv_sigmoid(KEEP_THRES))
-            continue;
-        candidates.emplace_back();
-        auto &box = candidates.back();
-        memcpy(&box.pts, box_buffer, 8 * sizeof(float));
-        for (auto &pt : box.pts)
-            pt.x *= fx, pt.y *= fy;
-        box.confidence = sigmoid(box_buffer[8]);
-        box.color_id = argmax(box_buffer + 9, 4);
-        box.tag_id = argmax(box_buffer + 13, 7);
-    }
-    std::sort(candidates.begin(), candidates.end(), std::greater<bbox_t>());
-    // post-process [nms]
-    det.reserve(TOPK_NUM);
-    std::vector<uint8_t> removed(TOPK_NUM);
-    for (int i = 0; i < TOPK_NUM && i < candidates.size(); i++)
-    {
-        if (removed[i])
-            continue;
-    	auto& box1 = candidates.at(i);
-        for (int j = i + 1; j < TOPK_NUM && j < candidates.size(); j++)
-        {
-            auto& box2 = candidates.at(j);
-            if (removed[j])
-                continue;
-            if (is_overlap(box1, box2))
-                removed[j] = true;
+    candidates.reserve(512);
+
+    const float* out = (float*)io_data.pOutputs[0].pVirAddr;
+    constexpr float thres_logit = inv_sigmoid(KEEP_THRES);
+    constexpr int max_candidates = 500;
+
+    int global_idx = 0;
+
+    // 三层anchor-based解码
+    for (int l = 0; l < 3; ++l) {
+        const auto& conf = layer_configs[l];
+        const float s_fx = conf.stride * fx;
+        const float s_fy = conf.stride * fy;
+
+        for (int a = 0; a < 3; ++a) {
+            const float a_w_fx = conf.anchors[a][0] * fx;
+            const float a_h_fy = conf.anchors[a][1] * fy;
+
+            for (int y = 0; y < conf.grid_h; ++y) {
+                const float py = y * s_fy;
+
+                for (int x = 0; x < conf.grid_w; ++x) {
+                    const float* box_buffer = out + 22 * global_idx;
+                    global_idx++;
+
+                    // 预过滤：置信度
+                    if (box_buffer[8] < thres_logit) continue;
+
+                    // 预过滤：颜色逻辑映射
+                    int color_id = argmax(box_buffer + 9, 4);
+                    if (color_id == 2 || color_id == 3) continue;
+
+                    if ((int)candidates.size() >= max_candidates) {
+                        LOGW_S("[AXCL] Candidate limit reached (%d), stopping early detection.\n", max_candidates);
+                        goto decode_done;
+                    }
+
+                    candidates.emplace_back();
+                    auto &box = candidates.back();
+                    
+                    const float px = x * s_fx;
+
+                    // 还原4个关键点
+                    for (int k = 0; k < 4; k++) {
+                        box.pts[k].x = box_buffer[2 * k] * a_w_fx + px;
+                        box.pts[k].y = box_buffer[2 * k + 1] * a_h_fy + py;
+                    }
+
+                    box.confidence = sigmoid(box_buffer[8]);
+                    box.color_id = (color_id == 0) ? 1 : 0;
+
+                    // 类别标签映射
+                    int class_id = argmax(box_buffer + 13, 9);
+                    if (class_id == 7 || class_id == 8) class_id = 0;
+                    else if (class_id == 0) class_id = 7;
+                    box.tag_id = class_id;
+                }
+            }
         }
-        det.push_back(box1);
+    }
+
+decode_done:
+    // 排序与NMS
+    std::sort(candidates.begin(), candidates.end(), std::greater<bbox_t>());
+
+    det.clear();
+    std::vector<bool> removed(candidates.size(), false);
+
+    for (int i = 0; i < (int)candidates.size() && (int)det.size() < TOPK_NUM; i++) {
+        if (removed[i]) continue;
+        det.push_back(candidates[i]);
+
+        for (int j = i + 1; j < (int)candidates.size(); j++) {
+            if (!removed[j] && is_overlap(candidates[i], candidates[j])) {
+                removed[j] = true;
+            }
+        }
     }
 }
