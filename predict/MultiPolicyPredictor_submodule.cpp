@@ -278,8 +278,8 @@ namespace predict
             }
 
             // === 执行跟踪更新 ===
-            auto &target = tracker.track(tracked_measurement, secondary_tracked_measurement, same_id_armor_count, tracked_armor.tag_id, tp, attitude_yaw);
-            // auto &target = tracker.track(tracked_measurement, secondary_tracked_measurement, same_id_armor_count, 0, tp, attitude_yaw);
+            // auto &target = tracker.track(tracked_measurement, secondary_tracked_measurement, same_id_armor_count, tracked_armor.tag_id, tp, attitude_yaw);
+            auto &target = tracker.track(tracked_measurement, secondary_tracked_measurement, same_id_armor_count, 0, tp, attitude_yaw);
 
             data->target = target;
             data->target.tracked_armor = tracked_armor;

@@ -101,7 +101,7 @@ namespace predict
         /// @brief 位置变化阈值 (米)，用于检测装甲板切换
         const double same_position_threshold = 0.2;
 
-        const double shoot_interval = 0.3;
+        const double shoot_interval = 0.2;
 
     private:
         // === 配置参数 ===

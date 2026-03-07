@@ -139,12 +139,12 @@ namespace plan
     */
     void PlannerSubModule::output_data_to_plot(const Target &target, const Plan &plan, std::shared_ptr<ThreadDataPack> data) 
     {
-        // LOGT_S();
+        LOGT_S();
 
         // cout << data->robotstatus.robot_speed_mps << endl;
 
-        // cout << data->attitude.yaw() << endl;
-        // cout << data->attitude.pitch() << endl;
+        cout << data->attitude.yaw() << endl;
+        cout << data->attitude.pitch() << endl;
 
         // cout << (tracked_armor.source == DetectionSource::TRADITIONAL ? 1 : 0) << endl;
 
@@ -159,7 +159,8 @@ namespace plan
         // cout << target.tracked_state(2, 0) - target.tracked_state(8, 0) * sin(target.tracked_state(6, 0)) << std::endl;
         // cout << target.tracked_measurement(2, 0) << std::endl;
         // cout << target.tracked_measurement(3, 0) << std::endl;
-        // std::cout << static_cast<int>(target.predictor_state) << std::endl;
+
+        std::cout << static_cast<int>(target.predictor_state) << std::endl;
         // cout << target.ab_counter << std::endl;
 
         // cout << target.yaw_state(0, 0) << endl;
@@ -186,7 +187,7 @@ namespace plan
         // cout << target.tracked_state(9, 0) << std::endl;
         // cout << target.tracked_state(10, 0) << std::endl;
 
-        // cout << target.vehicle_model_trust << std::endl;
+        cout << target.vehicle_model_trust << std::endl;
 
         // cout << plan.aimed_armor_pos(0, 0) << endl;
         // cout << plan.aimed_armor_pos(1, 0) << endl;
@@ -194,8 +195,8 @@ namespace plan
 
         cout << plan.target_yaw << std::endl;
         // cout << plan.target_yaw / M_PI * 180.0f << std::endl;
-        // cout << plan.target_yaw_speed << std::endl;
-        // cout << plan.target_yaw_acc << endl;
+        cout << plan.target_yaw_speed << std::endl;
+        cout << plan.target_yaw_acc << endl;
 
         // cout << plan.target_pitch / M_PI * 180.0f << std::endl;
         // cout << plan.target_pitch_speed / M_PI * 180.0f << std::endl;

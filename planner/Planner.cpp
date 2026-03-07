@@ -13,6 +13,13 @@
 
 #include "Planner.hpp"
 
+// === 评测标准开关 ===
+#define ASSESSMENT_CRITERIA 1
+
+#if ASSESSMENT_CRITERIA
+int vx_constant_counter = 0;
+#endif
+
 namespace predict
 {
     int a=0;
@@ -303,8 +310,7 @@ namespace predict
             if (debug)
                 cout << "[predictor] target: armor with vehicle model" << endl;
         }
-        
-        // TODO: current parameter is not suitable for different target distance (?)
+
         // === 策略4: 整车模型瞄准车辆中心 ===
         // 瞄准车辆旋转中心，适用于高速旋转目标，预测发射窗口
         else if (plan.aimed_target_type == AimedTargetType::VEHICLE_CENTER_WITH_VEHICLE_MODEL) {
@@ -331,7 +337,7 @@ namespace predict
 
                 if (predicted_armor_yaw > M_PI_2) predicted_armor_yaw -= M_PI;
                 if (predicted_armor_yaw <= -M_PI_2) predicted_armor_yaw += M_PI;
- 
+
                 if ((target.tracked_state(7, 0) > 0 && predicted_armor_yaw < 0) || (target.tracked_state(7, 0) < 0 && predicted_armor_yaw > 0) ||
                     (target.tracked_state(7, 0) == 0)) {
                     next_aimed_armor_index = i;
@@ -347,11 +353,18 @@ namespace predict
             double center_yaw = pw_to_yaw(hit_pos);
             hit_pos(0, 0) += sin(center_yaw) * next_r;
             hit_pos(1, 0) += cos(center_yaw) * next_r;
+
+            // cout << "bullet speed: " << bullet_speed << endl;
             
             fly_time = cal_fly_time(hit_pos, bullet_speed);
 
             process_latency = duration_cast<microseconds>(std::chrono::high_resolution_clock::now() - tp).count() / 1e6;   
             total_delay = process_latency + comm_latency + fly_time;
+
+            // cout << "total_delay: " << total_delay << endl;
+            // cout << "comm_latency: " << comm_latency << endl;
+            // cout << "fly_time: " << fly_time << endl;
+            // cout << "process_latency: " << process_latency << endl;
 
             // 预测车辆中心位置
             Pos3D aimed_center_pos;
@@ -422,10 +435,14 @@ namespace predict
             plan.target_yaw_speed = res(0, 0);
             plan.target_pitch_speed = res(1, 0);
 
-            res = cal_target_acc(x_state, y_state, z_state);
+            // TODO
+            // res = cal_target_acc(x_state, y_state, z_state);
 
-            plan.target_yaw_acc = res(0, 0);
-            plan.target_pitch_acc = res(1, 0);
+            // plan.target_yaw_acc = res(0, 0);
+            // plan.target_pitch_acc = res(1, 0);
+
+            plan.target_yaw_acc = 0;
+            plan.target_pitch_acc = 0;
 
             plan.target_distance = distance_3D(aimed_center_pos) - target.tracked_state(8, 0);
 
@@ -440,7 +457,7 @@ namespace predict
 
                 if (predicted_armor_yaw > M_PI_2) predicted_armor_yaw -= M_PI;
                 if (predicted_armor_yaw <= -M_PI_2) predicted_armor_yaw += M_PI;
- 
+
                 if (abs(aimed_direction - predicted_armor_yaw) < fire_threshold) {
                     aimed_armor_index = i;
                     break;
@@ -448,18 +465,47 @@ namespace predict
 
             }
 
-            if (duration_cast<microseconds>(std::chrono::high_resolution_clock::now() - fire_enable_tp).count() / 1e6 > shoot_interval) {
-                if (aimed_armor_index != -1){
-                    plan.fire_enable = 3;
-                    fire_enable_tp = std::chrono::high_resolution_clock::now();
+            #if ASSESSMENT_CRITERIA
+                if (abs(target.tracked_state(3, 0)) > 0.9) {
+                    vx_constant_counter++;
+
+                    if (vx_constant_counter > 50) {
+                        if (duration_cast<microseconds>(std::chrono::high_resolution_clock::now() - fire_enable_tp).count() / 1e6 > shoot_interval) {
+                            if (aimed_armor_index != -1){
+                                plan.fire_enable = 3;
+                                fire_enable_tp = std::chrono::high_resolution_clock::now();
+                            }
+                            else {
+                                plan.fire_enable = 0;
+                            }
+                        }
+                        else {
+                            plan.fire_enable = 0;
+                        }
+                    }
+                    else {
+                        plan.fire_enable = 0;
+                    }
+                    
+                }
+                else {
+                    plan.fire_enable = 0;
+                    vx_constant_counter = 0;
+                }
+            #else
+                if (duration_cast<microseconds>(std::chrono::high_resolution_clock::now() - fire_enable_tp).count() / 1e6 > shoot_interval) {
+                    if (aimed_armor_index != -1){
+                        plan.fire_enable = 3;
+                        fire_enable_tp = std::chrono::high_resolution_clock::now();
+                    }
+                    else {
+                        plan.fire_enable = 0;
+                    }
                 }
                 else {
                     plan.fire_enable = 0;
                 }
-            }
-            else {
-                plan.fire_enable = 0;
-            }
+            #endif
 
             if (debug)
                 cout << "[predictor] target: vehicle center with vehicle model" << endl;
@@ -833,6 +879,7 @@ namespace predict
         return {target_yaw_speed, target_pitch_speed};
     }
 
+    // TODO： error in CV assumption
     /**
      * @brief 计算目标角加速度
      * @param x_state X坐标状态 [x, vx]

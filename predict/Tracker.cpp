@@ -126,7 +126,8 @@ namespace predict
             target.tracked_state(8, 0) = outpost_r;
             target.tracked_state(9, 0) = 0.0;
 
-            p_coord = 1e1;
+            // TODO
+            p_coord = 1e2; // 1e1
             p_yaw = 1e1;
         }
         else {
@@ -205,19 +206,29 @@ namespace predict
                     std::cout << "[predict] vehicle model update only" << std::endl;
             }
         }
+        else {
+            if (debug)
+                std::cout << "[predict] no same id armor" << std::endl;
+        }
 
         // === 整车模型更新 ===
         if (same_id_armor_count) {
             if (target.updating_model_type != UpdatingModelType::ARMOR_MODEL) {
                 if (same_id_armor_count == 1) {
                     int id = match_armor_id(target.tracked_measurement);
+                    // cout << "matched armor id: " << id << endl;
+
                     target.tracked_state = whole_state_ekf.update(target.tracked_measurement, id);
                 }
                 else if (same_id_armor_count == 2) {
                     int id = match_armor_id(target.tracked_measurement);
+                    // cout << "matched armor id: " << id << endl;
+
                     target.tracked_state = whole_state_ekf.update(target.tracked_measurement, id);
 
                     id = match_armor_id(secondary_measurement);
+                    // cout << "matched armor id: " << id << endl;
+
                     target.tracked_state = whole_state_ekf.update(secondary_measurement, id);
                 }
 
@@ -529,8 +540,8 @@ namespace predict
     void Tracker::whole_state_ekf_init()
     {
         // === 状态转移函数 ===
-        // 状态: y, vy, x, vx, z, vz, yaw(-∞, +∞), vyaw, r, l, h
-        // 观测: y, x, z, yaw(-∞, +∞)
+        // 状态: y, vy, x, vx, z, vz, yaw, vyaw, r, l, h
+        // 观测: y, x, z, yaw
         auto f_ = [this](const Eigen::Matrix<double, 11, 1> & x) {
             Eigen::Matrix<double, 11, 1> x_pri = x;
             // 积分更新位置和角度
@@ -817,6 +828,7 @@ namespace predict
                 // 跟踪丢失，进入暂时丢失状态
                 temp_lost_counter++;
                 target.predictor_state = TrackingState::TEMP_LOST;
+                temp_lost_tp = std::chrono::high_resolution_clock::now();
             }
         }
         else if (target.predictor_state == TrackingState::TEMP_LOST) {
