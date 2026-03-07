@@ -90,7 +90,7 @@ namespace predict
         const int least_rotate_count = 3;
 
         const double outpost_r = 0.33;
-        const double outpost_yaw_speed = 3.14;
+        const double outpost_yaw_speed = 4.19;
         const double outpost_fix_yaw_speed_threshold = 2.5; 
 
     private:
@@ -217,6 +217,9 @@ namespace predict
         
         /// @brief 暂时丢失计数器
         int temp_lost_counter;
+
+        /// @brief 暂时丢失时间点
+        TP temp_lost_tp;
 
         /// @brief 目标旋转计数器
         int rotate_counter;

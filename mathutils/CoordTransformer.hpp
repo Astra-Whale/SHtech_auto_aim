@@ -16,6 +16,7 @@
 
 // modules
 #include "common.hpp"
+#include "math_tools.hpp"
 
 // packages
 #include <ctime>
