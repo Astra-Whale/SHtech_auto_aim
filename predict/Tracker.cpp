@@ -216,19 +216,13 @@ namespace predict
             if (target.updating_model_type != UpdatingModelType::ARMOR_MODEL) {
                 if (same_id_armor_count == 1) {
                     int id = match_armor_id(target.tracked_measurement);
-                    // cout << "matched armor id: " << id << endl;
-
                     target.tracked_state = whole_state_ekf.update(target.tracked_measurement, id);
                 }
                 else if (same_id_armor_count == 2) {
                     int id = match_armor_id(target.tracked_measurement);
-                    // cout << "matched armor id: " << id << endl;
-
                     target.tracked_state = whole_state_ekf.update(target.tracked_measurement, id);
 
                     id = match_armor_id(secondary_measurement);
-                    // cout << "matched armor id: " << id << endl;
-
                     target.tracked_state = whole_state_ekf.update(secondary_measurement, id);
                 }
 
@@ -325,7 +319,7 @@ namespace predict
         int id;
         auto min_angle_error = 1e10;
         const std::vector<Eigen::Vector4d> & xyza_list = armor_xyza_list();
-      
+
         std::vector<std::pair<Eigen::Vector4d, int>> xyza_i_list;
         for (int i = 0; i < 4; i++) {
           xyza_i_list.push_back({xyza_list[i], i});
@@ -342,7 +336,7 @@ namespace predict
         Eigen::Vector3d xyz_measurement;
         xyz_measurement << measurement(0, 0), measurement(1, 0), measurement(2, 0);
         Eigen::Vector3d ypd_measurement = mathutils::xyz2ypd(xyz_measurement);
-      
+
         // 取前3个distance最小的装甲板
         for (int i = 0; i < 3; i++) {
           const auto & xyza = xyza_i_list[i].first;
@@ -350,8 +344,6 @@ namespace predict
           auto angle_error = std::abs(mathutils::limit_rad(measurement(3, 0) - xyza[3])) +
                              std::abs(mathutils::limit_rad(ypd_measurement[0] - ypd[0]));
 
-        // auto angle_error = std::abs(mathutils::limit_rad(ypd_measurement[0] - ypd[0]));
-      
           if (std::abs(angle_error) < std::abs(min_angle_error)) {
             id = xyza_i_list[i].second;
             min_angle_error = angle_error;
