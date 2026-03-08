@@ -30,4 +30,4 @@ T_c2i: !!opencv-matrix
    rows: 3
    cols: 1
    dt: f
-   data: [0.075, -0.044, 0.043] 
+   data: [ 0.075, -0.044, 0.043 ] 
