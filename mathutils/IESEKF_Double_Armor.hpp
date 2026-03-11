@@ -216,7 +216,7 @@ namespace mathutils
                 // 3. 计算残差
                 // 观测残差: z - h(x_k)
                 Matrix_z1d innovation = Z - h(X_cur, id);
-                
+
                 // 先验残差: x_pri - x_k (使用 x_minus 处理角度归一化)
                 Matrix_x1d dx_pri = x_minus(X_pri, X_cur);
 

@@ -9,3 +9,4 @@ planner:
   pitch_comp: 0.02               # Pitch compensation # 步兵： 0.03， 无人机：0.01
   yaw_comp: 0.0                  # Yaw compensation
   disable_vehicle_center_shoot_mode: true
+  consider_air_resistence: false

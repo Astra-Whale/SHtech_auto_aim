@@ -103,9 +103,10 @@ namespace plan
             send.distance = plan.target_distance;                          // 目标距离
             send.fire_enable = plan.fire_enable;                          // 射击使能
 
-            // if (send.fire_enable == 3) {
-            //     cout << "fire 11111111111111111111111111111111" << endl;
-            // }
+            if (send.fire_enable == 3) {
+                LOGT_S();
+                cout << "fire 11111111111111111111111111111111" << endl;
+            }
 
             send.pitch_angle = (plan.target_pitch - attitude_pitch) / M_PI * 180.0f;         // 俯仰角（转换为度数）
             send.pitch_speed = plan.target_pitch_speed;                   // 俯仰角速度
@@ -128,6 +129,12 @@ namespace plan
             if (debug)
                 cout << "[predictor] target: none" << endl;
         }
+
+        // send.fire_enable = 1;
+        // send.pitch_angle = 0;
+        // send.yaw_angle = 0;
+        // send.target_id = 2;
+        // send.distance = 1;
     }
 
     /**
@@ -139,19 +146,19 @@ namespace plan
     */
     void PlannerSubModule::output_data_to_plot(const Target &target, const Plan &plan, std::shared_ptr<ThreadDataPack> data) 
     {
-        LOGT_S();
+        // LOGT_S();
 
         // cout << data->robotstatus.robot_speed_mps << endl;
 
-        cout << data->attitude.yaw() << endl;
-        cout << data->attitude.pitch() << endl;
+        // cout << data->attitude.yaw() << endl;
+        // cout << data->attitude.pitch() << endl;
 
         // cout << (tracked_armor.source == DetectionSource::TRADITIONAL ? 1 : 0) << endl;
 
-        // cout << target.tracked_measurement(0, 0) << std::endl;
-        // cout << target.tracked_measurement(1, 0) << std::endl;
-        // cout << target.tracked_measurement(2, 0) << std::endl;
-        // cout << target.tracked_measurement(3, 0) << std::endl;
+        cout << target.tracked_measurement(0, 0) << std::endl;
+        cout << target.tracked_measurement(1, 0) << std::endl;
+        cout << target.tracked_measurement(2, 0) << std::endl;
+        cout << target.tracked_measurement(3, 0) << std::endl;
 
         // cout << target.tracked_measurement(0, 0) + target.tracked_state(8, 0) * cos(target.tracked_state(6, 0)) << std::endl;
         // cout << target.tracked_measurement(1, 0) + target.tracked_state(8, 0) * sin(target.tracked_state(6, 0)) << std::endl;
@@ -160,7 +167,7 @@ namespace plan
         // cout << target.tracked_measurement(2, 0) << std::endl;
         // cout << target.tracked_measurement(3, 0) << std::endl;
 
-        std::cout << static_cast<int>(target.predictor_state) << std::endl;
+        // std::cout << static_cast<int>(target.predictor_state) << std::endl;
         // cout << target.ab_counter << std::endl;
 
         // cout << target.yaw_state(0, 0) << endl;
@@ -175,28 +182,28 @@ namespace plan
         // cout << target.armor_z_state(0, 0) << endl;
         // cout << target.armor_z_state(1, 0) << endl;
 
-        // cout << target.tracked_state(0, 0) << std::endl;
-        // cout << target.tracked_state(1, 0) << std::endl;
-        // cout << target.tracked_state(2, 0) << std::endl;
-        // cout << target.tracked_state(3, 0) << std::endl;
-        // cout << target.tracked_state(4, 0) << std::endl;
-        // cout << target.tracked_state(5, 0) << std::endl;
-        // cout << target.tracked_state(6, 0) << std::endl;
-        // cout << target.tracked_state(7, 0) << std::endl;
-        // cout << target.tracked_state(8, 0) << std::endl;
-        // cout << target.tracked_state(9, 0) << std::endl;
-        // cout << target.tracked_state(10, 0) << std::endl;
+        cout << target.tracked_state(0, 0) << std::endl;
+        cout << target.tracked_state(1, 0) << std::endl;
+        cout << target.tracked_state(2, 0) << std::endl;
+        cout << target.tracked_state(3, 0) << std::endl;
+        cout << target.tracked_state(4, 0) << std::endl;
+        cout << target.tracked_state(5, 0) << std::endl;
+        cout << target.tracked_state(6, 0) << std::endl;
+        cout << target.tracked_state(7, 0) << std::endl;
+        cout << target.tracked_state(8, 0) << std::endl;
+        cout << target.tracked_state(9, 0) << std::endl;
+        cout << target.tracked_state(10, 0) << std::endl;
 
-        cout << target.vehicle_model_trust << std::endl;
+        // cout << target.vehicle_model_trust << std::endl;
 
         // cout << plan.aimed_armor_pos(0, 0) << endl;
         // cout << plan.aimed_armor_pos(1, 0) << endl;
         // cout << plan.aimed_armor_pos(2, 0) << endl;
 
-        cout << plan.target_yaw << std::endl;
+        // cout << plan.target_yaw << std::endl;
         // cout << plan.target_yaw / M_PI * 180.0f << std::endl;
-        cout << plan.target_yaw_speed << std::endl;
-        cout << plan.target_yaw_acc << endl;
+        // cout << plan.target_yaw_speed << std::endl;
+        // cout << plan.target_yaw_acc << endl;
 
         // cout << plan.target_pitch / M_PI * 180.0f << std::endl;
         // cout << plan.target_pitch_speed / M_PI * 180.0f << std::endl;

@@ -101,7 +101,7 @@ namespace predict
         /// @brief 位置变化阈值 (米)，用于检测装甲板切换
         const double same_position_threshold = 0.2;
 
-        const double shoot_interval = 0.2;
+        const double shoot_interval = 0.25; // 1.0; // 0.25
 
     private:
         // === 配置参数 ===
@@ -122,6 +122,8 @@ namespace predict
         double yaw_comp = 0;
 
         bool disable_vehicle_center_shoot_mode = true;
+
+        bool consider_air_resistence = false;
 
         /// @brief 调试模式标志
         bool debug;

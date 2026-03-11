@@ -40,6 +40,7 @@ using namespace mathutils;
 namespace predict
 {
     using namespace std::chrono;
+
     /**
      * @class Tracker
      * @brief 目标跟踪器类 - 多模型自适应跟踪系统
@@ -90,7 +91,7 @@ namespace predict
         const int least_rotate_count = 3;
 
         const double outpost_r = 0.33;
-        const double outpost_yaw_speed = 4.19;
+        const double outpost_yaw_speed = 4.19; // 3.14;
         const double outpost_fix_yaw_speed_threshold = 2.5; 
 
     private:

@@ -123,6 +123,7 @@ namespace predict
             if (abs(target.tracked_state(7, 0)) > outpost_fix_yaw_speed_threshold) {
                 target.tracked_state(7, 0) = target.tracked_state(7, 0) > 0 ? outpost_yaw_speed : -outpost_yaw_speed;
             }
+
             target.tracked_state(8, 0) = outpost_r;
             target.tracked_state(9, 0) = 0.0;
 
@@ -216,13 +217,19 @@ namespace predict
             if (target.updating_model_type != UpdatingModelType::ARMOR_MODEL) {
                 if (same_id_armor_count == 1) {
                     int id = match_armor_id(target.tracked_measurement);
+                    // cout << "matched id: " << id << std::endl;
+
                     target.tracked_state = whole_state_ekf.update(target.tracked_measurement, id);
                 }
                 else if (same_id_armor_count == 2) {
                     int id = match_armor_id(target.tracked_measurement);
+                    // cout << "matched id: " << id << std::endl;
+
                     target.tracked_state = whole_state_ekf.update(target.tracked_measurement, id);
 
                     id = match_armor_id(secondary_measurement);
+                    // cout << "matched id: " << id << std::endl;
+
                     target.tracked_state = whole_state_ekf.update(secondary_measurement, id);
                 }
 
@@ -265,6 +272,8 @@ namespace predict
                 // // 检查EKF是否发散
                 // if (check_ekf_divergence(attitude_yaw)) {
                 //     reset_whole_state_ekf();
+
+                //     cout << "[predict] ekf diverge, reset" << endl;
 
                 //     if (debug)
                 //         cout << "[predict] vehicle model converge" << endl;
@@ -341,7 +350,10 @@ namespace predict
         for (int i = 0; i < 3; i++) {
           const auto & xyza = xyza_i_list[i].first;
           Eigen::Vector3d ypd = mathutils::xyz2ypd(xyza.head(3));
-          auto angle_error = std::abs(mathutils::limit_rad(measurement(3, 0) - xyza[3])) +
+        //   auto angle_error = std::abs(mathutils::limit_rad(measurement(3, 0) - xyza[3])) +
+        //                      std::abs(mathutils::limit_rad(ypd_measurement[0] - ypd[0]));
+
+        auto angle_error = std::abs(mathutils::limit_rad(measurement(3, 0) - xyza[3])) +
                              std::abs(mathutils::limit_rad(ypd_measurement[0] - ypd[0]));
 
           if (std::abs(angle_error) < std::abs(min_angle_error)) {
