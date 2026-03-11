@@ -20,21 +20,21 @@ public:
         {
         case Severity::kINTERNAL_ERROR:
         case Severity::kERROR:
-            LOGE_F("[detect]Error: %s", msg);
-	    LOGE_S("[detect]Error: %s", msg);
+            LOGE_F("[TRTdetect] Error: %s", msg);
+	    LOGE_S("[TRTdetect] Error: %s", msg);
 	    break;
         case Severity::kWARNING:
-            LOGW_F("[detect]Warning: %s", msg);
-            LOGW_S("[detect]Warning: %s", msg);
+            LOGW_F("[TRTdetect] Warning: %s", msg);
+            LOGW_S("[TRTdetect] Warning: %s", msg);
 	    break;
         case Severity::kINFO:
 	case Severity::kVERBOSE:
-            LOGM_F("[detect]Info: %s", msg);
+            LOGM_F("[TRTdetect] Info: %s", msg);
         }
     }
     void StageLog(std::string msg)
     {
-        LOGM_F("[detect] %s", msg.c_str());
+        LOGM_F("[TRTdetect] %s", msg.c_str());
     }
 };
 

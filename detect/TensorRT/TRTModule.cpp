@@ -18,7 +18,7 @@
     {                                           \
         if (!(expr))                            \
         {                                       \
-            LOGE_S("assert fail: '" #expr "'"); \
+            LOGE_S("[TRT] assert fail: '" #expr "'"); \
             exit(-1);                           \
         }                                       \
     } while (0)

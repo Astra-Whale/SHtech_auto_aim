@@ -1,3 +1,3 @@
 cd build
-make -j
+make -j3
 cd ..
