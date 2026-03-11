@@ -10,7 +10,7 @@
 using namespace std::chrono;
 
 // 裁判系统规定的最低子弹初速（单位：米/秒）
-constexpr float MIN_BULLET_SPEED_MPS = 20.0f;
+constexpr float MIN_BULLET_SPEED_MPS = 10.0f;
 
 UartDriver::UartDriver(const std::string device_name) 
     : m_device_name(device_name), m_serial()
@@ -73,7 +73,7 @@ void UartDriver::on_receive_imu(drivers::packet_data_t* packet_ptr, drivers::pac
         temp_status.robot_speed_mps = _tmp_ptr->shoot_speed;
 
         //TODO: temporially fix initial shoot speed
-        temp_status.robot_speed_mps = 23.2f; // 步兵： 23.5f, 哨兵：23.0f
+        temp_status.robot_speed_mps = 23.2f; // 步兵： 23.5f, 哨兵：23.2f, 英雄：11.4f
 
         // 确保射速不低于最小值
         if (temp_status.robot_speed_mps < MIN_BULLET_SPEED_MPS) {

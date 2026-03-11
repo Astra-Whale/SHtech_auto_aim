@@ -50,6 +50,7 @@ namespace predict
         fin["planner"]["pitch_comp"] >> pitch_comp;
         fin["planner"]["yaw_comp"] >> yaw_comp;
         fin["planner"]["disable_vehicle_center_shoot_mode"] >> disable_vehicle_center_shoot_mode;
+        fin["planner"]["consider_air_resistence"] >> consider_air_resistence;
 
         shoot_offset = static_cast<int>(continue_shoot_latency / DT);
 
@@ -161,7 +162,7 @@ namespace predict
             hit_pos << target.armor_x_state(0, 0), target.armor_y_state(0, 0), target.armor_z_state(0, 0);
             
             // 计算弹丸飞行时间
-            double fly_time = cal_fly_time(hit_pos, bullet_speed);
+            double fly_time = cal_fly_time(hit_pos, bullet_speed, consider_air_resistence);
             double process_latency = duration_cast<microseconds>(std::chrono::high_resolution_clock::now() - tp).count() / 1e6;   
             double total_delay = process_latency + comm_latency + fly_time;
 
@@ -214,7 +215,7 @@ namespace predict
             hit_pos_average(0, 0) += sin(center_yaw) * r_average;
             hit_pos_average(1, 0) += cos(center_yaw) * r_average;
             
-            double fly_time = cal_fly_time(hit_pos_average, bullet_speed);
+            double fly_time = cal_fly_time(hit_pos_average, bullet_speed, consider_air_resistence);
             double process_latency = duration_cast<microseconds>(std::chrono::high_resolution_clock::now() - tp).count() / 1e6;   
             double total_delay = process_latency + comm_latency + fly_time;
 
@@ -322,7 +323,7 @@ namespace predict
             hit_pos_average(0, 0) += sin(center_yaw_average) * r_average;
             hit_pos_average(1, 0) += cos(center_yaw_average) * r_average;
             
-            double fly_time = cal_fly_time(hit_pos_average, bullet_speed);
+            double fly_time = cal_fly_time(hit_pos_average, bullet_speed, consider_air_resistence);
 
             double process_latency = duration_cast<microseconds>(std::chrono::high_resolution_clock::now() - tp).count() / 1e6;   
             double total_delay = process_latency + comm_latency + fly_time;
@@ -356,7 +357,7 @@ namespace predict
 
             // cout << "bullet speed: " << bullet_speed << endl;
             
-            fly_time = cal_fly_time(hit_pos, bullet_speed);
+            fly_time = cal_fly_time(hit_pos, bullet_speed, consider_air_resistence);
 
             process_latency = duration_cast<microseconds>(std::chrono::high_resolution_clock::now() - tp).count() / 1e6;   
             total_delay = process_latency + comm_latency + fly_time;
@@ -613,7 +614,7 @@ namespace predict
         Pos3D pw{aimed_armor_pos(0, 0), aimed_armor_pos(1, 0), aimed_armor_pos(2, 0)};
 
         // 计算弹丸飞行时间并进行弹道补偿
-        double fly_time = cal_fly_time(pw, bullet_speed);
+        double fly_time = cal_fly_time(pw, bullet_speed, consider_air_resistence);
         pw(2, 0) -= 0.5 * g * fly_time * fly_time;  // 重力下降补偿
 
         // 世界坐标系转换为IMU坐标系
