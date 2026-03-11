@@ -8,23 +8,36 @@
 //Std
 #include <vector>
 #include <fstream>
-#include <stdio.h>
+#include <cstdio>
 #include <string>
-#include <string.h>
+#include <cstring>
 #include <unistd.h>
-#include <stdlib.h>
-#include "signal.h"
+#include <cstdlib>
+#include <csignal>
 #include <thread>
 #include "pthread.h"
 #include <dirent.h>
 #include <mutex>
 #include <atomic>
 #include <condition_variable>
+#include <execinfo.h>
+#include <future>
+#include <map>
 
-//Task
-#include "detect.hpp"
-#include "sensor.hpp"
-#include "predict.hpp"
+//Submodules
+#include "entrystage/entryStage_submodule.hpp"
+#include "sensor/sensor_submodule.hpp"
+#include "timedserial/timed_serial.hpp"
+#include "timedserial/serial_interface.hpp"
+#include "timedserial/UartIMU/uart_driver.hpp"
+#include "timedserial/UartIMU/mock_driver.hpp"
+#include "detect/detect_submodule.hpp"
+#include "predict/MultiPolicyPredictor_submodule.hpp"
+#include "foxglove/foxglove_server.hpp"
+#include "planner/planner_submodule.hpp"
+
+//Math Utils
+#include "mathutils/CoordTransformer.hpp"
 
 //Common
 #include "common.hpp"
