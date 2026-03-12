@@ -347,7 +347,48 @@ namespace predict
           }
         }
 
-        return id;
+        return id;// 1) 构建与 EKF 一致的观测噪声 R
+        auto update_R = whole_state_ekf.get_update_R();
+
+        Eigen::Matrix<double, 4, 4> R = update_R(measurement);
+
+        // 2) 取 EKF 当前状态协方差 P
+        const Eigen::Matrix<double, 11, 11> P = whole_state_ekf.get_P();
+
+        int best_id = 0;
+        double min_mahal_sq = DBL_MAX;
+
+        auto h = whole_state_ekf.get_h();
+        auto calculate_H = whole_state_ekf.get_calculate_H();
+
+        for (int id = 0; id < 4; id++) {
+            // 3) 预测观测 z_hat = h(x, id)
+            Eigen::Matrix<double, 4, 1> z_hat = h(target.tracked_state, id);
+
+            // 4) 残差 v（yaw 处理跳变）
+            Eigen::Matrix<double, 4, 1> v = measurement - z_hat;
+            v(3, 0) = mathutils::limit_rad(v(3, 0));
+
+            // 5) 观测雅可比 H(x,id)
+            Eigen::Matrix<double, 4, 11> H = calculate_H(target.tracked_state, id);
+
+            // 6) 创新协方差 S = HPH^T + R
+            Eigen::Matrix<double, 4, 4> S = H * P * H.transpose() + R;
+            S += 1e-9 * Eigen::Matrix<double, 4, 4>::Identity();
+
+            // 用分解代替显式求逆，数值更稳
+            Eigen::LDLT<Eigen::Matrix<double, 4, 4>> ldlt(S);
+            if (ldlt.info() != Eigen::Success) continue;
+
+            const double mahal_sq = v.transpose() * ldlt.solve(v);
+
+            if (mahal_sq < min_mahal_sq) {
+                min_mahal_sq = mahal_sq;
+                best_id = id;
+            }
+        }
+
+        return best_id;
     }
 
     /**
