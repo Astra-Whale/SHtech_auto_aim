@@ -135,6 +135,8 @@ namespace mathutils
         void reset(const Matrix_x1d &X0) 
         { 
             X_post = X0; 
+            // P_post.setIdentity();
+            // P_pri.setIdentity();
         }
 
         /**
@@ -166,6 +168,26 @@ namespace mathutils
             X_post = X0;
             x_add = x_add_; 
             x_minus = x_minus_;
+        }
+
+        Matrix_xxd get_P() 
+        { 
+            return P_post; 
+        }
+
+        Func_zzd_z1d get_update_R() 
+        { 
+            return update_R; 
+        }
+
+        Func_z1d_x1d_id get_h() 
+        { 
+            return h; 
+        }
+
+        Func_zxd_x1d_id get_calculate_H() 
+        { 
+            return calculate_H; 
         }
 
         /**
@@ -216,7 +238,7 @@ namespace mathutils
                 // 3. 计算残差
                 // 观测残差: z - h(x_k)
                 Matrix_z1d innovation = Z - h(X_cur, id);
-                
+
                 // 先验残差: x_pri - x_k (使用 x_minus 处理角度归一化)
                 Matrix_x1d dx_pri = x_minus(X_pri, X_cur);
 
