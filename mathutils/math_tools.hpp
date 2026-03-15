@@ -97,12 +97,13 @@ namespace mathutils
         if (consider_resistence) {
             // only for 42mm
             // 考虑空气阻力， 计算角度
-            double theta = atan(pw(1, 0) / pw(2, 0));
+            double theta = -atan(pw(1, 0) / pw(2, 0));
+
             double delta_z;
 
             // 首先计算空气阻力系数 K
             // drag_c_realistic = (rho_air * Cd * Area) / (2 * mass_kg)
-            double k1 = 0.5 * 1.225 * (2 * 3.14159f * 0.021 * 0.021) / 2 / 0.041;
+            double k1 = 0.5 * 1.225 * (2 * 3.14159f * 0.021 * 0.021) / 2 / 0.041; // 0.5 * 1.225 0.47 * 1.169
 
             // 使用迭代法求解炮弹的发射角度
             // 根据炮弹的初速度、发射角度、空气阻力系数，计算炮弹的飞行轨迹
