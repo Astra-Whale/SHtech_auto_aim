@@ -135,6 +135,8 @@ namespace mathutils
         void reset(const Matrix_x1d &X0) 
         { 
             X_post = X0; 
+            // P_post.setIdentity();
+            // P_pri.setIdentity();
         }
 
         /**
@@ -166,6 +168,26 @@ namespace mathutils
             X_post = X0;
             x_add = x_add_; 
             x_minus = x_minus_;
+        }
+
+        Matrix_xxd get_P() 
+        { 
+            return P_post; 
+        }
+
+        Func_zzd_z1d get_update_R() 
+        { 
+            return update_R; 
+        }
+
+        Func_z1d_x1d_id get_h() 
+        { 
+            return h; 
+        }
+
+        Func_zxd_x1d_id get_calculate_H() 
+        { 
+            return calculate_H; 
         }
 
         /**

@@ -214,8 +214,8 @@ namespace mathutils
         // === 组装最终测量值 ===
         // 测量值格式：[y坐标, x坐标, z坐标, 绝对偏航角]，该测量值对应于ekf的测量项
         // 绝对偏航角 = 相机坐标系中的偏航角 - 机器人姿态偏航角， [-pi, pi]
-        // measurement << pw[1], pw[0], pw[2], mathutils::limit_rad(yaw_in_camera - attitude_yaw);
-        measurement << pw[1], pw[0], pw[2], yaw_in_camera - attitude_yaw;
+        measurement << pw[1], pw[0], pw[2], mathutils::limit_rad(yaw_in_camera - attitude_yaw);
+        // measurement << pw[1], pw[0], pw[2], yaw_in_camera - attitude_yaw;
 
         return true;
     }

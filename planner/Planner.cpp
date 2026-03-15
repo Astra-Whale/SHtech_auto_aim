@@ -470,7 +470,7 @@ namespace predict
                 if (abs(target.tracked_state(3, 0)) > 0.9) {
                     vx_constant_counter++;
 
-                    if (vx_constant_counter > 50) {
+                    if (vx_constant_counter > 20) {
                         if (duration_cast<microseconds>(std::chrono::high_resolution_clock::now() - fire_enable_tp).count() / 1e6 > shoot_interval) {
                             if (aimed_armor_index != -1){
                                 plan.fire_enable = 3;

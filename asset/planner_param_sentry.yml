@@ -3,8 +3,8 @@
 # 步兵4规划器参数
 
 planner:
-  latency: 35                    # Average total latency from PC to yaw action complete (in ms) # 10 
-  single_shoot_latency: 150       # (in ms), shoot latency of single shoot # 165
+  latency: 35                    # Average total latency from PC to yaw action complete (in ms) # 35 
+  single_shoot_latency: 135       # (in ms), shoot latency of single shoot # 150
   continue_shoot_latency: 45     # (in ms), shoot frequency of continuous shoot
   pitch_comp: 0.025               # Pitch compensation
   yaw_comp: 0                  # Yaw compensation
