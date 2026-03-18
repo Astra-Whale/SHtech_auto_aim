@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import re
 
 file_path = 'tools/data.txt'
-num_data = 8
+num_data = 3
 
 def parse_line(line):
     """安全地解析一行文本为浮点数"""

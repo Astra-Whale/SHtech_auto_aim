@@ -75,8 +75,8 @@ namespace predict
         const double max_pitch_acc = 100;
 
         // === 装甲板切换检测参数 ===
-        /// @brief 装甲板切换时间间隔 (微秒)，基于60rpm计算
-        const int armor_jump_interval = 45 * 1000;
+        /// @brief 装甲板切换时间间隔 (秒)
+        const int armor_jump_interval = 0.1f;
 
         // === 旋转速度分类阈值 ===
         /// @brief 慢速旋转上限 (弧度/秒)
@@ -231,22 +231,6 @@ namespace predict
         Eigen::Matrix<double, 2, 1> cal_target_speed(const Eigen::Matrix<double, 2, 1> &x_state, 
                                                         const Eigen::Matrix<double, 2, 1> &y_state, 
                                                         const Eigen::Matrix<double, 2, 1> &z_state);
-
-        Eigen::Matrix<double, 2, 1> cal_target_acc(const Eigen::Matrix<double, 2, 1> &x_state, 
-                                                        const Eigen::Matrix<double, 2, 1> &y_state, 
-                                                        const Eigen::Matrix<double, 2, 1> &z_state);
-
-        /**
-         * @brief 角度限制在(-π, π]范围内
-         * @param angle 输入角度
-         * @return 限制后的角度
-         */
-        inline double limit_rad(double angle)
-        {
-          while (angle > CV_PI) angle -= 2 * CV_PI;
-          while (angle <= -CV_PI) angle += 2 * CV_PI;
-          return angle;
-        }
 
     public:
         /**

@@ -110,8 +110,11 @@ namespace predict
         // todo: 多个跟踪器实例
         // === 根据跟踪器状态执行不同逻辑 ===
         if (tracker.get_tracker_state() == TrackingState::IDLE) {
+            data->target = tracker.get_target();
+            
             // === 空闲状态：寻找新目标或重置系统 ===
             if (detected_armors.empty()) {
+
                 if (debug)
                     std::cout << "[predict] empty detection" << std::endl;
             }
@@ -278,8 +281,8 @@ namespace predict
             }
 
             // === 执行跟踪更新 ===
-            // auto &target = tracker.track(tracked_measurement, secondary_tracked_measurement, same_id_armor_count, tracked_armor.tag_id, tp, attitude_yaw);
-            auto &target = tracker.track(tracked_measurement, secondary_tracked_measurement, same_id_armor_count, 0, tp, attitude_yaw);
+            auto &target = tracker.track(tracked_measurement, secondary_tracked_measurement, same_id_armor_count, tracked_armor.tag_id, tp, attitude_yaw);
+            // auto &target = tracker.track(tracked_measurement, secondary_tracked_measurement, same_id_armor_count, 0, tp, attitude_yaw);
 
             data->target = target;
             data->target.tracked_armor = tracked_armor;
