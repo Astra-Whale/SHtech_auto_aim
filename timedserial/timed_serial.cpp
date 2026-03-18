@@ -172,7 +172,7 @@ namespace hardware
             command_array_[expectedIndexOne], 
             command_array_[expectedIndexOne + 1], 
             float(offsetInPeriod.count()) / float(plan_period_.count()));
-        
+
         // 使用 Planner 提供的姿态数据作为基准
         attitude_cache_ = attitude_at_last_frame_;
 

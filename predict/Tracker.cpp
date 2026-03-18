@@ -127,8 +127,8 @@ namespace predict
             target.tracked_state(8, 0) = outpost_r;
             target.tracked_state(9, 0) = 0.0;
 
-            // TODO
-            p_coord = 1e2; // 1e1
+            // todo
+            p_coord = 1e2;
             p_yaw = 1e1;
         }
         else {
@@ -168,7 +168,7 @@ namespace predict
         tracker_model_select();
 
         // target.updating_model_type = UpdatingModelType::ARMOR_MODEL;
-        target.updating_model_type = UpdatingModelType::VEHICLE_MODEL;
+        // target.updating_model_type = UpdatingModelType::VEHICLE_MODEL;
         
         // === 装甲板模型更新 (x, y, z坐标) ===
         // 使用白噪声运动模型
@@ -378,7 +378,7 @@ namespace predict
             Pos3D standard_armor_pos = {standard_armors[j][1], standard_armors[j][0], standard_armors[j][2]};
 
             negative_score(j, 0) = mathutils::distance_3D(matched_armor_pos - standard_armor_pos);
-            negative_score(j, 1) = abs(limit_rad(measurement(3, 0) - standard_armors[j](3, 0)));
+            negative_score(j, 1) = abs(mathutils::limit_rad(measurement(3, 0) - standard_armors[j](3, 0)));
         }
 
         // 数据标准化
@@ -924,9 +924,6 @@ namespace predict
      */
     void Tracker::tracker_model_select()
     {
-        target.updating_model_type = UpdatingModelType::VEHICLE_MODEL;
-        return;
-
         // 根据旋转速度更新模型
         if (target.updating_model_type == UpdatingModelType::ARMOR_MODEL) {
             if (abs(target.yaw_state(1, 0)) > armor_model_threshold) {

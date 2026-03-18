@@ -110,15 +110,15 @@ struct RobotStatus
 
 struct RobotCommand
 {
-    float distance;
-    float yaw_angle;
-    float yaw_speed;
-    float yaw_acc;
-    float pitch_angle;
-    float pitch_speed;
-    float pitch_acc;
-    int fire_enable; // 0 is disable, 1 is enable, 2 is self-determined
-    int target_id; // 1-7: robot, 8: outpost, 9: base, 0: none
+    float distance = 0.0f;
+    float yaw_angle = 0.0f;
+    float yaw_speed = 0.0f;
+    float yaw_acc = 0.0f;
+    float pitch_angle = 0.0f;
+    float pitch_speed = 0.0f;
+    float pitch_acc = 0.0f;
+    int fire_enable = 0; // 0 is disable, 1 is enable, 2 is self-determined
+    int target_id = 0; // 1-7: robot, 8: outpost, 9: base, 0: none
 };
 
 
@@ -257,34 +257,34 @@ enum class AimedTargetType : uint8_t
 struct Plan
 {
     /// @brief 当前瞄准目标类型
-    AimedTargetType aimed_target_type;
+    AimedTargetType aimed_target_type = AimedTargetType::NONE;
 
     /// @brief 预测的装甲板瞄准位置 [x, y, z] (米)，世界坐标系
-    Eigen::Matrix<double, 3, 1> aimed_armor_pos;
+    Eigen::Matrix<double, 3, 1> aimed_armor_pos = Eigen::Matrix<double, 3, 1>::Zero();
 
     /// @brief 目标偏航角 (弧度)，云台应达到的偏航角度
-    double target_yaw;
+    double target_yaw = 0.0;
     
     /// @brief 目标偏航角速度 (弧度/秒)，云台偏航轴应达到的角速度
-    double target_yaw_speed;
+    double target_yaw_speed = 0.0;
 
     /// @brief 目标偏航角速度 (弧度/秒2)，云台偏航轴应达到的角加速度
-    double target_yaw_acc;
+    double target_yaw_acc = 0.0;
 
     /// @brief 目标俯仰角 (弧度)，云台应达到的俯仰角度
-    double target_pitch;
+    double target_pitch = 0.0;
     
     /// @brief 目标俯仰角速度 (弧度/秒)，云台俯仰轴应达到的角速度
-    double target_pitch_speed;
+    double target_pitch_speed = 0.0;
 
     /// @brief 目标俯仰角速度 (弧度/秒2)，云台俯仰轴应达到的角加速度
-    double target_pitch_acc;
+    double target_pitch_acc = 0.0;
 
     /// @brief 射击使能标志 (0=禁止, 1=允许, 2=下位机决策)
-    int fire_enable;
+    int fire_enable = 0;
 
     /// @brief 目标距离 (米)，目标的直线距离
-    double target_distance;
+    double target_distance = 0.0;
 };
 
 /**

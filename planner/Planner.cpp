@@ -14,7 +14,7 @@
 #include "Planner.hpp"
 
 // === 评测标准开关 ===
-#define ASSESSMENT_CRITERIA 1
+#define ASSESSMENT_CRITERIA 0
 
 #if ASSESSMENT_CRITERIA
 int vx_constant_counter = 0;
@@ -54,7 +54,15 @@ namespace predict
 
         shoot_offset = static_cast<int>(continue_shoot_latency / DT);
 
+        plan.aimed_armor_pos = Eigen::Matrix<double, 3, 1>::Zero();
         plan.aimed_target_type = AimedTargetType::NONE;
+        plan.fire_enable = 0;
+        plan.target_yaw = 0;
+        plan.target_pitch = 0;
+        plan.target_yaw_speed = 0;
+        plan.target_pitch_speed = 0;
+        plan.target_yaw_acc = 0;
+        plan.target_pitch_acc = 0;
 
         // 云台目标轨迹求解器
         setup_yaw_solver();
@@ -117,7 +125,7 @@ namespace predict
         // plan.aimed_target_type = AimedTargetType::ARMOR_WITH_NO_MODEL;
         // plan.aimed_target_type = AimedTargetType::ARMOR_WITH_ARMOR_MODEL;
         // plan.aimed_target_type = AimedTargetType::ARMOR_WITH_VEHICLE_MODEL;
-        plan.aimed_target_type = AimedTargetType::VEHICLE_CENTER_WITH_VEHICLE_MODEL;
+        // plan.aimed_target_type = AimedTargetType::VEHICLE_CENTER_WITH_VEHICLE_MODEL;
         
         // === 策略1: 无模型 ===
         // 直接瞄准当前检测到的装甲板位置，适用于初始检测阶段
@@ -143,10 +151,8 @@ namespace predict
             plan.target_yaw_speed = res(0, 0);
             plan.target_pitch_speed = res(1, 0);
 
-            res = cal_target_acc(target.armor_x_state, target.armor_y_state, target.armor_z_state);
-
-            plan.target_yaw_acc = res(0, 0);
-            plan.target_pitch_acc = res(1, 0);
+            plan.target_yaw_acc = 0;
+            plan.target_pitch_acc = 0;
 
             plan.target_distance = distance_3D(plan.aimed_armor_pos);
             plan.fire_enable = 2;
@@ -192,10 +198,8 @@ namespace predict
             plan.target_yaw_speed = res(0, 0);
             plan.target_pitch_speed = res(1, 0);
 
-            res = cal_target_acc(target.armor_x_state, target.armor_y_state, target.armor_z_state);
-
-            plan.target_yaw_acc = res(0, 0);
-            plan.target_pitch_acc = res(1, 0);
+            plan.target_yaw_acc = 0;
+            plan.target_pitch_acc = 0;
 
             plan.target_distance = distance_3D(plan.aimed_armor_pos);
             plan.fire_enable = 2;
@@ -264,11 +268,10 @@ namespace predict
                 armor_jump_tp = std::chrono::high_resolution_clock::now();
             }
 
-            int dt_since_jump = duration_cast<microseconds>(std::chrono::high_resolution_clock::now() - armor_jump_tp).count();
+            double dt_since_jump = duration_cast<microseconds>(std::chrono::high_resolution_clock::now() - armor_jump_tp).count() / 1e6;
+            // cout << dt_since_jump << endl;
 
-            // TODO
-            // if (dt_since_jump > armor_jump_interval / 6.28f * target.yaw_state(1, 0)) {
-            if (dt_since_jump > 0.02f) {
+            if (dt_since_jump > armor_jump_interval) {
                 armor_jump = false;
             }
             else {
@@ -296,6 +299,7 @@ namespace predict
             // cout << (yaw_solver_->work->x(0, HALF_HORIZON + shoot_offset) + yaw0) << endl;
 
             // cout << target_yaw_raw << endl;
+            // cout << plan.target_yaw << endl;
             // cout << armor_jump << endl;
 
             // === 射击决策 ===
@@ -334,7 +338,7 @@ namespace predict
             for (int i = 0; i != 2; i++) {
                 double predicted_armor_yaw = next_predicted_yaw + i * 1.57;
 
-                predicted_armor_yaw = limit_rad(predicted_armor_yaw);
+                predicted_armor_yaw = mathutils::limit_rad(predicted_armor_yaw);
 
                 if (predicted_armor_yaw > M_PI_2) predicted_armor_yaw -= M_PI;
                 if (predicted_armor_yaw <= -M_PI_2) predicted_armor_yaw += M_PI;
@@ -436,12 +440,6 @@ namespace predict
             plan.target_yaw_speed = res(0, 0);
             plan.target_pitch_speed = res(1, 0);
 
-            // TODO
-            // res = cal_target_acc(x_state, y_state, z_state);
-
-            // plan.target_yaw_acc = res(0, 0);
-            // plan.target_pitch_acc = res(1, 0);
-
             plan.target_yaw_acc = 0;
             plan.target_pitch_acc = 0;
 
@@ -454,7 +452,7 @@ namespace predict
             for (int i = 0; i != 4; i++) {
                 double predicted_armor_yaw = predicted_yaw + i * 1.57;
 
-                predicted_armor_yaw = limit_rad(predicted_armor_yaw);
+                predicted_armor_yaw = mathutils::limit_rad(predicted_armor_yaw);
 
                 if (predicted_armor_yaw > M_PI_2) predicted_armor_yaw -= M_PI;
                 if (predicted_armor_yaw <= -M_PI_2) predicted_armor_yaw += M_PI;
@@ -661,11 +659,11 @@ namespace predict
             auto yaw_pitch_next = cal_gimbal_target(next_pos, bullet_speed, attitude_yaw, attitude_pitch, R_world2imu);
 
             // 使用中心差分法计算角速度
-            auto yaw_vel = limit_rad(yaw_pitch_next(0) - yaw_pitch_last(0)) / (2 * DT);
+            auto yaw_vel = mathutils::limit_rad(yaw_pitch_next(0) - yaw_pitch_last(0)) / (2 * DT);
             auto pitch_vel = (yaw_pitch_next(1) - yaw_pitch_last(1)) / (2 * DT);
 
             // 构建轨迹点：[yaw_relative, yaw_vel, pitch, pitch_vel]
-            traj.col(i) << limit_rad(yaw_pitch_cur(0) - yaw0), yaw_vel, yaw_pitch_cur(1), pitch_vel;
+            traj.col(i) << mathutils::limit_rad(yaw_pitch_cur(0) - yaw0), yaw_vel, yaw_pitch_cur(1), pitch_vel;
 
             // 更新时间序列
             yaw_pitch_last = yaw_pitch_cur;
@@ -878,54 +876,6 @@ namespace predict
         }
 
         return {target_yaw_speed, target_pitch_speed};
-    }
-
-    // TODO： error in CV assumption
-    /**
-     * @brief 计算目标角加速度
-     * @param x_state X坐标状态 [x, vx]
-     * @param y_state Y坐标状态 [y, vy]
-     * @param z_state Z坐标状态 [z, vz]
-     * @return [yaw_acc, pitch_acc] 目标角加速度
-     * @details 基于恒定线速度模型(CV)计算角加速度
-     *          alpha = -2 * omega * (r · v) / |r|²
-     */
-    Eigen::Matrix<double, 2, 1> Planner::cal_target_acc(const Eigen::Matrix<double, 2, 1> &x_state, 
-                                                            const Eigen::Matrix<double, 2, 1> &y_state, 
-                                                            const Eigen::Matrix<double, 2, 1> &z_state)
-    {
-        double target_yaw_acc;
-        double target_pitch_acc;
-
-        // === 计算偏航角加速度 ===
-        Eigen::Vector2d r_vec(x_state(0, 0), y_state(0, 0));
-        Eigen::Vector2d v_vec(x_state(1, 0), y_state(1, 0));
-
-        double r2 = r_vec.squaredNorm();
-        if (r2 < 1e-6) {
-            target_yaw_acc = 0.0;
-        } else {
-            double cross = r_vec.x() * v_vec.y() - r_vec.y() * v_vec.x();
-            double dot = r_vec.x() * v_vec.x() + r_vec.y() * v_vec.y();
-            double omega = cross / r2;
-            target_yaw_acc = -2 * omega * dot / r2;
-        }
-
-        // === 计算俯仰角加速度 ===
-        r_vec << y_state(0, 0), z_state(0, 0);
-        v_vec << y_state(1, 0), z_state(1, 0);
-
-        r2 = r_vec.squaredNorm();
-        if (r2 < 1e-6) {
-            target_pitch_acc = 0.0;
-        } else {
-            double cross = r_vec.x() * v_vec.y() - r_vec.y() * v_vec.x();
-            double dot = r_vec.x() * v_vec.x() + r_vec.y() * v_vec.y();
-            double omega = cross / r2;
-            target_pitch_acc = -2 * omega * dot / r2;
-        }
-
-        return {target_yaw_acc, target_pitch_acc};
     }
 
 }
