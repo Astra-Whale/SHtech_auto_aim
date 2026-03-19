@@ -36,6 +36,8 @@
 
 using namespace mathutils;
 
+#define NUM_TRACKER 3
+
 namespace predict
 {
     /**
@@ -77,6 +79,14 @@ namespace predict
         /// @brief 相机视野内最大可接受偏航角 (弧度)
         const double max_yaw_accept = 0.85;
 
+        const double max_distance_accept = 4.5; // 最大可接受距离 (米)
+
+        const int cx = 640; // 图像中心X坐标 (像素)
+        const int cy = 360; // 图像中心Y坐标 (像素)
+        const double maxSD = std::sqrt(std::pow(cx, 2) + std::pow(cy, 2)); // 最大像素距离 (像素)
+
+        const float dist_weight = 0.6f; // 距离权重
+
     private:
         // === 配置参数 ===
         /// @brief 调试模式标志 - 控制调试信息输出
@@ -87,16 +97,16 @@ namespace predict
 
         // === 核心组件 ===
         /// @brief 目标跟踪器 - 执行多模型自适应跟踪
-        Tracker tracker;
+        std::array<Tracker, NUM_TRACKER> trackers;
 
         /// @brief 当前跟踪的观测值 [y, x, z, yaw]
-        Eigen::Matrix<double, 4, 1> tracked_measurement;
+        std::array<Eigen::Matrix<double, 4, 1>, NUM_TRACKER> tracked_measurements;
 
         /// @brief 当前备选跟踪的观测值 [y, x, z, yaw]
-        Eigen::Matrix<double, 4, 1> secondary_tracked_measurement;
+        std::array<Eigen::Matrix<double, 4, 1>, NUM_TRACKER> secondary_tracked_measurements;
         
         /// @brief 当前跟踪的装甲板对象
-        bbox_t tracked_armor;
+        std::array<bbox_t, NUM_TRACKER> tracked_armors;
 
         /// @brief 坐标变换器单例 - 负责坐标系转换
         CoordTransformer& coord_transformer;

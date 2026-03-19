@@ -30,9 +30,13 @@ namespace predict
     : SubModule(SubModuleName::MULTI_POLICY_PREDICTOR),
       debug(debug_),
       adjust(adjust_),
-      tracker(debug_, adjust_),
       coord_transformer(CoordTransformer::Get())
     {
+        for (int i = 0; i < NUM_TRACKER; ++i) {
+            trackers[i].set_debug(debug);
+            trackers[i].set_adjust(adjust);
+        }
+
         LOGM_S("[MultiPolicyPredictorSubModule] construction completed");
     }
 
@@ -107,59 +111,81 @@ namespace predict
         auto robot_status = data->robotstatus;         // 机器人状态信息
         auto R_world2imu = data->attitude.R_world2imu(); // 世界坐标系到IMU坐标系的旋转矩阵
 
-        // todo: 多个跟踪器实例
-        // === 根据跟踪器状态执行不同逻辑 ===
-        if (tracker.get_tracker_state() == TrackingState::IDLE) {
-            data->target = tracker.get_target();
-            
-            // === 空闲状态：寻找新目标或重置系统 ===
-            if (detected_armors.empty()) {
+        std::vector<std::pair<bbox_t, double>> new_armors;
+        std::vector<bbox_t> armors_in_tracking;
 
-                if (debug)
-                    std::cout << "[predict] empty detection" << std::endl;
-            }
-            else {
-                // 检测到装甲板，开始新的跟踪
-                vector<bbox_t> candidate_armors_from_trad;
-                vector<bbox_t> candidate_armors_from_nnet;
-                for (const auto &armor : detected_armors) {
-                    // todo: temporaliy do not use enemy_color
-                    // if (armor.color_id == (robot_status.enemy_color==EnemyColor::BLUE)) {
-                        if (armor.source == DetectionSource::TRADITIONAL) {
-                            candidate_armors_from_trad.push_back(armor);
-                        }
-                        else if (armor.source == DetectionSource::NEURAL_NETWORK) {
-                            candidate_armors_from_nnet.push_back(armor);
-                        }
-                        else {
-                            candidate_armors_from_nnet.push_back(armor);
-                        }
-                    // }
-                }
+        // todo: 多个跟踪器实例test
+        for (const auto &armor : detected_armors) {
+            // 根据颜色和距离筛选装甲板， 并且如果装甲板已经在跟踪中，则加入到 armors_in_tracking 列表，否则筛选角点来源为传统视觉的装甲板加入到 new_armors 列表
+            // todo: temporaliy do not use enemy_color
+            // if (armor.color_id == (robot_status.enemy_color==EnemyColor::BLUE)) {
+                float yaw_in_camera;
+                Eigen::Matrix<double, 4, 1> measurement;
+                bool success = coord_transformer.pnp_get_measurement(armor.pts, armor.tag_id, armor.color_id,
+                                                                                    attitude_yaw, R_world2imu, yaw_in_camera, measurement);
+                Pos3D m_pw(measurement(1, 0), measurement(0, 0), measurement(2, 0));
+                double dist = distance_3D(m_pw);
 
-                bool find_target = false;
+                if (dist < max_distance_accept) {
+                    bool already_in_tracking = false;
+                    for (int i = 0; i < NUM_TRACKER; ++i) {
+                        if (trackers[i].get_tracker_state() != TrackingState::IDLE && armor.tag_id == tracked_armors[i].tag_id) {
+                            already_in_tracking = true;
+                            break;
+                        }
+                    }
 
-                if (candidate_armors_from_trad.empty() && candidate_armors_from_nnet.empty()) {
-                    if (debug)
-                        std::cout << "[predict] no candidate armor found" << std::endl;
-                }
-                else {
-                    // todo: 添加车辆选择逻辑
-                    if (candidate_armors_from_trad.empty()) {
-                        tracked_armor = candidate_armors_from_nnet.front();
+                    if (already_in_tracking) {
+                        armors_in_tracking.push_back(armor);
                     }
                     else {
-                        tracked_armor = candidate_armors_from_trad.front();
+                        if (armor.source == DetectionSource::TRADITIONAL) {
+                            new_armors.push_back(std::make_pair(armor, dist));
+                        }
                     }
-
-                    find_target = true;
                 }
+            // }
+        }
 
-                if (!find_target) {
+        // 根据距离和像素中心位置对 new_armors 进行排序，优先考虑距离较近且位于图像中心的装甲板
+        std::sort(new_armors.begin(), new_armors.end(), 
+            [this](std::pair<bbox_t, double>& a, std::pair<bbox_t, double>& b) {
+                cv::Point2f centerA = points_center(a.first.pts);
+                float sdA = std::sqrt(std::pow(centerA.x - cx, 2) + std::pow(centerA.y - cy, 2));
+                float scoreA = (1 - dist_weight) * (sdA / maxSD) + dist_weight * (a.second / max_distance_accept);
+
+                cv::Point2f centerB = points_center(b.first.pts);
+                float sdB = std::sqrt(std::pow(centerB.x - cx, 2) + std::pow(centerB.y - cy, 2));
+                float scoreB = (1 - dist_weight) * (sdB / maxSD) + dist_weight * (b.second / max_distance_accept);
+
+                return scoreA < scoreB;
+            });
+
+        for (int i = 0; i < NUM_TRACKER; ++i) {
+            auto &tracker = trackers[i];
+            auto &tracked_measurement = tracked_measurements[i];
+            auto &secondary_tracked_measurement = secondary_tracked_measurements[i];
+            auto &tracked_armor = tracked_armors[i];
+
+            // === 根据跟踪器状态执行不同逻辑 ===
+            if (tracker.get_tracker_state() == TrackingState::IDLE) {                
+                // === 空闲状态：寻找新目标或重置系统 ===
+                if (new_armors.empty()) {
                     if (debug)
-                        std::cout << "[predict] no valid target found" << std::endl;
+                        std::cout << "[predict] empty detection" << std::endl;
                 }
                 else {
+                    // 检测到装甲板，开始新的跟踪
+                    tracked_armor = new_armors.front().first; // 选择排序后的第一个装甲板作为跟踪目标
+
+                    // 从 new_armors 中移除已选中的装甲板id，避免多个跟踪器选择同一装甲板id
+                    new_armors.erase(
+                        std::remove_if(new_armors.begin(), new_armors.end(), [&tracked_armor](const std::pair<bbox_t, double>& b) {
+                            return b.first.tag_id == tracked_armor.tag_id; 
+                        }),
+                        new_armors.end()
+                    );
+
                     // 通过PnP算法获取装甲板的3D位置和姿态
                     float yaw_in_camera;
                     bool success = coord_transformer.pnp_get_measurement(tracked_armor.pts, tracked_armor.tag_id, tracked_armor.color_id,
@@ -174,115 +200,152 @@ namespace predict
                     
                     // 重置跟踪器并初始化目标
                     auto &target = tracker.reset_target(tracked_measurement, tp);
-
-                    data->target = target;
-                    data->target.tracked_armor = tracked_armor;
-
-                    int id = tracker.match_armor_id(target.tracked_measurement);
-                    auto angle = mathutils::limit_rad(target.tracked_state(6, 0) + id * M_PI_2);
-                    Eigen::Matrix<double, 3, 1> estimated_armor_pos = tracker.h_armor_xyz(target.tracked_state, id);
-
-                    data->target.estimated_armor_m << estimated_armor_pos(0, 0), estimated_armor_pos(1, 0), estimated_armor_pos(2, 0), angle;
                     
                     if (debug)
                         std::cout << "[predict] start tracking" << std::endl;
                 }
             }
-        }
-        else {
-            // === 非空闲状态：执行跟踪和预测 ===
-            // 注意：以下逻辑针对单个车辆进行处理
+            else {
+                // === 非空闲状态：执行跟踪和预测 ===
+                // 注意：以下逻辑针对单个车辆进行处理
 
-            // === 装甲板筛选和匹配 ===
-            // 寻找与当前跟踪目标相同ID的装甲板，优先考虑上次跟踪的装甲板并且来源于传统视觉
-            int same_id_armor_count = 0;         // 同ID装甲板数量
-            double min_position_diff = DBL_MAX;  // 最小位置差
-            bbox_t selected_armor;               // 选中的装甲板
-            Eigen::Matrix<double, 4, 1> selected_measurement; // 选中装甲板的测量值
-            bbox_t secondary_armor;               // 备选装甲板
-            Eigen::Matrix<double, 4, 1> secondary_measurement; // 备选装甲板的测量值
+                // === 装甲板筛选和匹配 ===
+                // 寻找与当前跟踪目标相同ID的装甲板，优先考虑上次跟踪的装甲板并且来源于传统视觉
+                int same_id_armor_count = 0;         // 同ID装甲板数量
+                double min_position_diff = DBL_MAX;  // 最小位置差
+                bbox_t selected_armor;               // 选中的装甲板
+                Eigen::Matrix<double, 4, 1> selected_measurement; // 选中装甲板的测量值
+                bbox_t secondary_armor;               // 备选装甲板
+                Eigen::Matrix<double, 4, 1> secondary_measurement; // 备选装甲板的测量值
 
-            // 遍历所有检测到的装甲板
-            for (const auto &armor : detected_armors) {
-                if (armor.tag_id == tracked_armor.tag_id && armor.color_id == tracked_armor.color_id) {
-                    // 找到同ID装甲板，进行PnP解算
-                    float yaw_in_camera;
-                    Eigen::Matrix<double, 4, 1> measured_measurement;
-                    bool success = coord_transformer.pnp_get_measurement(armor.pts, armor.tag_id, tracked_armor.color_id, 
-                                                                            attitude_yaw, R_world2imu, yaw_in_camera, measured_measurement);
+                // 遍历所有检测到的装甲板
+                for (const auto &armor : armors_in_tracking) {
+                    if (armor.tag_id == tracked_armor.tag_id && armor.color_id == tracked_armor.color_id) {
+                        // 找到同ID装甲板，进行PnP解算
+                        float yaw_in_camera;
+                        Eigen::Matrix<double, 4, 1> measured_measurement;
+                        bool success = coord_transformer.pnp_get_measurement(armor.pts, armor.tag_id, tracked_armor.color_id, 
+                                                                                attitude_yaw, R_world2imu, yaw_in_camera, measured_measurement);
 
-                    if (!success) {
-                        continue;
-                    }
-                    
-                    // 计算位置变化
-                    Eigen::Matrix<double, 3, 1> measured_pw(measured_measurement(1, 0), measured_measurement(0, 0), measured_measurement(2, 0));
-                    Eigen::Matrix<double, 3, 1> tracked_pw(tracked_measurement(1, 0), tracked_measurement(0, 0), tracked_measurement(2, 0));
-
-                    same_id_armor_count++;
-
-                    // 选中的装甲板为位置变化最小的，备选装甲板是次小的
-                    double pw_diff = (tracked_pw - measured_pw).norm();
-                    if (same_id_armor_count == 1) {
-                        if (pw_diff < min_position_diff) {
-                            min_position_diff = pw_diff;
-                            selected_armor = armor;
-                            selected_measurement = measured_measurement;
+                        if (!success) {
+                            continue;
                         }
-                    }
-                    else {
-                        if (pw_diff < min_position_diff) {
-                            secondary_armor = selected_armor;
-                            secondary_measurement = selected_measurement;
+                        
+                        // 计算位置变化
+                        Eigen::Matrix<double, 3, 1> measured_pw(measured_measurement(1, 0), measured_measurement(0, 0), measured_measurement(2, 0));
+                        Eigen::Matrix<double, 3, 1> tracked_pw(tracked_measurement(1, 0), tracked_measurement(0, 0), tracked_measurement(2, 0));
 
-                            min_position_diff = pw_diff;
-                            selected_armor = armor;
-                            selected_measurement = measured_measurement;
+                        same_id_armor_count++;
+
+                        // 选中的装甲板为位置变化最小的，备选装甲板是次小的
+                        double pw_diff = (tracked_pw - measured_pw).norm();
+                        if (same_id_armor_count == 1) {
+                            if (pw_diff < min_position_diff) {
+                                min_position_diff = pw_diff;
+                                selected_armor = armor;
+                                selected_measurement = measured_measurement;
+                            }
                         }
                         else {
-                            secondary_armor = armor;
-                            secondary_measurement = measured_measurement;
+                            if (pw_diff < min_position_diff) {
+                                secondary_armor = selected_armor;
+                                secondary_measurement = selected_measurement;
+
+                                min_position_diff = pw_diff;
+                                selected_armor = armor;
+                                selected_measurement = measured_measurement;
+                            }
+                            else {
+                                secondary_armor = armor;
+                                secondary_measurement = measured_measurement;
+                            }
+                        }
+
+                        if (same_id_armor_count == 2) {
+                            break;
                         }
                     }
-
-                    if (same_id_armor_count == 2) {
-                        break;
-                    }
                 }
-            }
 
-            if (debug)
-                std::cout << "[predict] same id armor count: " << same_id_armor_count << std::endl;
+                if (debug)
+                    std::cout << "[predict] same id armor count: " << same_id_armor_count << std::endl;
 
-            // 更新跟踪目标，优先选择来源于传统视觉的装甲板
-            if (same_id_armor_count == 1) {
-                tracked_armor = selected_armor;
-                tracked_measurement = selected_measurement;
-                secondary_tracked_measurement = secondary_measurement;
-            }
-            else if (same_id_armor_count == 2) {
-                if (selected_armor.source == DetectionSource::TRADITIONAL) {
+                // 更新跟踪目标，优先选择来源于传统视觉的装甲板
+                if (same_id_armor_count == 1) {
                     tracked_armor = selected_armor;
                     tracked_measurement = selected_measurement;
                     secondary_tracked_measurement = secondary_measurement;
                 }
-                else {
-                    if (secondary_armor.source == DetectionSource::TRADITIONAL) {
-                        tracked_armor = secondary_armor;
-                        tracked_measurement = secondary_measurement;
-                        secondary_tracked_measurement = selected_measurement;
-                    }
-                    else {
+                else if (same_id_armor_count == 2) {
+                    if (selected_armor.source == DetectionSource::TRADITIONAL) {
                         tracked_armor = selected_armor;
                         tracked_measurement = selected_measurement;
                         secondary_tracked_measurement = secondary_measurement;
                     }
+                    else {
+                        if (secondary_armor.source == DetectionSource::TRADITIONAL) {
+                            tracked_armor = secondary_armor;
+                            tracked_measurement = secondary_measurement;
+                            secondary_tracked_measurement = selected_measurement;
+                        }
+                        else {
+                            tracked_armor = selected_armor;
+                            tracked_measurement = selected_measurement;
+                            secondary_tracked_measurement = secondary_measurement;
+                        }
+                    }
                 }
+
+                // === 执行跟踪更新 ===
+                auto &target = tracker.track(tracked_measurement, secondary_tracked_measurement, same_id_armor_count, tracked_armor.tag_id, tp, attitude_yaw);
+                // auto &target = tracker.track(tracked_measurement, secondary_tracked_measurement, same_id_armor_count, 0, tp, attitude_yaw);
+
+            }
+        }
+
+        std::vector<std::tuple<bbox_t, double, int>> candidate_armors;
+
+        // 选择目标车辆进行云台发射规划
+        for (int i = 0; i < NUM_TRACKER; ++i) {
+            if (trackers[i].get_tracker_state() == TrackingState::IDLE) {
+                continue;
             }
 
-            // === 执行跟踪更新 ===
-            auto &target = tracker.track(tracked_measurement, secondary_tracked_measurement, same_id_armor_count, tracked_armor.tag_id, tp, attitude_yaw);
-            // auto &target = tracker.track(tracked_measurement, secondary_tracked_measurement, same_id_armor_count, 0, tp, attitude_yaw);
+            auto &armor = tracked_armors[i];
+    
+            float yaw_in_camera;
+            Eigen::Matrix<double, 4, 1> measurement;
+            bool success = coord_transformer.pnp_get_measurement(armor.pts, armor.tag_id, armor.color_id,
+                                                                                attitude_yaw, R_world2imu, yaw_in_camera, measurement);
+            Pos3D m_pw(measurement(1, 0), measurement(0, 0), measurement(2, 0));
+            double dist = distance_3D(m_pw);
+
+            candidate_armors.push_back(std::make_tuple(armor, dist, i));
+        }
+
+        if (candidate_armors.empty()) {
+            data->target = trackers[0].get_target();
+        }
+        else {
+            // 根据距离和像素中心位置对 candidate_armors 进行排序，优先考虑距离较近且位于图像中心的装甲板
+            std::sort(candidate_armors.begin(), candidate_armors.end(), 
+                [this](std::tuple<bbox_t, double, int>& a, std::tuple<bbox_t, double, int>& b) {
+                    cv::Point2f centerA = points_center(std::get<0>(a).pts);
+                    float sdA = std::sqrt(std::pow(centerA.x - cx, 2) + std::pow(centerA.y - cy, 2));
+                    float scoreA = (1 - dist_weight) * (sdA / maxSD) + dist_weight * (std::get<1>(a) / max_distance_accept);
+
+                    cv::Point2f centerB = points_center(std::get<0>(b).pts);
+                    float sdB = std::sqrt(std::pow(centerB.x - cx, 2) + std::pow(centerB.y - cy, 2));
+                    float scoreB = (1 - dist_weight) * (sdB / maxSD) + dist_weight * (std::get<1>(b) / max_distance_accept);
+
+                    return scoreA < scoreB;
+                });
+
+            int selected_index = std::get<2>(candidate_armors.front());
+
+            auto &tracker = trackers[selected_index];
+            auto &tracked_armor = tracked_armors[selected_index];
+            const Target &target = tracker.get_target();
 
             data->target = target;
             data->target.tracked_armor = tracked_armor;
@@ -292,7 +355,6 @@ namespace predict
             Eigen::Matrix<double, 3, 1> estimated_armor_pos = tracker.h_armor_xyz(target.tracked_state, id);
 
             data->target.estimated_armor_m << estimated_armor_pos(0, 0), estimated_armor_pos(1, 0), estimated_armor_pos(2, 0), angle;
-
         }
         
     }

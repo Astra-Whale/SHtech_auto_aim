@@ -99,10 +99,10 @@ namespace predict
     private:
         // === 配置参数 ===
         /// @brief 调试模式标志
-        bool debug;
+        bool debug = false;
         
         /// @brief 参数调整模式标志
-        bool adjust;
+        bool adjust = false;
 
         // === 滤波器参数（科学计数法表示，支持实时调整） ===
         /// @brief 坐标过程噪声尾数
@@ -306,16 +306,15 @@ namespace predict
 
     public:
         /**
-         * @brief 默认构造函数
-         */
-        Tracker() = default;
-        
-        /**
          * @brief 带参数构造函数
          * @param debug_ 调试模式标志
          * @param adjust_ 参数调整模式标志
          */
-        explicit Tracker(bool debug_, bool adjust_);
+        explicit Tracker();
+
+        void set_debug(bool debug_);
+
+        void set_adjust(bool adjust_);
 
         /**
          * @brief 获取当前跟踪状态
