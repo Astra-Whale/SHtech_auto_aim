@@ -21,20 +21,13 @@ namespace predict
      * @param adjust_ 参数调整模式标志
      * @details 设置初始状态，初始化滤波器，配置参数调整界面（如果需要）
      */
-    Tracker::Tracker(bool debug_, bool adjust_)
+    Tracker::Tracker()
     : last_tp(std::chrono::high_resolution_clock::now()),
       detecting_counter(0),
       temp_lost_counter(0),
       yaw_speed_diverge_counter(0),
-      rotate_counter(0),
-      debug(debug_),
-      adjust(adjust_)
+      rotate_counter(0)
     {
-        // 如果开启参数调整模式，初始化调整界面
-        if (adjust) {
-            parameter_adjustor_init();
-        }
-
         // 初始化目标状态
         target_init();
 
@@ -43,6 +36,20 @@ namespace predict
         
         // 初始化整车模型的扩展卡尔曼滤波器
         whole_state_ekf_init();
+    }
+
+    void Tracker::set_debug(bool debug_)
+    {
+        debug = debug_;
+    }
+
+    void Tracker::set_adjust(bool adjust_)
+    {
+        adjust = adjust_;
+
+        if (adjust) {
+            parameter_adjustor_init();
+        }
     }
 
     /**

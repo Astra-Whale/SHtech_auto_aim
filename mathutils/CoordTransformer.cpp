@@ -58,7 +58,7 @@ namespace mathutils
         // 读取相机到IMU的外参（平移向量和旋转矩阵）
         fin["T_c2i"] >> T_camera2imu_MAT;  // 相机到IMU的平移向量
         fin["R_c2i"] >> R_camera2imu_MAT;  // 相机到IMU的旋转矩阵
-        
+
         // 读取相机内参
         fin["K"] >> F_MAT;  // 相机内参矩阵 (焦距、主点等)
         fin["D"] >> C_MAT;  // 相机畸变参数 (径向畸变、切向畸变)
