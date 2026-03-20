@@ -52,7 +52,7 @@ ONNX::~ONNX() {}
 
 void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
 {
-    std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
+    // std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
     det.clear();
     
     if (src.rows * INPUT_W != src.cols * INPUT_H) {
@@ -87,11 +87,11 @@ void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
         inputTensorValues.assign(continuous_mat.begin<float>(), continuous_mat.end<float>());
     }
 
-    //std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-    //std::cout << "Pre-process time: " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us" << std::endl;
+    // std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
+    // std::cout << "Pre-process time: " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us" << std::endl;
 
     // ================= 2. Inference =================
-    //std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
+    // std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
 
     migraphx::program_parameters prog_params;
     auto param_shapes = net.get_parameter_shapes();
@@ -102,11 +102,11 @@ void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
     auto outputs = net.eval(prog_params);
     float* output_data = reinterpret_cast<float*>(outputs[0].data());
 
-    //std::chrono::steady_clock::time_point t4 = std::chrono::steady_clock::now();
-    //std::cout << "Inference time: " << std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count() << " us" << std::endl;
+    // std::chrono::steady_clock::time_point t4 = std::chrono::steady_clock::now();
+    // std::cout << "Inference time: " << std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count() << " us" << std::endl;
 
     // ================= 3. Post-process =================
-    std::chrono::steady_clock::time_point t5 = std::chrono::steady_clock::now();
+    // std::chrono::steady_clock::time_point t5 = std::chrono::steady_clock::now();
     // Output Shape: [1, 20160, 22], as we cut down the input size from szu's 640*640 to H512W640
     const int num_anchors = 20160;
     const int stride = 22;
@@ -205,6 +205,6 @@ void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
     }
     
     std::sort(det.begin(), det.end(), std::greater<bbox_t>());
-    //std::chrono::steady_clock::time_point t6 = std::chrono::steady_clock::now();
-    //std::cout << "Post-process time: " << std::chrono::duration_cast<std::chrono::microseconds>(t6 - t5).count() << " us" << std::endl;
+    // std::chrono::steady_clock::time_point t6 = std::chrono::steady_clock::now();
+    // std::cout << "Post-process time: " << std::chrono::duration_cast<std::chrono::microseconds>(t6 - t5).count() << " us" << std::endl;
 }

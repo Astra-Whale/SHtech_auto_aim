@@ -156,9 +156,21 @@ namespace mathutils
             }
         }
 
+        // for (int i = 0; i < 4; ++i) {
+        //     cout << p[i] << endl;
+        // }
+
+        // cout << "pw_cur: " << endl;
+        // for (const auto &pt : pw_cur) {
+        //     cout << pt << endl;
+        // }
+
+        // cout << "F_MAT: " << endl << F_MAT << endl;
+        // cout << "C_MAT: " << endl << C_MAT << endl;
+
         // 将图像点转换为PnP算法需要的格式
-        // std::vector<cv::Point2d> pu(p, p + 4);
-        cv::Mat pu(4, 1, CV_32FC2, const_cast<cv::Point2f*>(p));
+        std::vector<cv::Point2d> pu(p, p + 4);
+        // cv::Mat pu(4, 1, CV_32FC2, const_cast<cv::Point2f*>(p));
 
         // PnP求解：从2D图像点和3D模型点求解相机位姿
         cv::Mat rvec, tvec;  // 旋转向量和平移向量
@@ -173,6 +185,10 @@ namespace mathutils
         Pos3D pc, pw, pi;  // 相机坐标系、世界坐标系、IMU坐标系
         
         cv::cv2eigen(tvec, pc);  // PnP得到的是相机坐标系中的位置
+
+        // cout << "T_camera2imu: " << T_camera2imu << endl;
+        // cout << "R_camera2imu: " << R_camera2imu << endl;
+        // cout << "R_world2imu: " << R_world2imu << endl;
         
         // 相机坐标系 -> IMU坐标系
         pi = R_camera2imu * pc + T_camera2imu;

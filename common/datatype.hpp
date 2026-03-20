@@ -27,6 +27,7 @@ enum class EnemyColor : uint8_t
 enum class ProgramMode : uint8_t
 {
     // 视觉模式
+    IDLE = 0,     // 空闲
     AUTO_AIM = 1,     // 自瞄
     ANTIMISSLE = 2,   // 反导
     SMALL_ENERGY = 4, // 小能量机关
@@ -117,7 +118,7 @@ struct RobotCommand
     float pitch_angle = 0.0f;
     float pitch_speed = 0.0f;
     float pitch_acc = 0.0f;
-    int fire_enable = 0; // 0 is disable, 1 is enable, 2 is self-determined
+    int fire_enable = 0; // 0 is disable, 1 is enable, 2 is self-determined, 3 is single shoot
     int target_id = 0; // 1-7: robot, 8: outpost, 9: base, 0: none
 };
 
