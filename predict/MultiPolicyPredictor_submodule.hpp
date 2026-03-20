@@ -111,6 +111,12 @@ namespace predict
         /// @brief 坐标变换器单例 - 负责坐标系转换
         CoordTransformer& coord_transformer;
 
+        int autoaim_mode_counter = 0; // 自瞄模式计数器，用于控制模式切换逻辑
+        bool in_autoaim_mode = false; // 当前是否处于自瞄模式
+
+        bool has_fixed_target = false; // 是否已经锁定目标
+        int fixed_target_id = 0; // 锁定目标的ID
+
     public:
         /**
          * @brief 主预测函数 - 执行完整的预测流程
@@ -129,6 +135,11 @@ namespace predict
          *          6. 可视化显示（如果开启）
          */
         void predict(std::shared_ptr<ThreadDataPack> data);
+
+    private:
+        int select_target_id(double attitude_yaw, const Eigen::Matrix3d &R_world2imu);
+
+        int reset_target_for_plan(Target &target, double attitude_yaw, const Eigen::Matrix3d &R_world2imu);
     };
 }
 

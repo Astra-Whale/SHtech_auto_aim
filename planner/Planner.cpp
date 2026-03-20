@@ -310,6 +310,8 @@ namespace predict
             else
                 plan.fire_enable = 0;  // 装甲板切换期间禁止射击
 
+            // cout << plan.fire_enable << endl;
+
             plan.target_distance = distance_3D(plan.aimed_armor_pos);
 
             if (debug)
