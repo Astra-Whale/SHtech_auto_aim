@@ -293,7 +293,7 @@ bool init(void)
     detect_submodule_registered = detect_composite->register_submodule_with_params<detect::DetectSubModule>(info["model"], display["detect_adjust"]);
 
     predict_submodule_registered = predict_composite->register_submodule_with_params<predict::MultiPolicyPredictorSubModule>(
-        display["predic_debug"], display["predic_adjust"]
+        display["predic_debug"], display["predic_adjust"], display["tracker_adjust"]
         );
 
     planner_submodule_registered = predict_composite->register_submodule_with_params<plan::PlannerSubModule>(*planner_to_serial_bridge, 
