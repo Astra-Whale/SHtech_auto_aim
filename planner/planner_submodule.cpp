@@ -107,7 +107,7 @@ namespace plan
             send.distance = plan.target_distance;                          // 目标距离
             send.fire_enable = plan.fire_enable;                          // 射击使能
 
-            if (send.fire_enable == 1) {
+            if (send.fire_enable == 3) {
                  cout << "fire 11111111111111111111111111111111" << endl;
             }
 

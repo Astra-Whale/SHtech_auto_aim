@@ -426,7 +426,7 @@ namespace predict
             if (duration_cast<microseconds>(std::chrono::high_resolution_clock::now() - fire_enable_tp).count() / 1e6 > shoot_interval) {
             	//cout << "aimed_armor_index" << aimed_armor_index << endl;
                 if (aimed_armor_index != -1){
-                    plan.fire_enable = 1;
+                    plan.fire_enable = 3;
                     //cout << "111" << endl;
                     fire_enable_tp = std::chrono::high_resolution_clock::now();
                 }
