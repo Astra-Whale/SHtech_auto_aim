@@ -10,7 +10,7 @@ endif ()
 
 add_compile_definitions(PROJECT_DIR="${PROJECT_SOURCE_DIR}")
 
-set(INFERENCE_BACKEND "ONNX" CACHE STRING "Select inference backend: ONNX, TRT, AXCL")
+set(INFERENCE_BACKEND "AXCL" CACHE STRING "Select inference backend: ONNX, TRT, AXCL")
 set_property(CACHE INFERENCE_BACKEND PROPERTY STRINGS ONNX TRT AXCL)
 
 # Auto-detect platform for Foxglove SDK
