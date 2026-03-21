@@ -26,10 +26,10 @@ namespace predict
      * @details 初始化跟踪器和规划器，设置各种显示和调试选项
      *          CoordTransformer 已在 main 中初始化，直接使用单例
      */ 
-    MultiPolicyPredictorSubModule::MultiPolicyPredictorSubModule(bool debug_, bool adjust_)
+    MultiPolicyPredictorSubModule::MultiPolicyPredictorSubModule(bool debug_, bool predic_adjust_, bool tracker_adjust_)
     : SubModule(SubModuleName::MULTI_POLICY_PREDICTOR),
       debug(debug_),
-      adjust(adjust_),
+      adjust(predic_adjust_),
       coord_transformer(CoordTransformer::Get()),
       has_fixed_target(false),
       autoaim_mode_counter(0),
@@ -38,7 +38,13 @@ namespace predict
     {
         for (int i = 0; i < NUM_TRACKER; ++i) {
             trackers[i].set_debug(debug);
-            trackers[i].set_adjust(adjust);
+            trackers[i].set_adjust(tracker_adjust_);
+        }
+
+        if (adjust) {
+            cv::namedWindow("predictor trackbar", cv::WINDOW_AUTOSIZE);
+        
+            cv::createTrackbar("in_autoaim_mode", "predictor trackbar", &in_autoaim_mode_adjust, 1, 0);
         }
 
         LOGM_S("[MultiPolicyPredictorSubModule] construction completed");
@@ -137,6 +143,10 @@ namespace predict
             }
         }
 
+        if (adjust) {
+            in_autoaim_mode = in_autoaim_mode_adjust > 0;
+        }
+
         if (debug) {
             cout << "in_autoaim_mode: " << in_autoaim_mode 
                  << std::endl;
@@ -157,8 +167,7 @@ namespace predict
         // todo: 多个跟踪器实例test
         for (const auto &armor : detected_armors) {
             // 根据颜色和距离筛选装甲板， 并且如果装甲板已经在跟踪中，则加入到 armors_in_tracking 列表，否则筛选角点来源为传统视觉的装甲板加入到 new_armors 列表
-            // todo: temporaliy do not use enemy_color
-            // if (armor.color_id == (robot_status.enemy_color==EnemyColor::BLUE)) {
+            if (armor.color_id == (robot_status.enemy_color==EnemyColor::BLUE)) {
                 float yaw_in_camera;
                 Eigen::Matrix<double, 4, 1> measurement;
                 bool success = coord_transformer.pnp_get_measurement(armor.pts, armor.tag_id, armor.color_id,
@@ -186,7 +195,7 @@ namespace predict
                         }
                     }
                 }
-            // }
+            }
         }
 
         if (need_new_armors) {

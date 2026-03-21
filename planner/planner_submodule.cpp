@@ -209,7 +209,7 @@ namespace plan
         // cout << plan.aimed_armor_pos(2, 0) << endl;
 
         // cout << plan.target_yaw << std::endl;
-        cout << plan.target_yaw / M_PI * 180.0f << std::endl;
+        // cout << plan.target_yaw / M_PI * 180.0f << std::endl;
         // cout << plan.target_yaw_speed << std::endl;
         // cout << plan.target_yaw_acc << endl;
 
@@ -217,7 +217,7 @@ namespace plan
         // cout << plan.target_pitch_speed / M_PI * 180.0f << std::endl;
         // cout << plan.target_pitch_acc / M_PI * 180.0f << endl;
 
-        // cout << plan.fire_enable << endl;
+        cout << plan.fire_enable << endl;
     }
 
     // === 枚举转字符串辅助函数 ===

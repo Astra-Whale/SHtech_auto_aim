@@ -58,7 +58,7 @@ namespace predict
          * @param adjust_ 参数调整模式标志
          * @details 初始化所有核心组件，设置配置参数
          */
-        MultiPolicyPredictorSubModule(bool debug_, bool adjust_);
+        MultiPolicyPredictorSubModule(bool debug_, bool predic_adjust_, bool tracker_adjust_);
         virtual ~MultiPolicyPredictorSubModule() = default;
 
         bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
@@ -94,6 +94,8 @@ namespace predict
         
         /// @brief 参数调整模式标志 - 控制实时参数调整界面
         bool adjust;
+
+        int in_autoaim_mode_adjust = 0;
 
         // === 核心组件 ===
         /// @brief 目标跟踪器 - 执行多模型自适应跟踪

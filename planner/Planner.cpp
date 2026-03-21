@@ -278,7 +278,7 @@ namespace predict
                 armor_jump = true;
             }
 
-            last_shooted_armor_pos = shooted_armor_pos;
+            last_shooted_armor_pos = shooted_armor_pos; 
 
             // if (a % 10 == 0) {
             //     LOGT_S();
