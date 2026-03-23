@@ -5,7 +5,8 @@
 planner:
   latency: 2                    # Average total latency from PC to yaw action complete (in ms) # 15 
   single_shoot_latency: 115       # (in ms), shoot latency of single shoot # 105
-  continue_shoot_latency: 20     # (in ms), shoot frequency of continuous shoot
+  continue_shoot_latency: 30     # (in ms), shoot frequency of continuous shoot
+  same_trace_threshold: 0.0035   # (in rad), trajectory tracking consistency threshold
   pitch_comp: 0.0               # Pitch compensation # 0.015
   yaw_comp: 0.0                  # Yaw compensation
   disable_vehicle_center_shoot_mode: true

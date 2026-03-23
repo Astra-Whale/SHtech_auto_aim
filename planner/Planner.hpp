@@ -91,10 +91,7 @@ namespace predict
         /// @brief 高速旋转下限 (弧度/秒)
         const double fast_rotation_lower_bound = 6.28;
 
-        // === 射击决策参数 ===
-        /// @brief 轨迹跟踪一致性阈值 (弧度)
-        const double same_trace_threshold = 0.003;
-        
+        // === 射击决策参数 ===        
         /// @brief 射击精度阈值 (弧度) - 约等于atan(0.05/0.4)
         const double fire_threshold = 0.05; // 0.125;
 
@@ -120,6 +117,9 @@ namespace predict
         double pitch_comp = 0;
 
         double yaw_comp = 0;
+
+        /// @brief 轨迹跟踪一致性阈值 (弧度)
+        double same_trace_threshold = 0.003;
 
         bool disable_vehicle_center_shoot_mode = true;
 

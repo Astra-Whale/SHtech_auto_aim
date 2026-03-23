@@ -47,6 +47,7 @@ namespace predict
         single_shoot_latency /= 1e3; 
         fin["planner"]["continue_shoot_latency"] >> continue_shoot_latency;
         continue_shoot_latency /= 1e3; 
+        fin["planner"]["same_trace_threshold"] >> same_trace_threshold;
         fin["planner"]["pitch_comp"] >> pitch_comp;
         fin["planner"]["yaw_comp"] >> yaw_comp;
         fin["planner"]["disable_vehicle_center_shoot_mode"] >> disable_vehicle_center_shoot_mode;

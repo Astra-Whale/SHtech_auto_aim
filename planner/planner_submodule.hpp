@@ -75,7 +75,7 @@ namespace plan
          * @param send 机器人控制指令结构体
          * @details 将预测结果转换为机器人控制指令，包括云台角度、角速度、射击使能等
          */
-        void update_information_to_send(const Target &target, const Plan &plan, RobotCommand &send, 
+        void update_information_to_send(const bool has_fixed_target, const Target &target, const Plan &plan, RobotCommand &send, 
             float attitude_yaw, float attitude_pitch);
 
         /**

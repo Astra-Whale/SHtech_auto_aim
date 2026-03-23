@@ -87,6 +87,8 @@ namespace predict
 
         const float dist_weight = 0.6f; // 距离权重
 
+        const int max_autoaim_mode_counter = 25;
+
     private:
         // === 配置参数 ===
         /// @brief 调试模式标志 - 控制调试信息输出
@@ -116,7 +118,6 @@ namespace predict
         int autoaim_mode_counter = 0; // 自瞄模式计数器，用于控制模式切换逻辑
         bool in_autoaim_mode = false; // 当前是否处于自瞄模式
 
-        bool has_fixed_target = false; // 是否已经锁定目标
         int fixed_target_id = 0; // 锁定目标的ID
 
     public:

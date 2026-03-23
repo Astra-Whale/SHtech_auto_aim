@@ -31,7 +31,6 @@ namespace predict
       debug(debug_),
       adjust(predic_adjust_),
       coord_transformer(CoordTransformer::Get()),
-      has_fixed_target(false),
       autoaim_mode_counter(0),
       in_autoaim_mode(false),
       fixed_target_id(0)
@@ -120,11 +119,15 @@ namespace predict
         auto &send = data->robotcommand;               // 机器人控制指令结构体
         auto robot_status = data->robotstatus;         // 机器人状态信息
         auto R_world2imu = data->attitude.R_world2imu(); // 世界坐标系到IMU坐标系的旋转矩阵
+        auto &has_fixed_target = data->has_fixed_target;   // 是否包含固定的目标
 
         // === 自瞄模式切换判断逻辑 ===
         if (in_autoaim_mode) {
             if (robot_status.program_mode != ProgramMode::AUTO_AIM) {
                 autoaim_mode_counter--;
+            }
+            else {
+                autoaim_mode_counter = max_autoaim_mode_counter;
             }
             
             if (autoaim_mode_counter <= 0) {
@@ -136,10 +139,13 @@ namespace predict
             if (robot_status.program_mode == ProgramMode::AUTO_AIM) {
                 autoaim_mode_counter++;
             }
+            else {
+                autoaim_mode_counter = 0;
+            }
             
-            if (autoaim_mode_counter >= 25) {
+            if (autoaim_mode_counter >= max_autoaim_mode_counter) {
                 in_autoaim_mode = true;
-                autoaim_mode_counter = 25;
+                autoaim_mode_counter = max_autoaim_mode_counter;
             }
         }
 
