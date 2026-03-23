@@ -408,6 +408,7 @@ struct ThreadDataPack
 
     Eigen::Matrix<double, 6, 1> target_state; /*!< 目标状态量 */
 
+    bool has_fixed_target = false; /*!< 是否包含锁定的目标 */
     Target target;
 
     RobotStatus robotstatus;    /*!< 上行机器人状态 */

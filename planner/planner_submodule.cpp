@@ -52,6 +52,7 @@ namespace plan
         auto robot_status = data->robotstatus;         // 机器人状态信息
         auto R_world2imu = data->attitude.R_world2imu(); // 世界坐标系到IMU坐标系的旋转矩阵
         auto &target = data->target;
+        auto has_fixed_target = data->has_fixed_target; 
 
         if (target.predictor_state == TrackingState::IDLE) {
             planner.planner_reset();
@@ -72,7 +73,7 @@ namespace plan
         auto &plan = planner.get_plan();
 
         // === 更新发送给下位机的控制指令 ===
-        update_information_to_send(target, plan, send, attitude_yaw, attitude_pitch);
+        update_information_to_send(has_fixed_target, target, plan, send, attitude_yaw, attitude_pitch);
 
         // === 可视化显示（可选） ===
         if (show) {
@@ -95,9 +96,26 @@ namespace plan
      * @param send 机器人控制指令结构体（输出）
      * @details 将预测结果转换为机器人可执行的控制指令
      */
-    void PlannerSubModule::update_information_to_send(const Target &target, const Plan &plan, RobotCommand &send,
+    void PlannerSubModule::update_information_to_send(const bool has_fixed_target, const Target &target, const Plan &plan, RobotCommand &send,
                                                         float attitude_yaw, float attitude_pitch)
     {
+        if (!has_fixed_target) {
+            send.distance = 0.0f;
+            send.fire_enable = 0;
+            send.pitch_angle = 0.0f;
+            send.pitch_speed = 0.0f;
+            send.pitch_acc = 0.0f;
+            send.yaw_angle = 0.0f;
+            send.yaw_speed = 0.0f;
+            send.yaw_acc = 0.0f;
+            send.target_id = 0;
+
+            if (debug)
+                cout << "[predictor] plan: not fixed" << endl;
+
+            return;
+        }
+
         if (plan.aimed_target_type != AimedTargetType::NONE) {
             // 有有效目标时，更新控制指令
             send.distance = plan.target_distance;                          // 目标距离
@@ -121,6 +139,9 @@ namespace plan
             else {
                 send.target_id = target.tracked_armor.tag_id;                        // 目标ID
             }   
+
+            if (debug)
+                cout << "[predictor] plan: sent" << endl;
         }
         else {
             // 无有效目标时，清除所有控制指令与目标ID
@@ -135,7 +156,7 @@ namespace plan
             send.target_id = 0;
 
             if (debug)
-                cout << "[predictor] target: none" << endl;
+                cout << "[predictor] plan: none" << endl;
         }
 
         // send.fire_enable = 1;
