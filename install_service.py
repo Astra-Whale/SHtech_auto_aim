@@ -7,15 +7,21 @@ here = os.path.dirname(__file__)
 log_path = os.path.join(here, "logs", "autostart.log")
 LD_LIBRARY_PATH = os.environ.get("LD_LIBRARY_PATH")
 start_bash = f"""#!/bin/bash
-mkdir -p {os.path.join(here, "logs")}
-chmod 0777 {os.path.join(here, "logs")}
-touch {log_path}
-chmod 0666 {log_path}
-FILE_SIZE=$(stat -c "%s" {log_path})
+mkdir -p /root/auto-aim/./logs
+chmod 0777 /root/auto-aim/./logs
+touch /root/auto-aim/./logs/autostart.log
+chmod 0666 /root/auto-aim/./logs/autostart.log
+FILE_SIZE=$(stat -c "%s" /root/auto-aim/./logs/autostart.log)
 if [ "$FILE_SIZE" -gt 1000000000 ]; then
-    rm {log_path}
+    rm /root/auto-aim/./logs/autostart.log
+    touch /root/auto-aim/logs/autostart.log
 fi
-runuser -l {os.getlogin()} -c "cd {here}; export LD_LIBRARY_PATH={LD_LIBRARY_PATH};./build/auto-aim >> {log_path} 2>&1" &
+export LD_LIBRARY_PATH=/usr/local/lib:/opt/MVS/lib/aarch64:/usr/local/lib
+cd /root/auto-aim || exit 1
+echo "Waiting for 10 seconds before starting auto-aim..." >> ./logs/autostart.log
+sleep 10
+./build/auto-aim >> /root/auto-aim/logs/autostart.log 2>&1
+
 
 """
 print(start_bash)
