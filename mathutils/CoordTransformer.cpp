@@ -58,7 +58,7 @@ namespace mathutils
         // 读取相机到IMU的外参（平移向量和旋转矩阵）
         fin["T_c2i"] >> T_camera2imu_MAT;  // 相机到IMU的平移向量
         fin["R_c2i"] >> R_camera2imu_MAT;  // 相机到IMU的旋转矩阵
-        
+
         // 读取相机内参
         fin["K"] >> F_MAT;  // 相机内参矩阵 (焦距、主点等)
         fin["D"] >> C_MAT;  // 相机畸变参数 (径向畸变、切向畸变)
@@ -156,9 +156,21 @@ namespace mathutils
             }
         }
 
+        // for (int i = 0; i < 4; ++i) {
+        //     cout << p[i] << endl;
+        // }
+
+        // cout << "pw_cur: " << endl;
+        // for (const auto &pt : pw_cur) {
+        //     cout << pt << endl;
+        // }
+
+        // cout << "F_MAT: " << endl << F_MAT << endl;
+        // cout << "C_MAT: " << endl << C_MAT << endl;
+
         // 将图像点转换为PnP算法需要的格式
-        // std::vector<cv::Point2d> pu(p, p + 4);
-        cv::Mat pu(4, 1, CV_32FC2, const_cast<cv::Point2f*>(p));
+        std::vector<cv::Point2d> pu(p, p + 4);
+        // cv::Mat pu(4, 1, CV_32FC2, const_cast<cv::Point2f*>(p));
 
         // PnP求解：从2D图像点和3D模型点求解相机位姿
         cv::Mat rvec, tvec;  // 旋转向量和平移向量
@@ -173,6 +185,10 @@ namespace mathutils
         Pos3D pc, pw, pi;  // 相机坐标系、世界坐标系、IMU坐标系
         
         cv::cv2eigen(tvec, pc);  // PnP得到的是相机坐标系中的位置
+
+        // cout << "T_camera2imu: " << T_camera2imu << endl;
+        // cout << "R_camera2imu: " << R_camera2imu << endl;
+        // cout << "R_world2imu: " << R_world2imu << endl;
         
         // 相机坐标系 -> IMU坐标系
         pi = R_camera2imu * pc + T_camera2imu;
@@ -213,8 +229,9 @@ namespace mathutils
 
         // === 组装最终测量值 ===
         // 测量值格式：[y坐标, x坐标, z坐标, 绝对偏航角]，该测量值对应于ekf的测量项
-        // 绝对偏航角 = 相机坐标系中的偏航角 - 机器人姿态偏航角
-        measurement << pw[1], pw[0], pw[2], yaw_in_camera - attitude_yaw;
+        // 绝对偏航角 = 相机坐标系中的偏航角 - 机器人姿态偏航角， [-pi, pi]
+        measurement << pw[1], pw[0], pw[2], mathutils::limit_rad(yaw_in_camera - attitude_yaw);
+        // measurement << pw[1], pw[0], pw[2], yaw_in_camera - attitude_yaw;
 
         return true;
     }

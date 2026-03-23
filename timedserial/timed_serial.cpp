@@ -122,15 +122,18 @@ namespace hardware
         // 智能合并：如果新数据的射速来自IMU包，则更新；
         // 否则保留已有值（避免被裁判系统包的默认值覆盖）
         float current_speed = latest_robot_status_.robot_speed_mps;
+        ProgramMode current_program_mode = latest_robot_status_.program_mode;
 
         constexpr float DEFAULT_SPEED = INF_BALL_SPEED;
         if (sts.robot_speed_mps == DEFAULT_SPEED)
         {
             latest_robot_status_ = sts;
             latest_robot_status_.robot_speed_mps = current_speed;
+            latest_robot_status_.program_mode = current_program_mode;
         }
         else {
             latest_robot_status_.robot_speed_mps = sts.robot_speed_mps;
+            latest_robot_status_.program_mode = sts.program_mode;
         }
         
         if (_debugprint)
@@ -172,7 +175,7 @@ namespace hardware
             command_array_[expectedIndexOne], 
             command_array_[expectedIndexOne + 1], 
             float(offsetInPeriod.count()) / float(plan_period_.count()));
-        
+
         // 使用 Planner 提供的姿态数据作为基准
         attitude_cache_ = attitude_at_last_frame_;
 
@@ -238,7 +241,7 @@ namespace hardware
 
                     if (_debugprint)
                     {
-                        LOGM_S("[TimedSerial][transmit] p-m:%6.2f | p-s:%6.2f | ps-s:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f | shoot_s:%6.2f | enemy:%d | fire:%d",
+                        LOGM_S("[TimedSerial][transmit] p-m:%6.2f | p-s:%6.2f | ps-s:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f | shoot_s:%6.2f | enemy_color:%d | target_id:%d | in_autoaim:%d | fire:%d",
                                attitude_cache_.pitch(),
                                attitude_cache_.pitch() + command_cache_.pitch_angle,
                                command_cache_.pitch_speed,
@@ -246,7 +249,9 @@ namespace hardware
                                attitude_cache_.yaw() + command_cache_.yaw_angle,
                                command_cache_.yaw_speed,
                                latest_robot_status_.robot_speed_mps,
-                               latest_robot_status_.enemy_color==EnemyColor::RED,
+                               latest_robot_status_.enemy_color==EnemyColor::BLUE,
+                               command_cache_.target_id,
+                               latest_robot_status_.program_mode==ProgramMode::AUTO_AIM,
                                command_cache_.fire_enable);
                     }
                 }

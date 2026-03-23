@@ -40,6 +40,7 @@ using namespace mathutils;
 namespace predict
 {
     using namespace std::chrono;
+
     /**
      * @class Tracker
      * @brief 目标跟踪器类 - 多模型自适应跟踪系统
@@ -75,10 +76,12 @@ namespace predict
         const int detecting_counter_threshold = 4;
         
         /// @brief 暂时丢失计数阈值，丢失超过此值返回空闲状态
-        const int temp_lost_counter_threshold = 100;
+        const int temp_lost_counter_threshold = 50;
+
+        const double yaw_speed_diverge_threshold = 3;
 
         /// @brief 偏航角速度发散检测阈值
-        const int yaw_speed_diverge_threshold = 100;
+        const int yaw_speed_diverge_counter_threshold = 50;
 
         /// @brief 装甲板模型适用阈值 (弧度/秒)，低于此速度使用装甲板模型
         const double armor_model_threshold = 0.7;
@@ -96,10 +99,10 @@ namespace predict
     private:
         // === 配置参数 ===
         /// @brief 调试模式标志
-        bool debug;
+        bool debug = false;
         
         /// @brief 参数调整模式标志
-        bool adjust;
+        bool adjust = false;
 
         // === 滤波器参数（科学计数法表示，支持实时调整） ===
         /// @brief 坐标过程噪声尾数
@@ -218,6 +221,9 @@ namespace predict
         /// @brief 暂时丢失计数器
         int temp_lost_counter;
 
+        /// @brief 暂时丢失时间点
+        TP temp_lost_tp;
+
         /// @brief 目标旋转计数器
         int rotate_counter;
 
@@ -300,16 +306,15 @@ namespace predict
 
     public:
         /**
-         * @brief 默认构造函数
-         */
-        Tracker() = default;
-        
-        /**
          * @brief 带参数构造函数
          * @param debug_ 调试模式标志
          * @param adjust_ 参数调整模式标志
          */
-        explicit Tracker(bool debug_, bool adjust_);
+        explicit Tracker();
+
+        void set_debug(bool debug_);
+
+        void set_adjust(bool adjust_);
 
         /**
          * @brief 获取当前跟踪状态

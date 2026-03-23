@@ -92,36 +92,70 @@ namespace mathutils
      *          通过求解二次方程找到两种可能的弹道，选择较短时间的弹道
      *          考虑重力下降和初始速度的抛物线运动
      */
-    static inline double cal_fly_time(const Pos3D &pw, double shoot_speed = 23.)
+    static inline double cal_fly_time(const Pos3D &pw, double shoot_speed = 23., bool consider_resistence = false)
     {
-        auto d = distance_2D(pw);  // 水平距离
-        auto h = pw(2, 0);         // 高度差
+        if (consider_resistence) {
+            // only for 42mm
+            // 考虑空气阻力， 计算角度
+            double theta = -atan(pw(1, 0) / pw(2, 0));
 
-        // 二次方程系数：at² + bt + c = 0
-        auto a = g * d * d / (2 * shoot_speed * shoot_speed);
-        auto b = -d;
-        auto c = a + h;
-        auto delta = b * b - 4 * a * c;  // 判别式
+            double delta_z;
 
-        if (delta < 0) {
-            return -1;  // 无实数解 - 目标不可达
+            // 首先计算空气阻力系数 K
+            // drag_c_realistic = (rho_air * Cd * Area) / (2 * mass_kg)
+            double k1 = 0.5 * 1.225 * (2 * 3.14159f * 0.021 * 0.021) / 2 / 0.041; // 0.5 * 1.225 0.47 * 1.169
+
+            // 使用迭代法求解炮弹的发射角度
+            // 根据炮弹的初速度、发射角度、空气阻力系数，计算炮弹的飞行轨迹
+            for (int i = 0; i < 100; i++)
+            {
+                // 计算炮弹的飞行时间
+                double t = (pow(2.718281828, k1 * distance_2D(pw)) - 1) / (k1 * shoot_speed * cos(theta));
+
+                delta_z = pw(2, 0) - shoot_speed * sin(theta) * t / cos(theta) + 4.9 * t * t / cos(theta) / cos(theta);
+
+                // 不断更新theta，直到小于某一个阈值
+                if (fabs(delta_z) < 0.000001)
+                    break;
+
+                // 更新角度
+                theta -= delta_z / (-(shoot_speed * t) / pow(cos(theta), 2) + 9.8 * t * t / (shoot_speed * shoot_speed) * sin(theta) / pow(cos(theta), 3));
+            }
+
+            return abs(distance_2D(pw) / (shoot_speed * cos(theta)));
         }
+        else {
+            auto d = distance_2D(pw);  // 水平距离
+            auto h = pw(2, 0);         // 高度差
 
-        // 计算两种可能的发射角
-        auto tan_pitch_1 = (-b + std::sqrt(delta)) / (2 * a);
-        auto tan_pitch_2 = (-b - std::sqrt(delta)) / (2 * a);
-        auto pitch_1 = std::atan(tan_pitch_1);
-        auto pitch_2 = std::atan(tan_pitch_2);
-        
-        // 计算两种弹道的飞行时间
-        auto t_1 = d / (shoot_speed * std::cos(pitch_1));
-        auto t_2 = d / (shoot_speed * std::cos(pitch_2));
+            // 二次方程系数：at² + bt + c = 0
+            auto a = g * d * d / (2 * shoot_speed * shoot_speed);
+            auto b = -d;
+            auto c = a + h;
+            auto delta = b * b - 4 * a * c;  // 判别式
 
-        // 返回较短的飞行时间（较平的弹道）
-        auto fly_time = (t_1 < t_2) ? t_1 : t_2;
+            if (delta < 0) {
+                return -1;  // 无实数解 - 目标不可达
+            }
 
-        return fly_time;
+            // 计算两种可能的发射角
+            auto tan_pitch_1 = (-b + std::sqrt(delta)) / (2 * a);
+            auto tan_pitch_2 = (-b - std::sqrt(delta)) / (2 * a);
+            auto pitch_1 = std::atan(tan_pitch_1);
+            auto pitch_2 = std::atan(tan_pitch_2);
+            
+            // 计算两种弹道的飞行时间
+            auto t_1 = d / (shoot_speed * std::cos(pitch_1));
+            auto t_2 = d / (shoot_speed * std::cos(pitch_2));
+
+            // 返回较短的飞行时间（较平的弹道）
+            auto fly_time = (t_1 < t_2) ? t_1 : t_2;
+
+            return fly_time;    
+        }
     }
+
+    
 
     /**
      * @brief 计算四边形的几何中心

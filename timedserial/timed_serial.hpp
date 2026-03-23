@@ -93,12 +93,12 @@ namespace hardware
         pipeline::bridge::SensorFromSerialRobotStatusBridge &status_bridge_; /*!< 串口到传感器的状态消息桥接 */
         
         // 来自 Planner 的命令数据（受 command_mutex_ 保护）
-        command_array_t command_array_;
-        RobotCommand command_cache_;
-        Attitude attitude_at_last_frame_; // Planner 传来的上一帧姿态
-        Attitude attitude_cache_;
-        std::chrono::microseconds plan_period_;
-        std::chrono::steady_clock::time_point command_start_time_;
+        command_array_t command_array_{};
+        RobotCommand command_cache_{};
+        Attitude attitude_at_last_frame_{}; // Planner 传来的上一帧姿态
+        Attitude attitude_cache_{};
+        std::chrono::microseconds plan_period_{0};
+        std::chrono::steady_clock::time_point command_start_time_{};
         
         // 来自驱动层的实时数据（受 sensor_mutex_ 保护）
         Attitude latest_attitude_;           /*!< 最新姿态数据 */

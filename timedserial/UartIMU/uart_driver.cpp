@@ -10,7 +10,7 @@
 using namespace std::chrono;
 
 // 裁判系统规定的最低子弹初速（单位：米/秒）
-constexpr float MIN_BULLET_SPEED_MPS = 20.0f;
+constexpr float MIN_BULLET_SPEED_MPS = 10.0f;
 
 UartDriver::UartDriver(const std::string device_name) 
     : m_device_name(device_name), m_serial()
@@ -25,7 +25,7 @@ UartDriver::UartDriver(const std::string device_name)
 bool UartDriver::init()
 {
     LOGM_S("Opening %s ", m_device_name.c_str());
-    m_serial.open(m_device_name);
+    m_serial.open(m_device_name, 921600);
     return m_serial.is_open();
 }
 
@@ -56,6 +56,8 @@ void UartDriver::on_receive_imu(drivers::packet_data_t* packet_ptr, drivers::pac
     //     return;
     // }
 
+    // cout << "Received IMU data packet, length: " << len << endl;
+
     pc_mcu_data_t* _tmp_ptr = (pc_mcu_data_t*)packet_ptr;
 
     // 1. 构造临时的 Attitude 对象并触发回调
@@ -70,13 +72,19 @@ void UartDriver::on_receive_imu(drivers::packet_data_t* packet_ptr, drivers::pac
     // 业务层需要自行合并这两个来源的数据
     if (this->status_cb_) {
         RobotStatus temp_status;
-        // temp_status.robot_speed_mps = _tmp_ptr->shoot_speed;
-        temp_status.robot_speed_mps = 22.6;
+        temp_status.robot_speed_mps = _tmp_ptr->shoot_speed;
+
+        // todo: temporially fix initial shoot speed
+        temp_status.robot_speed_mps = 24.2f;
+
         // 确保射速不低于最小值
         if (temp_status.robot_speed_mps < MIN_BULLET_SPEED_MPS) {
             temp_status.robot_speed_mps = MIN_BULLET_SPEED_MPS;
         }
         temp_status.program_mode = (ProgramMode)_tmp_ptr->autoaim_mode;
+
+        // cout << "Autoaim Mode: " << (int)_tmp_ptr->autoaim_mode << endl;
+
         this->status_cb_(temp_status);
     }
 }
@@ -97,13 +105,15 @@ void UartDriver::on_receive_sts(drivers::packet_data_t* packet_ptr, drivers::pac
     //     LOGW_S("[UART][ERROR] invalid robot status data length");
     //     return;
     // }
+
+    // cout << "Received Robot Status data packet, length: " << len << endl;
     
     robot_data_t* state_ptr = (robot_data_t*)packet_ptr;
 
     // 构造临时的 RobotStatus 对象
     RobotStatus temp_status;
 
-    // cout << state_ptr->robot_id << endl;
+    // cout << (int)state_ptr->robot_id << endl;
     
     // 根据 robot_id 判断己方颜色，从而确定敌方颜色
     // 1-20: 红方机器人，敌方是蓝色
@@ -129,6 +139,8 @@ void UartDriver::on_receive_sts(drivers::packet_data_t* packet_ptr, drivers::pac
     else {
         temp_status.enemy_color = EnemyColor::GRAY;
     }
+
+    // cout << "Enemy Color: " << (int)temp_status.enemy_color << endl;
 
     // 触发回调
     if (this->status_cb_) {

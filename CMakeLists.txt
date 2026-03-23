@@ -25,10 +25,7 @@ set_property(CACHE FOXGLOVE_PLATFORM PROPERTY STRINGS x64 arm64)
 
 option(USE_HIKCAM "Build with HikCAM Lib" ON)
 
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-    message(STATUS "Setting build type to 'Release' as none was specified.")
-    set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
-endif()
+set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
 
 add_compile_options(-Wall -Werror=return-type -Wno-unused-variable)
 if (CMAKE_BUILD_TYPE STREQUAL Release)

@@ -1,0 +1,13 @@
+%YAML:1.0
+---
+# 步兵4规划器参数
+
+planner:
+  latency: 150                    # Average total latency from PC to yaw action complete (in ms) # 15 
+  single_shoot_latency: 230       # (in ms), shoot latency of single shoot # 105
+  continue_shoot_latency: 45     # (in ms), shoot frequency of continuous shoot
+  same_trace_threshold: 0.003   # (in rad), trajectory tracking consistency threshold
+  pitch_comp: 0.022               # Pitch compensation
+  yaw_comp: -0.005                  # Yaw compensation
+  disable_vehicle_center_shoot_mode: true
+  consider_air_resistence: true

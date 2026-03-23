@@ -293,14 +293,11 @@ bool init(void)
     detect_submodule_registered = detect_composite->register_submodule_with_params<detect::DetectSubModule>(info["model"], display["detect_adjust"]);
 
     predict_submodule_registered = predict_composite->register_submodule_with_params<predict::MultiPolicyPredictorSubModule>(
-        display["predic_debug"], display["predic_adjust"]
+        display["predic_debug"], display["predic_adjust"], display["tracker_adjust"]
         );
 
     planner_submodule_registered = predict_composite->register_submodule_with_params<plan::PlannerSubModule>(*planner_to_serial_bridge, 
-        atoi(info["latency"].c_str()), atoi(info["shoot_latency"].c_str()), 
-        atof(info["pitch_comp"].c_str()), atof(info["yaw_comp"].c_str()), 
-        display["disable_vehicle_center_shoot_mode"],
-        display["predic_debug"], display["predic_show"], display["predic_plot"]);
+        info["planner_para"], display["predic_debug"], display["predic_show"], display["predic_plot"]);
 
     // 设置各个任务的调试和显示选项
     timed_serial->set_debug_print(display["timed_serial_debug"]);
