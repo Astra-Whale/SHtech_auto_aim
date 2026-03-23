@@ -61,7 +61,7 @@ with open("/lib/systemd/system/auto-aim.service", "w") as f:
 Description=auto-aim service
  
 [Service]
-Type=forking
+Type=Simple
  
 ExecStart={here}/bash/auto-aim-start.sh
 ExecStop={here}/bash/auto-aim-stop.sh
