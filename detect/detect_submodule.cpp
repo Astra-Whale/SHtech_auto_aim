@@ -103,8 +103,8 @@ namespace detect
             else {
                 corner_optimizer.setBinaryThreshold(bin_threshold_for_blue);
     
-                //LOGW_S("[detect] Warning: enemy color not set, using default binary threshold");
-                //LOGW_F("[detect] Warning: enemy color not set, using default binary threshold");
+                LOGW_S("[detect] Warning: enemy color not set, using default binary threshold");
+                LOGW_F("[detect] Warning: enemy color not set, using default binary threshold");
             }
         }
 
@@ -117,11 +117,12 @@ namespace detect
             // For each detected armor, optimize its corners
             for (auto &bbox : data->bboxes)
             {
-    		    if (bbox.color_id == 0)
-	    		bbox.color_id = 1;
-		    else if (bbox.color_id == 1) 
-		    	bbox.color_id = 0;
-                    	
+                // on axcl
+                if (bbox.color_id == 0)
+                    bbox.color_id = 1;
+                else if (bbox.color_id == 1) 
+                    bbox.color_id = 0;
+
                 std::vector<cv::Point2f> yolo_corners;
                 yolo_corners.resize(4);
 
@@ -141,7 +142,7 @@ namespace detect
                     }
 
                     bbox.source = DetectionSource::TRADITIONAL;
-                    
+
                     optimized_bboxes.push_back(bbox);
                 }
                 else {

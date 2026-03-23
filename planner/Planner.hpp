@@ -75,8 +75,8 @@ namespace predict
         const double max_pitch_acc = 100;
 
         // === 装甲板切换检测参数 ===
-        /// @brief 装甲板切换时间间隔 (微秒)，基于60rpm计算
-        const int armor_jump_interval = 45 * 1000;
+        /// @brief 装甲板切换时间间隔 (秒)
+        const int armor_jump_interval = 0.1f;
 
         // === 旋转速度分类阈值 ===
         /// @brief 慢速旋转上限 (弧度/秒)
@@ -91,25 +91,25 @@ namespace predict
         /// @brief 高速旋转下限 (弧度/秒)
         const double fast_rotation_lower_bound = 6.28;
 
-        // === 射击决策参数 ===
-        /// @brief 轨迹跟踪一致性阈值 (弧度)
-        const double same_trace_threshold = 0.01;
-        
+        // === 射击决策参数 ===        
         /// @brief 射击精度阈值 (弧度) - 约等于atan(0.05/0.4)
         const double fire_threshold = 0.05; // 0.125;
 
         /// @brief 位置变化阈值 (米)，用于检测装甲板切换
         const double same_position_threshold = 0.2;
 
-        const double shoot_interval = 0.3;
+        const double shoot_interval = 0.25;
 
     private:
         // === 配置参数 ===
         /// @brief 通信延迟 (秒)
         double comm_latency;
 
-        /// @brief 发射延迟 (秒)
-        double shoot_latency;
+        /// @brief 单次发射延迟 (秒)
+        double single_shoot_latency;
+
+        /// @brief 连续射击延迟 (秒)
+        double continue_shoot_latency;
 
         /// @brief 射击时机偏移（MPC步数）(与shoot_latency配合使用)
         int shoot_offset = 2;
@@ -118,7 +118,12 @@ namespace predict
 
         double yaw_comp = 0;
 
+        /// @brief 轨迹跟踪一致性阈值 (弧度)
+        double same_trace_threshold = 0.003;
+
         bool disable_vehicle_center_shoot_mode = true;
+
+        bool consider_air_resistence = false;
 
         /// @brief 调试模式标志
         bool debug;
@@ -227,22 +232,6 @@ namespace predict
                                                         const Eigen::Matrix<double, 2, 1> &y_state, 
                                                         const Eigen::Matrix<double, 2, 1> &z_state);
 
-        Eigen::Matrix<double, 2, 1> cal_target_acc(const Eigen::Matrix<double, 2, 1> &x_state, 
-                                                        const Eigen::Matrix<double, 2, 1> &y_state, 
-                                                        const Eigen::Matrix<double, 2, 1> &z_state);
-
-        /**
-         * @brief 角度限制在(-π, π]范围内
-         * @param angle 输入角度
-         * @return 限制后的角度
-         */
-        inline double limit_rad(double angle)
-        {
-          while (angle > CV_PI) angle -= 2 * CV_PI;
-          while (angle <= -CV_PI) angle += 2 * CV_PI;
-          return angle;
-        }
-
     public:
         /**
          * @brief 默认构造函数
@@ -255,8 +244,7 @@ namespace predict
          * @param shoot_latency_ 发射延迟时间 (s)
          * @param debug_ 调试模式标志
          */
-        explicit Planner(double comm_latency_, double shoot_latency_,double pitch_comp_, double yaw_comp_, 
-                        bool disable_vehicle_center_shoot_mode_, bool debug_);
+        explicit Planner(const std::string planner_param, bool debug_);
 
         /**
          * @brief 重置规划器状态

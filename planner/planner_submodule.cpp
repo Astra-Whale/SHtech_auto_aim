@@ -7,11 +7,10 @@
 
 namespace plan
 {
-
-    PlannerSubModule::PlannerSubModule(pipeline::bridge::PlannerToSerialBridge &message_bridge, int comm_latency_, int shoot_latency_,
-        double pitch_comp, double yaw_comp, bool disable_vehicle_center_shoot_mode, bool debug_, bool show_, bool plot_) 
+    PlannerSubModule::PlannerSubModule(pipeline::bridge::PlannerToSerialBridge &message_bridge, const std::string planner_param,
+        bool debug_, bool show_, bool plot_) 
         : SubModule(SubModuleName::PLANNER), planner_bridge(message_bridge),
-          planner(comm_latency_ / 1e3, shoot_latency_ / 1e3, pitch_comp, yaw_comp, disable_vehicle_center_shoot_mode, debug_),
+          planner(planner_param, debug_),
           coord_transformer(CoordTransformer::Get()),
           debug(debug_),
           show(show_),
@@ -53,8 +52,7 @@ namespace plan
         auto robot_status = data->robotstatus;         // 机器人状态信息
         auto R_world2imu = data->attitude.R_world2imu(); // 世界坐标系到IMU坐标系的旋转矩阵
         auto &target = data->target;
-        
-        //cout << "process" << endl;
+        auto has_fixed_target = data->has_fixed_target; 
 
         if (target.predictor_state == TrackingState::IDLE) {
             planner.planner_reset();
@@ -64,7 +62,6 @@ namespace plan
         }
 
         if (target.predictor_state != TrackingState::IDLE) {
-        //cout << "tracking" << endl;
             auto &plan = planner.make_plan(target, robot_status.robot_speed_mps,
                 attitude_yaw, attitude_pitch, R_world2imu, tp);
 
@@ -76,7 +73,7 @@ namespace plan
         auto &plan = planner.get_plan();
 
         // === 更新发送给下位机的控制指令 ===
-        update_information_to_send(target, plan, send, attitude_yaw, attitude_pitch);
+        update_information_to_send(has_fixed_target, target, plan, send, attitude_yaw, attitude_pitch);
 
         // === 可视化显示（可选） ===
         if (show) {
@@ -99,17 +96,35 @@ namespace plan
      * @param send 机器人控制指令结构体（输出）
      * @details 将预测结果转换为机器人可执行的控制指令
      */
-    void PlannerSubModule::update_information_to_send(const Target &target, const Plan &plan, RobotCommand &send,
+    void PlannerSubModule::update_information_to_send(const bool has_fixed_target, const Target &target, const Plan &plan, RobotCommand &send,
                                                         float attitude_yaw, float attitude_pitch)
     {
+        if (!has_fixed_target) {
+            send.distance = 0.0f;
+            send.fire_enable = 0;
+            send.pitch_angle = 0.0f;
+            send.pitch_speed = 0.0f;
+            send.pitch_acc = 0.0f;
+            send.yaw_angle = 0.0f;
+            send.yaw_speed = 0.0f;
+            send.yaw_acc = 0.0f;
+            send.target_id = 0;
+
+            if (debug)
+                cout << "[predictor] plan: not fixed" << endl;
+
+            return;
+        }
+
         if (plan.aimed_target_type != AimedTargetType::NONE) {
             // 有有效目标时，更新控制指令
             send.distance = plan.target_distance;                          // 目标距离
             send.fire_enable = plan.fire_enable;                          // 射击使能
 
-            if (send.fire_enable == 3) {
-                 cout << "fire 11111111111111111111111111111111" << endl;
-            }
+            // if (send.fire_enable == 3) {
+            //     LOGT_S();
+            //     cout << "fire 11111111111111111111111111111111" << endl;
+            // }
 
             send.pitch_angle = (plan.target_pitch - attitude_pitch) / M_PI * 180.0f;         // 俯仰角（转换为度数）
             send.pitch_speed = plan.target_pitch_speed;                   // 俯仰角速度
@@ -124,14 +139,31 @@ namespace plan
             else {
                 send.target_id = target.tracked_armor.tag_id;                        // 目标ID
             }   
+
+            if (debug)
+                cout << "[predictor] plan: sent" << endl;
         }
         else {
-            // 无有效目标时，清除目标ID
+            // 无有效目标时，清除所有控制指令与目标ID
+            send.distance = 0.0f;
+            send.fire_enable = 0;
+            send.pitch_angle = 0.0f;
+            send.pitch_speed = 0.0f;
+            send.pitch_acc = 0.0f;
+            send.yaw_angle = 0.0f;
+            send.yaw_speed = 0.0f;
+            send.yaw_acc = 0.0f;
             send.target_id = 0;
 
             if (debug)
-                cout << "[predictor] target: none" << endl;
+                cout << "[predictor] plan: none" << endl;
         }
+
+        // send.fire_enable = 1;
+        // send.pitch_angle = 0;
+        // send.yaw_angle = 0;
+        // send.target_id = 2;
+        // send.distance = 1;
     }
 
     /**
@@ -145,10 +177,10 @@ namespace plan
     {
         LOGT_S();
 
-        //cout << data->robotstatus.robot_speed_mps << endl;
+        // cout << data->robotstatus.robot_speed_mps << endl;
 
-        //cout << data->attitude.yaw() << endl;
-        //cout << data->attitude.pitch() << endl;
+        // cout << data->attitude.yaw() << endl;
+        // cout << data->attitude.pitch() << endl;
 
         // cout << (tracked_armor.source == DetectionSource::TRADITIONAL ? 1 : 0) << endl;
 
@@ -163,6 +195,7 @@ namespace plan
         // cout << target.tracked_state(2, 0) - target.tracked_state(8, 0) * sin(target.tracked_state(6, 0)) << std::endl;
         // cout << target.tracked_measurement(2, 0) << std::endl;
         // cout << target.tracked_measurement(3, 0) << std::endl;
+
         // std::cout << static_cast<int>(target.predictor_state) << std::endl;
         // cout << target.ab_counter << std::endl;
 
@@ -194,17 +227,18 @@ namespace plan
 
         // cout << plan.aimed_armor_pos(0, 0) << endl;
         // cout << plan.aimed_armor_pos(1, 0) << endl;
-        //cout << plan.aimed_armor_pos(2, 0) << endl;
+        // cout << plan.aimed_armor_pos(2, 0) << endl;
 
-        //cout << plan.target_yaw / M_PI * 180.0f << std::endl;
-        cout << plan.target_yaw_speed / M_PI * 180.0f << std::endl;
-        // cout << plan.target_yaw_acc / M_PI * 180.0f << endl;
+        // cout << plan.target_yaw << std::endl;
+        // cout << plan.target_yaw / M_PI * 180.0f << std::endl;
+        // cout << plan.target_yaw_speed << std::endl;
+        // cout << plan.target_yaw_acc << endl;
 
-        //cout << plan.target_pitch / M_PI * 180.0f << std::endl;
-        //cout << plan.target_pitch_speed / M_PI * 180.0f << std::endl;
+        // cout << plan.target_pitch / M_PI * 180.0f << std::endl;
+        // cout << plan.target_pitch_speed / M_PI * 180.0f << std::endl;
         // cout << plan.target_pitch_acc / M_PI * 180.0f << endl;
 
-        //cout << plan.fire_enable << endl;
+        cout << plan.fire_enable << endl;
     }
 
     // === 枚举转字符串辅助函数 ===
@@ -328,14 +362,9 @@ namespace plan
             cv::line(im2show, tracked_armor.pts[2], tracked_armor.pts[3], colors[2], 1);
             cv::line(im2show, tracked_armor.pts[3], tracked_armor.pts[0], colors[2], 1); // white
 
-            //cv::putText(im2show, std::to_string(tracked_armor.tag_id), tracked_armor.pts[0], cv::FONT_HERSHEY_SIMPLEX, 1, colors[tracked_armor.color_id]);
+            cv::putText(im2show, std::to_string(tracked_armor.tag_id), tracked_armor.pts[0], cv::FONT_HERSHEY_SIMPLEX, 1, colors[tracked_armor.color_id]);
 
-	    cv::putText(im2show, std::to_string(0), tracked_armor.pts[0], cv::FONT_HERSHEY_SIMPLEX, 1, colors[tracked_armor.color_id]);
-       	    cv::putText(im2show, std::to_string(1), tracked_armor.pts[1], cv::FONT_HERSHEY_SIMPLEX, 1, colors[tracked_armor.color_id]);
-	    cv::putText(im2show, std::to_string(2), tracked_armor.pts[2], cv::FONT_HERSHEY_SIMPLEX, 1, colors[tracked_armor.color_id]);
-	    cv::putText(im2show, std::to_string(3), tracked_armor.pts[3], cv::FONT_HERSHEY_SIMPLEX, 1, colors[tracked_armor.color_id]);
-
-       	}
+        }
 
         // states
         cv::putText(im2show, std::to_string(target.tracked_state(2, 0)), zero, cv::FONT_HERSHEY_SIMPLEX, 1, colors[1]);

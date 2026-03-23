@@ -21,20 +21,13 @@ namespace predict
      * @param adjust_ 参数调整模式标志
      * @details 设置初始状态，初始化滤波器，配置参数调整界面（如果需要）
      */
-    Tracker::Tracker(bool debug_, bool adjust_)
+    Tracker::Tracker()
     : last_tp(std::chrono::high_resolution_clock::now()),
       detecting_counter(0),
       temp_lost_counter(0),
       yaw_speed_diverge_counter(0),
-      rotate_counter(0),
-      debug(debug_),
-      adjust(adjust_)
+      rotate_counter(0)
     {
-        // 如果开启参数调整模式，初始化调整界面
-        if (adjust) {
-            parameter_adjustor_init();
-        }
-
         // 初始化目标状态
         target_init();
 
@@ -43,6 +36,20 @@ namespace predict
         
         // 初始化整车模型的扩展卡尔曼滤波器
         whole_state_ekf_init();
+    }
+
+    void Tracker::set_debug(bool debug_)
+    {
+        debug = debug_;
+    }
+
+    void Tracker::set_adjust(bool adjust_)
+    {
+        adjust = adjust_;
+
+        if (adjust) {
+            parameter_adjustor_init();
+        }
     }
 
     /**
@@ -123,10 +130,12 @@ namespace predict
             if (abs(target.tracked_state(7, 0)) > outpost_fix_yaw_speed_threshold) {
                 target.tracked_state(7, 0) = target.tracked_state(7, 0) > 0 ? outpost_yaw_speed : -outpost_yaw_speed;
             }
+
             target.tracked_state(8, 0) = outpost_r;
             target.tracked_state(9, 0) = 0.0;
 
-            p_coord = 1e1;
+            // todo
+            p_coord = 1e2;
             p_yaw = 1e1;
         }
         else {
@@ -166,7 +175,7 @@ namespace predict
         tracker_model_select();
 
         // target.updating_model_type = UpdatingModelType::ARMOR_MODEL;
-        target.updating_model_type = UpdatingModelType::VEHICLE_MODEL;
+        // target.updating_model_type = UpdatingModelType::VEHICLE_MODEL;
         
         // === 装甲板模型更新 (x, y, z坐标) ===
         // 使用白噪声运动模型
@@ -205,20 +214,31 @@ namespace predict
                     std::cout << "[predict] vehicle model update only" << std::endl;
             }
         }
+        else {
+            if (debug)
+                std::cout << "[predict] no same id armor" << std::endl;
+        }
 
         // === 整车模型更新 ===
         if (same_id_armor_count) {
             if (target.updating_model_type != UpdatingModelType::ARMOR_MODEL) {
                 if (same_id_armor_count == 1) {
                     int id = match_armor_id(target.tracked_measurement);
-		    target.tracked_state = whole_state_ekf.update(target.tracked_measurement, id);
+                    // cout << "matched id: " << id << std::endl;
+
+                    target.tracked_state = whole_state_ekf.update(target.tracked_measurement, id);
                 }
                 else if (same_id_armor_count == 2) {
                     int id = match_armor_id(target.tracked_measurement);
-		    target.tracked_state = whole_state_ekf.update(target.tracked_measurement, id);
+                    // cout << "matched id: " << id << std::endl;
 
-		    //id = match_armor_id(secondary_measurement);
-                    //target.tracked_state = whole_state_ekf.update(secondary_measurement, id);
+                    target.tracked_state = whole_state_ekf.update(target.tracked_measurement, id);
+
+                    // on axcl
+                    // id = match_armor_id(secondary_measurement);
+                    // cout << "matched id: " << id << std::endl;
+
+                    // target.tracked_state = whole_state_ekf.update(secondary_measurement, id);
                 }
 
                 if (min_position_diff > same_position_threshold) {
@@ -311,84 +331,109 @@ namespace predict
 
     int Tracker::match_armor_id(const Eigen::Matrix<double, 4, 1> &measurement)
     {
-        int id;
-        auto min_angle_error = 1e10;
-        const std::vector<Eigen::Vector4d> & xyza_list = armor_xyza_list();
-      
-        std::vector<std::pair<Eigen::Vector4d, int>> xyza_i_list;
-        for (int i = 0; i < 4; i++) {
-          xyza_i_list.push_back({xyza_list[i], i});
+        // // 1) 构建与 EKF 一致的观测噪声 R
+        // auto update_R = whole_state_ekf.get_update_R();
+
+        // Eigen::Matrix<double, 4, 4> R = update_R(measurement);
+
+        // // 2) 取 EKF 当前状态协方差 P
+        // const Eigen::Matrix<double, 11, 11> P = whole_state_ekf.get_P();
+
+        // int best_id = 0;
+        // double min_mahal_sq = DBL_MAX;
+
+        // auto h = whole_state_ekf.get_h();
+        // auto calculate_H = whole_state_ekf.get_calculate_H();
+
+        // for (int id = 0; id < 4; id++) {
+        //     // 3) 预测观测 z_hat = h(x, id)
+        //     Eigen::Matrix<double, 4, 1> z_hat = h(target.tracked_state, id);
+
+        //     // 4) 残差 v（yaw 处理跳变）
+        //     Eigen::Matrix<double, 4, 1> v = measurement - z_hat;
+        //     v(3, 0) = mathutils::limit_rad(v(3, 0));
+
+        //     // 5) 观测雅可比 H(x,id)
+        //     Eigen::Matrix<double, 4, 11> H = calculate_H(target.tracked_state, id);
+
+        //     // 6) 创新协方差 S = HPH^T + R
+        //     Eigen::Matrix<double, 4, 4> S = H * P * H.transpose() + R;
+        //     S += 1e-9 * Eigen::Matrix<double, 4, 4>::Identity();
+
+        //     // 用分解代替显式求逆，数值更稳
+        //     Eigen::LDLT<Eigen::Matrix<double, 4, 4>> ldlt(S);
+        //     if (ldlt.info() != Eigen::Success) continue;
+
+        //     const double mahal_sq = v.transpose() * ldlt.solve(v);
+
+        //     if (mahal_sq < min_mahal_sq) {
+        //         min_mahal_sq = mahal_sq;
+        //         best_id = id;
+        //     }
+        // }
+
+        // return best_id;
+
+
+        // 计算装甲板匹配得分矩阵
+        std::vector<Eigen::Vector4d> standard_armors = armor_xyza_list();
+        Pos3D matched_armor_pos = {measurement(1, 0), measurement(0, 0), measurement(2, 0)};
+
+        // 计算两组装甲板之间的坐标差和角度差两个负向指标
+        Eigen::Matrix<double, 4, 2> negative_score;
+        for (int j = 0; j < 4; j++)
+        {
+            Pos3D standard_armor_pos = {standard_armors[j][1], standard_armors[j][0], standard_armors[j][2]};
+
+            negative_score(j, 0) = mathutils::distance_3D(matched_armor_pos - standard_armor_pos);
+            negative_score(j, 1) = abs(mathutils::limit_rad(measurement(3, 0) - standard_armors[j](3, 0)));
         }
-      
-        std::sort(
-          xyza_i_list.begin(), xyza_i_list.end(),
-          [](const std::pair<Eigen::Vector4d, int> & a, const std::pair<Eigen::Vector4d, int> & b) {
-            Eigen::Vector3d ypd1 = mathutils::xyz2ypd(a.first.head(3));
-            Eigen::Vector3d ypd2 = mathutils::xyz2ypd(b.first.head(3));
-            return ypd1[2] < ypd2[2];
-          });
 
-        Eigen::Vector3d xyz_measurement;
-        xyz_measurement << measurement(0, 0), measurement(1, 0), measurement(2, 0);
-        Eigen::Vector3d ypd_measurement = mathutils::xyz2ypd(xyz_measurement);
-      
-        // 取前3个distance最小的装甲板
-        for (int i = 0; i < 3; i++) {
-          const auto & xyza = xyza_i_list[i].first;
-          Eigen::Vector3d ypd = mathutils::xyz2ypd(xyza.head(3));
-          auto angle_error = std::abs(mathutils::limit_rad(measurement(3, 0) - xyza[3])) +
-                             std::abs(mathutils::limit_rad(ypd_measurement[0] - ypd[0]));
-
-        // auto angle_error = std::abs(mathutils::limit_rad(ypd_measurement[0] - ypd[0]));
-      
-          if (std::abs(angle_error) < std::abs(min_angle_error)) {
-            id = xyza_i_list[i].second;
-            min_angle_error = angle_error;
-          }
+        // 数据标准化
+        Eigen::Matrix<double, 4, 2> regular_score;
+        for (int i = 0; i < regular_score.rows(); i++)
+        {
+            regular_score(i, 0) = (negative_score.col(0).maxCoeff() - negative_score(i, 0)) / (negative_score.col(0).maxCoeff() - negative_score.col(0).minCoeff());
+            regular_score(i, 1) = (negative_score.col(1).maxCoeff() - negative_score(i, 1)) / (negative_score.col(1).maxCoeff() - negative_score.col(1).minCoeff());
         }
 
-        return id;// 1) 构建与 EKF 一致的观测噪声 R
-        auto update_R = whole_state_ekf.get_update_R();
+        // 计算样本值占指标的比重
+        Eigen::Matrix<double, 4, 2> score_weight;
+        Eigen::VectorXd col_sum = regular_score.colwise().sum();
+        for (int i = 0; i < score_weight.rows(); i++)
+        {
+            score_weight(i, 0) = regular_score(i, 0) / col_sum(0);
+            score_weight(i, 1) = regular_score(i, 1) / col_sum(1);
+        }
 
-        Eigen::Matrix<double, 4, 4> R = update_R(measurement);
+        // 计算每项指标的熵值
+        Eigen::Vector2d entropy = Eigen::Vector2d::Zero();
+        for (int i = 0; i < score_weight.rows(); i++)
+        {
+            if (score_weight(i, 0) != 0)
+                entropy(0) -= score_weight(i, 0) * log(score_weight(i, 0));
+            if (score_weight(i, 1) != 0)
+                entropy(1) -= score_weight(i, 1) * log(score_weight(i, 1));
+        }
+        entropy /= log(score_weight.rows());
 
-        // 2) 取 EKF 当前状态协方差 P
-        const Eigen::Matrix<double, 11, 11> P = whole_state_ekf.get_P();
+        // 计算权重
+        Eigen::Vector2d weight = (Eigen::Vector2d::Ones() - entropy) / (2 - entropy.sum());
 
-        int best_id = 0;
-        double min_mahal_sq = DBL_MAX;
-
-        auto h = whole_state_ekf.get_h();
-        auto calculate_H = whole_state_ekf.get_calculate_H();
-
-        for (int id = 0; id < 4; id++) {
-            // 3) 预测观测 z_hat = h(x, id)
-            Eigen::Matrix<double, 4, 1> z_hat = h(target.tracked_state, id);
-
-            // 4) 残差 v（yaw 处理跳变）
-            Eigen::Matrix<double, 4, 1> v = measurement - z_hat;
-            v(3, 0) = mathutils::limit_rad(v(3, 0));
-
-            // 5) 观测雅可比 H(x,id)
-            Eigen::Matrix<double, 4, 11> H = calculate_H(target.tracked_state, id);
-
-            // 6) 创新协方差 S = HPH^T + R
-            Eigen::Matrix<double, 4, 4> S = H * P * H.transpose() + R;
-            S += 1e-9 * Eigen::Matrix<double, 4, 4>::Identity();
-
-            // 用分解代替显式求逆，数值更稳
-            Eigen::LDLT<Eigen::Matrix<double, 4, 4>> ldlt(S);
-            if (ldlt.info() != Eigen::Success) continue;
-
-            const double mahal_sq = v.transpose() * ldlt.solve(v);
-
-            if (mahal_sq < min_mahal_sq) {
-                min_mahal_sq = mahal_sq;
-                best_id = id;
+        // 计算匹配得分矩阵
+        Eigen::Matrix<double, 1, 4> score;
+        for (int j = 0; j < 4; j++)
+        {
+            if (j < 4)
+            {
+                score(0, j) = negative_score.row(j) * weight;
             }
         }
 
-        return best_id;
+        int index;
+        score.row(0).minCoeff(&index);
+
+        return index;
     }
 
     /**
@@ -570,8 +615,8 @@ namespace predict
     void Tracker::whole_state_ekf_init()
     {
         // === 状态转移函数 ===
-        // 状态: y, vy, x, vx, z, vz, yaw(-∞, +∞), vyaw, r, l, h
-        // 观测: y, x, z, yaw(-∞, +∞)
+        // 状态: y, vy, x, vx, z, vz, yaw, vyaw, r, l, h
+        // 观测: y, x, z, yaw
         auto f_ = [this](const Eigen::Matrix<double, 11, 1> & x) {
             Eigen::Matrix<double, 11, 1> x_pri = x;
             // 积分更新位置和角度
@@ -858,6 +903,7 @@ namespace predict
                 // 跟踪丢失，进入暂时丢失状态
                 temp_lost_counter++;
                 target.predictor_state = TrackingState::TEMP_LOST;
+                temp_lost_tp = std::chrono::high_resolution_clock::now();
             }
         }
         else if (target.predictor_state == TrackingState::TEMP_LOST) {
@@ -886,9 +932,6 @@ namespace predict
      */
     void Tracker::tracker_model_select()
     {
-        target.updating_model_type = UpdatingModelType::VEHICLE_MODEL;
-        return;
-
         // 根据旋转速度更新模型
         if (target.updating_model_type == UpdatingModelType::ARMOR_MODEL) {
             if (abs(target.yaw_state(1, 0)) > armor_model_threshold) {
@@ -1020,8 +1063,7 @@ namespace predict
         }
 
         // 检查两种模型对偏航角速度估计的一致性
-        if ((target.tracked_state(7, 0) > 0 && target.yaw_state(1, 0) < 0) || 
-            (target.tracked_state(7, 0) < 0 && target.yaw_state(1, 0) > 0)) {
+        if (abs((target.tracked_state(7, 0) - target.yaw_state(1, 0))) > yaw_speed_diverge_threshold) {
             yaw_speed_diverge_counter++;
         }
         else {
@@ -1029,9 +1071,11 @@ namespace predict
         }
 
         bool yaw_speed_diverge = false;
-        if (yaw_speed_diverge_counter > yaw_speed_diverge_threshold) {
+        if (yaw_speed_diverge_counter > yaw_speed_diverge_counter_threshold) {
             yaw_speed_diverge_counter = 0;
             yaw_speed_diverge = true;
+
+            cout << "Yaw speed diverge detected! Resetting EKF..." << endl;
         }
 
         return yaw_diverge || yaw_speed_diverge;
