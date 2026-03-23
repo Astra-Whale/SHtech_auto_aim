@@ -75,7 +75,7 @@ void UartDriver::on_receive_imu(drivers::packet_data_t* packet_ptr, drivers::pac
         temp_status.robot_speed_mps = _tmp_ptr->shoot_speed;
 
         // todo: temporially fix initial shoot speed
-        temp_status.robot_speed_mps = 24.2f;
+        temp_status.robot_speed_mps = 24.5f;
 
         // 确保射速不低于最小值
         if (temp_status.robot_speed_mps < MIN_BULLET_SPEED_MPS) {
