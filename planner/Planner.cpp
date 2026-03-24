@@ -51,6 +51,7 @@ namespace predict
         fin["planner"]["pitch_comp"] >> pitch_comp;
         fin["planner"]["yaw_comp"] >> yaw_comp;
         fin["planner"]["disable_vehicle_center_shoot_mode"] >> disable_vehicle_center_shoot_mode;
+        fin["planner"]["disable_armor_with_vehicle_shoot_mode"] >> disable_armor_with_vehicle_shoot_mode;
         fin["planner"]["consider_air_resistence"] >> consider_air_resistence;
 
         shoot_offset = static_cast<int>(continue_shoot_latency / DT);
@@ -768,7 +769,12 @@ namespace predict
                     }
                 }
                 else if (rotation_speed > slow_rotation_upper_bound) {
-                    plan.aimed_target_type = AimedTargetType::ARMOR_WITH_VEHICLE_MODEL;
+                    if (disable_armor_with_vehicle_shoot_mode) {
+                        plan.aimed_target_type = AimedTargetType::VEHICLE_CENTER_WITH_VEHICLE_MODEL;
+                    }
+                    else {
+                        plan.aimed_target_type = AimedTargetType::ARMOR_WITH_VEHICLE_MODEL;
+                    }
                 }
                 else {
                     plan.aimed_target_type = AimedTargetType::ARMOR_WITH_ARMOR_MODEL;
@@ -777,7 +783,12 @@ namespace predict
             else if (plan.aimed_target_type == AimedTargetType::ARMOR_WITH_ARMOR_MODEL) {
                 // 从装甲板模型状态转换：只能向上升级
                 if (rotation_speed > slow_rotation_upper_bound) {
-                    plan.aimed_target_type = AimedTargetType::ARMOR_WITH_VEHICLE_MODEL;
+                    if (disable_armor_with_vehicle_shoot_mode) {
+                        plan.aimed_target_type = AimedTargetType::VEHICLE_CENTER_WITH_VEHICLE_MODEL;
+                    }
+                    else {
+                        plan.aimed_target_type = AimedTargetType::ARMOR_WITH_VEHICLE_MODEL;
+                    }
                 }
             }
             else if (plan.aimed_target_type == AimedTargetType::ARMOR_WITH_VEHICLE_MODEL) {
@@ -797,7 +808,12 @@ namespace predict
             else if (plan.aimed_target_type == AimedTargetType::VEHICLE_CENTER_WITH_VEHICLE_MODEL) {
                 // 从车辆中心模型状态转换：只能向下降级
                 if (rotation_speed < fast_rotation_lower_bound) {
-                    plan.aimed_target_type = AimedTargetType::ARMOR_WITH_VEHICLE_MODEL;
+                    if (disable_armor_with_vehicle_shoot_mode) {
+                        plan.aimed_target_type = AimedTargetType::VEHICLE_CENTER_WITH_VEHICLE_MODEL;
+                    }
+                    else {
+                        plan.aimed_target_type = AimedTargetType::ARMOR_WITH_VEHICLE_MODEL;
+                    }
                 }
             }
 
@@ -822,7 +838,12 @@ namespace predict
                 }
             }
             else if (rotation_speed > slow_rotation_upper_bound) {
-                plan.aimed_target_type = AimedTargetType::ARMOR_WITH_VEHICLE_MODEL;
+                if (disable_armor_with_vehicle_shoot_mode) {
+                    plan.aimed_target_type = AimedTargetType::VEHICLE_CENTER_WITH_VEHICLE_MODEL;
+                }
+                else {
+                    plan.aimed_target_type = AimedTargetType::ARMOR_WITH_VEHICLE_MODEL;
+                }
             }
             else {
                 plan.aimed_target_type = AimedTargetType::ARMOR_WITH_ARMOR_MODEL;

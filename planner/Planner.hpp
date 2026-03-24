@@ -123,6 +123,8 @@ namespace predict
 
         bool disable_vehicle_center_shoot_mode = true;
 
+        bool disable_armor_with_vehicle_shoot_mode = false;
+
         bool consider_air_resistence = false;
 
         /// @brief 调试模式标志
