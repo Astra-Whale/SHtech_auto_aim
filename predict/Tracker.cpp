@@ -125,8 +125,8 @@ namespace predict
         // === 扩展卡尔曼滤波预测步骤 ===
         target.tracked_state = whole_state_ekf.predict();
 
-        // special for output
-        if (tag_id == 0) {
+        // special for outpost
+        if (tag_id == 8) {
             if (abs(target.tracked_state(7, 0)) > outpost_fix_yaw_speed_threshold) {
                 target.tracked_state(7, 0) = target.tracked_state(7, 0) > 0 ? outpost_yaw_speed : -outpost_yaw_speed;
             }
