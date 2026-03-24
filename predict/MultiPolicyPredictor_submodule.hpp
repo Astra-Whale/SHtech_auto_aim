@@ -87,7 +87,8 @@ namespace predict
 
         const float dist_weight = 0.6f; // 距离权重
 
-        const int max_autoaim_mode_counter = 25;
+	// on axcl
+        const int max_autoaim_mode_counter = 15;
 
     private:
         // === 配置参数 ===

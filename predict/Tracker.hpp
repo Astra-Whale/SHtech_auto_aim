@@ -75,13 +75,14 @@ namespace predict
         /// @brief 检测阶段计数阈值，连续检测超过此值进入跟踪状态
         const int detecting_counter_threshold = 4;
         
+        // on axcl
         /// @brief 暂时丢失计数阈值，丢失超过此值返回空闲状态
-        const int temp_lost_counter_threshold = 50;
+        const int temp_lost_counter_threshold = 30;
 
         const double yaw_speed_diverge_threshold = 3;
 
         /// @brief 偏航角速度发散检测阈值
-        const int yaw_speed_diverge_counter_threshold = 50;
+        const int yaw_speed_diverge_counter_threshold = 30;
 
         /// @brief 装甲板模型适用阈值 (弧度/秒)，低于此速度使用装甲板模型
         const double armor_model_threshold = 0.7;
