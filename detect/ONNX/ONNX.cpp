@@ -145,8 +145,9 @@ void ONNX::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
             }
         }
 
-        if (class_id == 7||class_id == 8) class_id = 0; // B
+        if (class_id == 7||class_id == 8) class_id = 9; // B
         else if (class_id == 0) class_id = 7; // G
+        else if (class_id == 6) class_id = 8; // O
 
         if (color_id == 0) color_id = 1; // Red
         else if (color_id == 1) color_id = 0; // Blue

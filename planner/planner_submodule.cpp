@@ -108,55 +108,55 @@ namespace plan
             send.yaw_angle = 0.0f;
             send.yaw_speed = 0.0f;
             send.yaw_acc = 0.0f;
-            send.target_id = 0;
+
+            if (plan.aimed_target_type != AimedTargetType::NONE) {
+                send.target_id = target.tracked_armor.tag_id;
+            }
+            else {
+                send.target_id = 0;
+            }
 
             if (debug)
                 cout << "[predictor] plan: not fixed" << endl;
-
-            return;
-        }
-
-        if (plan.aimed_target_type != AimedTargetType::NONE) {
-            // 有有效目标时，更新控制指令
-            send.distance = plan.target_distance;                          // 目标距离
-            send.fire_enable = plan.fire_enable;                          // 射击使能
-
-            // if (send.fire_enable == 3) {
-            //     LOGT_S();
-            //     cout << "fire 11111111111111111111111111111111" << endl;
-            // }
-
-            send.pitch_angle = (plan.target_pitch - attitude_pitch) / M_PI * 180.0f;         // 俯仰角（转换为度数）
-            send.pitch_speed = plan.target_pitch_speed;                   // 俯仰角速度
-            send.pitch_acc = plan.target_pitch_acc;
-            send.yaw_angle = (plan.target_yaw - attitude_yaw) / M_PI * 180.0f;            // 偏航角（转换为度数）
-            send.yaw_speed = plan.target_yaw_speed;                       // 偏航角速度
-            send.yaw_acc = plan.target_yaw_acc;
-
-            if (target.tracked_armor.tag_id == 0) {
-                send.target_id = 8;
-            }
-            else {
-                send.target_id = target.tracked_armor.tag_id;                        // 目标ID
-            }   
-
-            if (debug)
-                cout << "[predictor] plan: sent" << endl;
         }
         else {
-            // 无有效目标时，清除所有控制指令与目标ID
-            send.distance = 0.0f;
-            send.fire_enable = 0;
-            send.pitch_angle = 0.0f;
-            send.pitch_speed = 0.0f;
-            send.pitch_acc = 0.0f;
-            send.yaw_angle = 0.0f;
-            send.yaw_speed = 0.0f;
-            send.yaw_acc = 0.0f;
-            send.target_id = 0;
+            if (plan.aimed_target_type != AimedTargetType::NONE) {
+                // 有有效目标时，更新控制指令
+                send.distance = plan.target_distance;                          // 目标距离
+                send.fire_enable = plan.fire_enable;                          // 射击使能
 
-            if (debug)
-                cout << "[predictor] plan: none" << endl;
+                // if (send.fire_enable == 3) {
+                //     LOGT_S();
+                //     cout << "fire 11111111111111111111111111111111" << endl;
+                // }
+
+                send.pitch_angle = (plan.target_pitch - attitude_pitch) / M_PI * 180.0f;         // 俯仰角（转换为度数）
+                send.pitch_speed = plan.target_pitch_speed;                   // 俯仰角速度
+                send.pitch_acc = plan.target_pitch_acc;
+                send.yaw_angle = (plan.target_yaw - attitude_yaw) / M_PI * 180.0f;            // 偏航角（转换为度数）
+                send.yaw_speed = plan.target_yaw_speed;                       // 偏航角速度
+                send.yaw_acc = plan.target_yaw_acc;
+
+                send.target_id = target.tracked_armor.tag_id;
+
+                if (debug)
+                    cout << "[predictor] plan: sent" << endl;
+            }
+            else {
+                // 无有效目标时，清除所有控制指令与目标ID
+                send.distance = 0.0f;
+                send.fire_enable = 0;
+                send.pitch_angle = 0.0f;
+                send.pitch_speed = 0.0f;
+                send.pitch_acc = 0.0f;
+                send.yaw_angle = 0.0f;
+                send.yaw_speed = 0.0f;
+                send.yaw_acc = 0.0f;
+                send.target_id = 0;
+
+                if (debug)
+                    cout << "[predictor] plan: none" << endl;
+            }
         }
 
         // send.fire_enable = 1;
