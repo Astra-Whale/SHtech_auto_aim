@@ -10,4 +10,5 @@ planner:
   pitch_comp: 0.005               # Pitch compensation # 0.015
   yaw_comp: 0.0                  # Yaw compensation
   disable_vehicle_center_shoot_mode: true
+  disable_armor_with_vehicle_shoot_mode: false
   consider_air_resistence: false

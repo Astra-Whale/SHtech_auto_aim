@@ -265,4 +265,8 @@ namespace detect
         // 检测总是成功的，返回 true
         return SubModuleResult::SUCCESS;
     }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 67ecc8457ad3a3b212d9ef560dc4aad79381a4f6

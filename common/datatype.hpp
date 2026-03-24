@@ -157,7 +157,7 @@ struct bbox_t
     cv::Point2f pts[4]; // [pt0, pt1, pt2, pt3]
     float confidence;
     int color_id; // 0: red, 1: blue, 2: gray
-    int tag_id;   // 0: guard, 1-5: number, 6: base
+    int tag_id;    // 1-7: robot, 8: outpost, 9: base
     DetectionSource source;   // 0: neural network, 1: traditional cv
 
     bool operator==(const bbox_t &a) const

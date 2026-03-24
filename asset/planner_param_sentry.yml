@@ -9,5 +9,6 @@ planner:
   same_trace_threshold: 0.003   # (in rad), trajectory tracking consistency threshold
   pitch_comp: 0.025               # Pitch compensation
   yaw_comp: 0                  # Yaw compensation
-  disable_vehicle_center_shoot_mode: true
+  disable_vehicle_center_shoot_mode: false
+  disable_armor_with_vehicle_shoot_mode: true
   consider_air_resistence: false
