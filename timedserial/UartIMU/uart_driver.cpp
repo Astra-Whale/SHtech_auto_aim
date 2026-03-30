@@ -51,10 +51,10 @@ void UartDriver::close()
 void UartDriver::on_receive_imu(drivers::packet_data_t* packet_ptr, drivers::packet_length_t len)
 {
     // 校验数据包长度
-    // if (len != sizeof(pc_mcu_data_t)) {
+    if (len != sizeof(pc_mcu_data_t)) {
     //     LOGW_S("[UART][ERROR] invalid IMU data length");
-    //     return;
-    // }
+       return;
+    }
 
     // cout << "Received IMU data packet, length: " << len << endl;
 
@@ -101,10 +101,10 @@ void UartDriver::on_receive_imu(drivers::packet_data_t* packet_ptr, drivers::pac
 void UartDriver::on_receive_sts(drivers::packet_data_t* packet_ptr, drivers::packet_length_t len)
 {
     // 校验数据包长度
-    // if (len != sizeof(robot_data_t)) {
+    if (len != sizeof(robot_data_t)) {
     //     LOGW_S("[UART][ERROR] invalid robot status data length");
-    //     return;
-    // }
+        return;
+    }
 
     // cout << "Received Robot Status data packet, length: " << len << endl;
     
