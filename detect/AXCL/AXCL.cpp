@@ -274,6 +274,8 @@ AXCL::~AXCL()
 
 void AXCL::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
 {
+    //std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
+
     // pre-process [bgr2rgb & resize]
     det.clear();
     cv::Mat img_new(384, 640, CV_8UC3, inputTensorValues.data());
@@ -285,6 +287,10 @@ void AXCL::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
         cv::cvtColor(img_new, img_new, cv::COLOR_BGR2RGB);
     }
     cv::cvtColor(src, img_new, cv::COLOR_BGR2RGB);
+    
+    //std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
+    //std::cout << "Pre-process time: " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us" << std::endl;
+    
     // 7. insert input
     memcpy(io_data.pInputs[0].pVirAddr, inputTensorValues.data(), inputTensorValues.size());
     
@@ -308,6 +314,10 @@ void AXCL::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
         box.tag_id = argmax(box_buffer + 13, 7);
     }
     std::sort(candidates.begin(), candidates.end(), std::greater<bbox_t>());
+    
+    //std::chrono::steady_clock::time_point t3 = std::chrono::steady_clock::now();
+    //std::cout << "process time: " << std::chrono::duration_cast<std::chrono::microseconds>(t3 - t2).count() << " us" << std::endl;
+    
     // post-process [nms]
     det.reserve(TOPK_NUM);
     std::vector<uint8_t> removed(TOPK_NUM);
@@ -326,4 +336,7 @@ void AXCL::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
         }
         det.push_back(box1);
     }
+    
+    //std::chrono::steady_clock::time_point t4 = std::chrono::steady_clock::now();
+    //std::cout << "Post-process time: " << std::chrono::duration_cast<std::chrono::microseconds>(t4 - t3).count() << " us" << std::endl;
 }
