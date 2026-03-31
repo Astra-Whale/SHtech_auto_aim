@@ -29,7 +29,8 @@ set(CMAKE_BUILD_TYPE Release CACHE STRING "Choose the type of build." FORCE)
 
 add_compile_options(-Wall -Werror=return-type -Wno-unused-variable)
 if (CMAKE_BUILD_TYPE STREQUAL Release)
-    add_compile_options(-O3 -flto -march=native)
+    #add_compile_options(-O3 -flto -march=native)
+    add_compile_options(-O3 -flto -march=native -g -fsanitize=address)
 elseif (CMAKE_BUILD_TYPE STREQUAL RelWithDebInfo)
     add_compile_options(-O3 -flto -march=native -g)
 elseif (CMAKE_BUILD_TYPE STREQUAL MinSizeRel)
@@ -58,6 +59,13 @@ file(GLOB FOXGLOVE_SOURCES CONFIGURE_DEPENDS
 )
 
 add_executable(${exe_name} main.cpp)
+
+
+# 1. 设置编译标志
+target_compile_options(auto-aim PRIVATE -fsanitize=address -fno-omit-frame-pointer)
+
+# 2. 设置链接标志 (关键！这一步告诉链接器去链接 libasan)
+target_link_options(auto-aim PRIVATE -fsanitize=address)
 
 include_directories(common)
 include_directories(entrystage)
