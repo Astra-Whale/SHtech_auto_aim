@@ -6,9 +6,8 @@ import re
 here = os.path.dirname(__file__)
 log_path = os.path.join(here, "logs", "autostart.log")
 LD_LIBRARY_PATH = os.environ.get("LD_LIBRARY_PATH")
-start_bash = f"""#!/bin/bash
-export LD_PRELOAD=/lib/aarch64-linux-gnu/libasan.so.6
-export ASAN_OPTIONS=detect_leaks=1:abort_on_error=1
+start_bash = f"""#export LD_PRELOAD=/lib/aarch64-linux-gnu/libasan.so.6
+#export ASAN_OPTIONS=detect_leaks=1:abort_on_error=1
 mkdir -p /root/auto-aim/./logs
 chmod 0777 /root/auto-aim/./logs
 touch /root/auto-aim/./logs/autostart.log
@@ -18,15 +17,16 @@ if [ "$FILE_SIZE" -gt 1000000000 ]; then
     rm /root/auto-aim/./logs/autostart.log
     touch /root/auto-aim/logs/autostart.log
 fi
-ulimit -c unlimited
-mkdir -p /var/coredump
-chmod 777 /var/coredump
-echo "/var/coredump/core-%e-%p-%t" | tee /proc/sys/kernel/core_pattern
+#ulimit -c unlimited
+#mkdir -p /var/coredump
+#chmod 777 /var/coredump
+#echo "/var/coredump/core-%e-%p-%t" | tee /proc/sys/kernel/core_pattern
 export LD_LIBRARY_PATH=/usr/local/lib:/opt/MVS/lib/aarch64:/usr/local/lib
 cd /root/auto-aim || exit 1
-echo "Waiting for 20 seconds before starting auto-aim..." >> ./logs/autostart.log
-sleep 20
+echo "Waiting for 15 seconds before starting auto-aim..." >> ./logs/autostart.log
+sleep 15
 ./build/auto-aim >> /root/auto-aim/logs/autostart.log 2>&1
+
 
 
 
@@ -68,11 +68,11 @@ with open("/lib/systemd/system/auto-aim.service", "w") as f:
 Description=auto-aim service
  
 [Service]
-LimitCORE=infinity
+#LimitCORE=infinity
 Type=Simple
  
-Environment="LD_PRELOAD=/lib/aarch64-linux-gnu/libasan.so.6"
-Environment="ASAN_OPTIONS=detect_leaks=1:abort_on_error=1:log_path=/tmp/asan.log"
+#Environment="LD_PRELOAD=/lib/aarch64-linux-gnu/libasan.so.6"
+#Environment="ASAN_OPTIONS=detect_leaks=1:abort_on_error=1:log_path=/tmp/asan.log"
 
 ExecStart=/root/auto-aim/bash/auto-aim-start.sh
 ExecStop=/root/auto-aim/bash/auto-aim-stop.sh
