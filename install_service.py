@@ -6,7 +6,8 @@ import re
 here = os.path.dirname(__file__)
 log_path = os.path.join(here, "logs", "autostart.log")
 LD_LIBRARY_PATH = os.environ.get("LD_LIBRARY_PATH")
-start_bash = f"""#export LD_PRELOAD=/lib/aarch64-linux-gnu/libasan.so.6
+start_bash = f"""#!/bin/bash
+#export LD_PRELOAD=/lib/aarch64-linux-gnu/libasan.so.6
 #export ASAN_OPTIONS=detect_leaks=1:abort_on_error=1
 mkdir -p /root/auto-aim/./logs
 chmod 0777 /root/auto-aim/./logs
@@ -26,6 +27,7 @@ cd /root/auto-aim || exit 1
 echo "Waiting for 15 seconds before starting auto-aim..." >> ./logs/autostart.log
 sleep 15
 ./build/auto-aim >> /root/auto-aim/logs/autostart.log 2>&1
+
 
 
 
