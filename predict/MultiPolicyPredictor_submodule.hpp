@@ -80,6 +80,7 @@ namespace predict
         const double max_yaw_accept = 0.85;
 
         const double max_distance_accept = 4.5; // 最大可接受距离 (米)
+        const double max_height_accept = 1.5; // m
 
         const int cx = 640; // 图像中心X坐标 (像素)
         const int cy = 360; // 图像中心Y坐标 (像素)
