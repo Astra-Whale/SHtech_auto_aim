@@ -216,8 +216,19 @@ constexpr float sigmoid(float x)
     return 1 / (1 + std::exp(-x));
 }
 
-AXCL::AXCL(const std::string &AXCL_file) : BackEnd(), inputTensorValues(3*384*640, 0)
+AXCL::AXCL(const std::string &model_file) : BackEnd(), inputTensorValues(3*512*640, 0)
 {
+    const std::string oldExt = ".onnx";
+    const std::string newExt = ".axmodel";
+
+    std::string axcl_file = model_file;
+
+    if (model_file.size() >= oldExt.size() &&
+        model_file.compare(model_file.size() - oldExt.size(), oldExt.size(), oldExt) == 0) {
+        axcl_file = model_file.substr(0, model_file.size() - oldExt.size()) + newExt;
+        LOGE_S( "Read Run-Joint model(%s).\n", axcl_file.c_str());
+    }
+
     AX_SYS_Init();
     AX_ENGINE_NPU_ATTR_T npu_attr;
     memset(&npu_attr, 0, sizeof(npu_attr));
@@ -231,7 +242,7 @@ AXCL::AXCL(const std::string &AXCL_file) : BackEnd(), inputTensorValues(3*384*64
     }
 
     // 2. load model
-    if (!read_file(AXCL_file, model_buffer))
+    if (!read_file(axcl_file, model_buffer))
     {
         LOGE_S( "[AXCL] Read Run-Joint model(%s) file failed.\n", AXCL_file.c_str());
         return;
@@ -278,12 +289,12 @@ void AXCL::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
 
     // pre-process [bgr2rgb & resize]
     det.clear();
-    cv::Mat img_new(384, 640, CV_8UC3, inputTensorValues.data());
-    float fx = (float)src.cols / 640.f, fy = (float)src.rows / 384.f;
+    cv::Mat img_new(512, 640, CV_8UC3, inputTensorValues.data());
+    float fx = (float)src.cols / 640.f, fy = (float)src.rows / 512.f;
     
-    if (src.cols != 640 || src.rows != 384)
+    if (src.cols != 640 || src.rows != 512)
     {
-        cv::resize(src, img_new, {640, 384});
+        cv::resize(src, img_new, {640, 512});
         cv::cvtColor(img_new, img_new, cv::COLOR_BGR2RGB);
     }
     cv::cvtColor(src, img_new, cv::COLOR_BGR2RGB);
@@ -299,19 +310,33 @@ void AXCL::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
 
     std::vector<bbox_t> candidates;
     float* out = (float*)io_data.pOutputs[0].pVirAddr;
-    for (size_t i = 0; i < 15120; i++)
+    int stride = 8, x_center = 0, y_center = 0;
+    for (size_t i = 0; i < 6720; i++)
     {
-        const float* box_buffer = out+20*i;
-        if (box_buffer[8] < inv_sigmoid(KEEP_THRES))
-            continue;
-        candidates.emplace_back();
-        auto &box = candidates.back();
-        memcpy(&box.pts, box_buffer, 8 * sizeof(float));
-        for (auto &pt : box.pts)
-            pt.x *= fx, pt.y *= fy;
-        box.confidence = sigmoid(box_buffer[8]);
-        box.color_id = argmax(box_buffer + 9, 4);
-        box.tag_id = argmax(box_buffer + 13, 7);
+        const float* box_buffer = out+21*i;
+        if (box_buffer[8] >= KEEP_THRES)
+        {
+            candidates.emplace_back();
+            auto &box = candidates.back();
+            memcpy(&box.pts, box_buffer, 8 * sizeof(float));
+            std::swap(box.pts[2],box.pts[3]);   // 2025、04、10系列的新模型具有和旧模型不同的角点顺序：模型输出为：左上，左下，右上，右下。现将其调整为与旧的一致：左上，左下，右下，右上
+            for (auto &pt : box.pts)
+            {
+                pt.x = pt.x * 2 * stride + x_center;
+                pt.y = pt.y * 2 * stride + y_center;
+                pt.x *= fx;
+                pt.y *= fy;
+            }
+            box.confidence = box_buffer[8];
+            box.tag_id = argmax(box_buffer + 9, 8);
+            box.color_id = argmax(box_buffer + 17, 2);
+            int armor_size = argmax(box_buffer + 19, 2);
+        }
+        x_center += stride;
+        x_center = (x_center == 640)?0:x_center;
+        y_center += x_center == 0 ? stride:0;
+        y_center = (y_center == 512)?0:y_center;
+        stride *= x_center ==0 && y_center == 0? 2 : 1;
     }
     std::sort(candidates.begin(), candidates.end(), std::greater<bbox_t>());
     
