@@ -244,7 +244,7 @@ AXCL::AXCL(const std::string &model_file) : BackEnd(), inputTensorValues(3*512*6
     // 2. load model
     if (!read_file(axcl_file, model_buffer))
     {
-        LOGE_S( "[AXCL] Read Run-Joint model(%s) file failed.\n", AXCL_file.c_str());
+        LOGE_S( "[AXCL] Read Run-Joint model file failed.\n");
         return;
     }
 
