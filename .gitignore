@@ -3,6 +3,7 @@ MvSdkLog/
 build/
 data/
 log/
+logs/
 *.cache
 bash/auto-aim-start.sh
 frames/
