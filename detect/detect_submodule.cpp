@@ -117,12 +117,6 @@ namespace detect
             // For each detected armor, optimize its corners
             for (auto &bbox : data->bboxes)
             {
-                // on axcl
-                if (bbox.color_id == 0)
-                    bbox.color_id = 1;
-                else if (bbox.color_id == 1) 
-                    bbox.color_id = 0;
-
                 std::vector<cv::Point2f> yolo_corners;
                 yolo_corners.resize(4);
 
