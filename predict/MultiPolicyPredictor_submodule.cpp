@@ -180,8 +180,9 @@ namespace predict
                                                                                     attitude_yaw, R_world2imu, yaw_in_camera, measurement);
                 Pos3D m_pw(measurement(1, 0), measurement(0, 0), measurement(2, 0));
                 double dist = distance_3D(m_pw);
+                double height = m_pw(2, 0);
 
-                if (dist < max_distance_accept) {
+                if (dist < max_distance_accept && abs(measurement(2, 0)) < max_yaw_accept && abs(height) < max_height_accept) {
                     bool already_in_tracking = false;
                     for (int i = 0; i < NUM_TRACKER; ++i) {
                         if (trackers[i].get_tracker_state() != TrackingState::IDLE && armor.tag_id == tracked_armors[i].tag_id) {
