@@ -2,17 +2,56 @@
 #include "hikcam_wrapper.hpp"
 #include <iostream>
 
-HikCamWrapper::HikCamWrapper(int dev_num)
+namespace
 {
-    this->cam_handle = nullptr;
-    this->exposure = exposure;
-    this->gain = gain;
-    this->pData = nullptr;
-    this->nDataSize = 0;
-    this->dev_num = dev_num;
+const char *BayerPatternToString(HikCamWrapper::BayerPattern pattern)
+{
+    switch (pattern)
+    {
+    case HikCamWrapper::BayerPattern::RG:
+        return "BayerRG";
+    case HikCamWrapper::BayerPattern::GB:
+        return "BayerGB";
+    case HikCamWrapper::BayerPattern::AUTO:
+    default:
+        return "AUTO";
+    }
+}
 
+int PixelTypeToCvType(unsigned int pixel_type)
+{
+    switch (pixel_type)
+    {
+    case PixelType_Gvsp_BayerRG8:
+    case PixelType_Gvsp_BayerGB8:
+        return CV_8UC1;
+    case PixelType_Gvsp_BayerRG10:
+    case PixelType_Gvsp_BayerRG12:
+    case PixelType_Gvsp_BayerRG16:
+    case PixelType_Gvsp_BayerGB10:
+    case PixelType_Gvsp_BayerGB12:
+    case PixelType_Gvsp_BayerGB16:
+        return CV_16UC1;
+    default:
+        return -1;
+    }
+}
+}
+
+HikCamWrapper::HikCamWrapper(int dev_num, BayerPattern bayer_pattern)
+    : exposure(0.0),
+      gain(0.0),
+      cam_handle(nullptr),
+      dev_num(dev_num),
+      fail_cnt(0),
+      pData(nullptr),
+      pDataForBGR(nullptr),
+      nDataSize(0),
+      configured_bayer_pattern_(bayer_pattern),
+      bayer_pattern_(bayer_pattern)
+{
     memset(&stParam, 0, sizeof(MVCC_INTVALUE));
-    memset(&stOutFrame, 0, sizeof(MV_FRAME_OUT_INFO_EX));
+    memset(&stOutFrame, 0, sizeof(MV_FRAME_OUT));
 }
 
 bool HikCamWrapper::init(bool debug)
@@ -77,6 +116,34 @@ bool HikCamWrapper::init(bool debug)
         }
 
         // 设置触发模式为off
+        if (configured_bayer_pattern_ == BayerPattern::AUTO)
+        {
+            MVCC_ENUMVALUE stPixelFormat;
+            memset(&stPixelFormat, 0, sizeof(MVCC_ENUMVALUE));
+            nRet = MV_CC_GetPixelFormat(cam_handle, &stPixelFormat);
+            if (MV_OK != nRet)
+            {
+                if (debug)
+                    std::cout << "MV_CC_GetPixelFormat Fail! nRet " << std::hex << nRet << std::endl;
+                break;
+            }
+
+            if (!updateBayerPatternFromPixelType(stPixelFormat.nCurValue))
+            {
+                if (debug)
+                    std::cout << "Unsupported pixel format for HikCamWrapper: 0x"
+                              << std::hex << stPixelFormat.nCurValue << std::dec << std::endl;
+                break;
+            }
+
+            if (debug)
+                std::cout << "Detected Bayer pattern: " << BayerPatternToString(bayer_pattern_) << std::endl;
+        }
+        else
+        {
+            bayer_pattern_ = configured_bayer_pattern_;
+        }
+
         nRet = MV_CC_SetEnumValue(cam_handle, "TriggerMode", 0);
         if (MV_OK != nRet)
         {
@@ -168,9 +235,10 @@ bool HikCamWrapper::close(bool debug)
         if (debug)
             std::cout << "MV_CC_DestroyHandle fail! nRet " << nRet << std::endl;
     }
-    if (!pData)
+    if (pData)
     {
         free(pData);
+        pData = nullptr;
     }
     if (debug)
         std::cout << "HikCam Close Success" << std::endl;
@@ -184,7 +252,8 @@ HikCamWrapper::~HikCamWrapper()
 
 bool HikCamWrapper::read(cv::Mat &src, bool debug)
 {
-    if (fail_cnt > 10) {
+    if (fail_cnt > 10)
+    {
         close(debug);
         if (!init(debug))
         {
@@ -199,17 +268,19 @@ bool HikCamWrapper::read(cv::Mat &src, bool debug)
     {
         if (debug)
             std::cout << "MV_CC_GetImageBuffer fail! nRet" << nRet << std::endl;
-        fail_cnt ++;
+        fail_cnt++;
         return false;
     }
 
     //nRet = MV_CC_ConvertPixelType(cam_handle, &stConvertParam);
     //src = cv::Mat(stImageInfo.nHeight, stImageInfo.nWidth, CV_8UC3, pDataForBGR);
     cv::Mat _src;
+    const unsigned int pixel_type = stOutFrame.stFrameInfo.enPixelType;
+    const int cv_type = PixelTypeToCvType(pixel_type);
 
-    _src = cv::Mat(stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth, 0, stOutFrame.pBufAddr); // Mat date type CV_8UC = 0
+    _src = cv::Mat(stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth, cv_type, stOutFrame.pBufAddr);
 
-    cv::cvtColor(_src, src, cv::COLOR_BayerRG2RGB); // bayer RG -> BGR
+    cv::cvtColor(_src, src, getCvBayerConversionCode());
     
     if (NULL != stOutFrame.pBufAddr)
     {
@@ -218,7 +289,7 @@ bool HikCamWrapper::read(cv::Mat &src, bool debug)
         {
             if (debug)
                 std::cout << "Free Image Buffer fail! nRet " << std::hex << nRet << std::endl;
-            fail_cnt ++;
+            fail_cnt++;
             return false;
         }
     }
@@ -273,4 +344,45 @@ cv::Size HikCamWrapper::getSize()
 bool HikCamWrapper::setBrightness(int brightness)
 {
     return MV_CC_SetBrightness(cam_handle, brightness) == MV_OK;
+}
+
+void HikCamWrapper::setBayerPattern(BayerPattern bayer_pattern)
+{
+    configured_bayer_pattern_ = bayer_pattern;
+    bayer_pattern_ = bayer_pattern;
+}
+
+bool HikCamWrapper::updateBayerPatternFromPixelType(unsigned int pixel_type)
+{
+    switch (pixel_type)
+    {
+    case PixelType_Gvsp_BayerRG8:
+    case PixelType_Gvsp_BayerRG10:
+    case PixelType_Gvsp_BayerRG12:
+    case PixelType_Gvsp_BayerRG16:
+        bayer_pattern_ = BayerPattern::RG;
+        return true;
+    case PixelType_Gvsp_BayerGB8:
+    case PixelType_Gvsp_BayerGB10:
+    case PixelType_Gvsp_BayerGB12:
+    case PixelType_Gvsp_BayerGB16:
+        bayer_pattern_ = BayerPattern::GB;
+        return true;
+    default:
+        return false;
+    }
+}
+
+int HikCamWrapper::getCvBayerConversionCode() const
+{
+    switch (bayer_pattern_)
+    {
+    case BayerPattern::RG:
+        return cv::COLOR_BayerRG2RGB;
+    case BayerPattern::GB:
+        return cv::COLOR_BayerGB2RGB;
+    case BayerPattern::AUTO:
+    default:
+        return cv::COLOR_BayerRG2RGB;
+    }
 }
