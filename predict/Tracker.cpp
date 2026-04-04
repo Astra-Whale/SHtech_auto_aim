@@ -449,13 +449,37 @@ namespace predict
      * @brief 初始化目标状态参数
      * @details 设置目标的初始状态和默认参数
      */
-    void Tracker::target_init() 
+    void Tracker::target_init()
     {
         target.predictor_state = TrackingState::IDLE;
-        target.another_r = 0.26;  // 另一对装甲板的默认半径 (米)
-        target.ab_counter = 0;    // 装甲板切换计数器
         target.updating_model_type = UpdatingModelType::ARMOR_MODEL;
+        target.ab_counter = 0;
         target.vehicle_model_trust = false;
+
+        target.tracked_state.setZero();
+        target.tracked_measurement.setZero();
+        target.estimated_armor_m.setZero();
+
+        target.yaw_state.setZero();
+        target.yaw_measurement.setZero();
+        target.armor_x_state.setZero();
+        target.armor_x_measurement.setZero();
+        target.armor_y_state.setZero();
+        target.armor_y_measurement.setZero();
+        target.armor_z_state.setZero();
+        target.armor_z_measurement.setZero();
+
+        target.another_r = 0.26;
+        target.dz = 0.0;
+
+        target.tracked_armor = bbox_t{};
+        target.tracked_armor.confidence = 0.0f;
+        target.tracked_armor.color_id = 0;
+        target.tracked_armor.tag_id = 0;
+        target.tracked_armor.source = DetectionSource::NEURAL_NETWORK;
+        for (auto &pt : target.tracked_armor.pts) {
+            pt = cv::Point2f(0.0f, 0.0f);
+        }
     }
 
     /**
