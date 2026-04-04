@@ -7,6 +7,8 @@ here = os.path.dirname(__file__)
 log_path = os.path.join(here, "logs", "autostart.log")
 LD_LIBRARY_PATH = os.environ.get("LD_LIBRARY_PATH")
 start_bash = f"""#!/bin/bash
+set -u
+
 #export LD_PRELOAD=/lib/aarch64-linux-gnu/libasan.so.6
 #export ASAN_OPTIONS=detect_leaks=1:abort_on_error=1
 mkdir -p /root/auto-aim/./logs
@@ -26,8 +28,45 @@ export LD_LIBRARY_PATH=/usr/local/lib:/opt/MVS/lib/aarch64:/usr/local/lib
 cd /root/auto-aim || exit 1
 echo "Waiting for 15 seconds before starting auto-aim..." >> ./logs/autostart.log
 sleep 15
-./build/auto-aim >> /root/auto-aim/logs/autostart.log 2>&1
 
+child_pid=""
+stop_requested=0
+
+forward_stop() {{
+    stop_requested=1
+    echo "$(date '+%F %T') [auto-aim-start] stop requested, forwarding signal to auto-aim" >> /root/auto-aim/logs/autostart.log
+    if [ -n "${{child_pid}}" ] && kill -0 "${{child_pid}}" 2>/dev/null; then
+        kill -TERM "${{child_pid}}" 2>/dev/null || true
+    fi
+}}
+
+trap forward_stop TERM INT
+
+echo "$(date '+%F %T') [auto-aim-start] launching ./build/auto-aim" >> /root/auto-aim/logs/autostart.log
+./build/auto-aim >> /root/auto-aim/logs/autostart.log 2>&1 &
+child_pid=$!
+wait "${{child_pid}}"
+exit_code=$?
+
+echo "$(date '+%F %T') [auto-aim-start] auto-aim exited with code $exit_code" >> /root/auto-aim/logs/autostart.log
+
+if [ "$stop_requested" -eq 1 ]; then
+    echo "$(date '+%F %T') [auto-aim-start] service stop path detected, skip reboot" >> /root/auto-aim/logs/autostart.log
+    exit 0
+fi
+
+case "$exit_code" in
+    0|137|143)
+        echo "$(date '+%F %T') [auto-aim-start] controlled exit detected, skip reboot" >> /root/auto-aim/logs/autostart.log
+        exit 0
+        ;;
+    *)
+        echo "$(date '+%F %T') [auto-aim-start] abnormal exit detected, rebooting machine" >> /root/auto-aim/logs/autostart.log
+        sync
+        systemctl reboot -i
+        exit "$exit_code"
+        ;;
+esac
 
 
 
@@ -72,6 +111,7 @@ Description=auto-aim service
 [Service]
 #LimitCORE=infinity
 Type=Simple
+Restart=no
  
 #Environment="LD_PRELOAD=/lib/aarch64-linux-gnu/libasan.so.6"
 #Environment="ASAN_OPTIONS=detect_leaks=1:abort_on_error=1:log_path=/tmp/asan.log"
