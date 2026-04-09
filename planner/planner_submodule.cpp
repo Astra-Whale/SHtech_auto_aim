@@ -20,7 +20,7 @@ namespace plan
     }
 
     bool PlannerSubModule::should_skip(std::shared_ptr<ThreadDataPack> data) const {
-        return false;
+        return data->submodule_results[static_cast<uint8_t>(SubModuleName::MULTI_POLICY_PREDICTOR)] != SubModuleResult::SUCCESS;
     }
 
     PlannerSubModule::command_array_t PlannerSubModule::generate_command_array(const RobotCommand& command) {

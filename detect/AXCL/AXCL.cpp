@@ -287,17 +287,32 @@ void AXCL::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
 {
     //std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
 
-    // pre-process [bgr2rgb & resize]
+    // pre-process [RGB uint8]
     det.clear();
-    cv::Mat img_new(512, 640, CV_8UC3, inputTensorValues.data());
-    float fx = (float)src.cols / 640.f, fy = (float)src.rows / 512.f;
-    
     if (src.cols != 640 || src.rows != 512)
     {
-        cv::resize(src, img_new, {640, 512});
-        cv::cvtColor(img_new, img_new, cv::COLOR_BGR2RGB);
+        LOGW_S("[AXCL] Warning: preprocess output size mismatch, expected 640x512 but got %dx%d",
+               src.cols, src.rows);
     }
-    cv::cvtColor(src, img_new, cv::COLOR_BGR2RGB);
+
+    const size_t input_bytes = src.total() * src.elemSize();
+    if (input_bytes != inputTensorValues.size())
+    {
+        LOGE_S("[AXCL] Invalid preprocess output size: expected %lu bytes but got %lu bytes",
+               (unsigned long)inputTensorValues.size(),
+               (unsigned long)input_bytes);
+        return;
+    }
+
+    if (src.isContinuous())
+    {
+        memcpy(inputTensorValues.data(), src.data, inputTensorValues.size());
+    }
+    else
+    {
+        cv::Mat continuous = src.clone();
+        memcpy(inputTensorValues.data(), continuous.data, inputTensorValues.size());
+    }
     
     //std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
     //std::cout << "Pre-process time: " << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << " us" << std::endl;
@@ -324,8 +339,6 @@ void AXCL::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
             {
                 pt.x = pt.x * 2 * stride + x_center;
                 pt.y = pt.y * 2 * stride + y_center;
-                pt.x *= fx;
-                pt.y *= fy;
             }
             box.confidence = box_buffer[8];
             box.tag_id = argmax(box_buffer + 9, 8);

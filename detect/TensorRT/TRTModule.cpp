@@ -216,16 +216,11 @@ void TRTModule::cache_engine(const std::string &cache_file)
 
 void TRTModule::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
 {
-    // pre-process [bgr2rgb & resize]
+    // pre-process [RGB uint8 -> CHW float]
     det.clear();
     cv::Mat x;
     cv::Mat preprocessedImage;
-    float fx = (float)src.cols / 640.f, fy = (float)src.rows / 512.f;
-    cv::cvtColor(src, x, cv::COLOR_BGR2RGB);
-    if (src.cols != 640 || src.rows != 512)
-    {
-        cv::resize(x, x, {640, 512});
-    }
+    x = src;
     x.convertTo(x, CV_32F, 1.0 / 255);
 
     // step 8: Convert the image to CHW RGB float format.
@@ -249,8 +244,6 @@ void TRTModule::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
         auto &box = candidates.back();
         memcpy(&box.pts, box_buffer, 8 * sizeof(float));
         std::swap(box.pts[2],box.pts[3]);   // 2025、04、10系列的新模型具有和旧模型不同的角点顺序：模型输出为：左上，左下，右上，右下。现将其调整为与旧的一致：左上，左下，右下，右上
-        for (auto &pt : box.pts)
-            pt.x *= fx, pt.y *= fy;
         box.confidence = box_buffer[8];
         box.tag_id = argmax(box_buffer + 9, 8);
         box.color_id = argmax(box_buffer + 17, 2);
