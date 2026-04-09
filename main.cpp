@@ -237,6 +237,7 @@ bool init(void)
     bool sensor_submodule_registered = false;
     bool preprocess_submodule_registered = false;
     bool detect_submodule_registered = false;
+    bool corner_refine_submodule_registered = false;
     bool predict_submodule_registered = false;
     bool planner_submodule_registered = false;
     bool timed_serial_independenttask_registered = false;
@@ -293,7 +294,9 @@ bool init(void)
 
     preprocess_submodule_registered = sensor_composite->register_submodule_with_params<detect::PreprocessSubModule>();
 
-    detect_submodule_registered = detect_composite->register_submodule_with_params<detect::DetectSubModule>(info["model"], display["detect_adjust"]);
+    detect_submodule_registered = detect_composite->register_submodule_with_params<detect::DetectSubModule>(info["model"]);
+
+    corner_refine_submodule_registered = predict_composite->register_submodule_with_params<detect::CornerRefineSubModule>(display["detect_adjust"]);
 
     predict_submodule_registered = predict_composite->register_submodule_with_params<predict::MultiPolicyPredictorSubModule>(
         display["predic_debug"], display["predic_adjust"], display["tracker_adjust"]
@@ -330,6 +333,7 @@ bool init(void)
         || !sensor_submodule_registered 
         || !preprocess_submodule_registered
         || !detect_submodule_registered 
+        || !corner_refine_submodule_registered
         || !predict_submodule_registered 
         || !planner_submodule_registered
         // || !foxglove_server_independenttask_registered

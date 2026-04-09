@@ -32,6 +32,7 @@
 #include "timedserial/UartIMU/uart_driver.hpp"
 #include "timedserial/UartIMU/mock_driver.hpp"
 #include "detect/preprocess_submodule.hpp"
+#include "detect/corner_refine_submodule.hpp"
 #include "detect/detect_submodule.hpp"
 #include "predict/MultiPolicyPredictor_submodule.hpp"
 #include "foxglove/foxglove_server.hpp"
