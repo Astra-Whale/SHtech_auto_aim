@@ -47,11 +47,11 @@ namespace detect
 
         if (_debugprint)
         {
-            LOGM_S("[preprocess] output %dx%d from source %dx%d",
-                   data->detect_input.cols,
-                   data->detect_input.rows,
-                   data->frame.cols,
-                   data->frame.rows);
+            // LOGM_S("[preprocess] output %dx%d from source %dx%d",
+            //        data->detect_input.cols,
+            //        data->detect_input.rows,
+            //        data->frame.cols,
+            //        data->frame.rows);
         }
 
         return SubModuleResult::SUCCESS;
