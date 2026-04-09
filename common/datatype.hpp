@@ -69,6 +69,7 @@ enum class SubModuleName : uint8_t
     // 子模块名称
     ENTRYSTAGE,
     SENSOR,
+    PREPROCESS,
     DETECT,
     MULTI_POLICY_PREDICTOR,
     PLANNER,
@@ -91,6 +92,7 @@ inline const char* getSubModuleName(SubModuleName module) {
     switch (module) {
         case SubModuleName::ENTRYSTAGE: return "Entry";
         case SubModuleName::SENSOR: return "Sensor";
+        case SubModuleName::PREPROCESS: return "Preprocess";
         case SubModuleName::DETECT: return "Detect";
         case SubModuleName::MULTI_POLICY_PREDICTOR: return "Predict";
         case SubModuleName::PLANNER: return "Planner";
@@ -99,6 +101,13 @@ inline const char* getSubModuleName(SubModuleName module) {
 }
 
 constexpr float INF_BALL_SPEED = 30.0f; // 步兵弹速默认值 m/s
+
+struct DetectInputMap
+{
+    cv::Rect src_roi{};
+    cv::Size dst_size{};
+    bool valid = false;
+};
 
 struct RobotStatus
 {
@@ -409,6 +418,8 @@ struct ThreadDataPack
     Eigen::Matrix<double, 6, 1> target_state; /*!< 目标状态量 */
 
     bool has_fixed_target = false; /*!< 是否包含锁定的目标 */
+    cv::Mat detect_input;
+    DetectInputMap detect_input_map;
     Target target;
 
     RobotStatus robotstatus;    /*!< 上行机器人状态 */

@@ -51,7 +51,6 @@ namespace detect
 
     private:
         std::unique_ptr<BackEnd> model; /*!< 推理模型指针 */
-        bool center = false;
         bool adjust = false;
         ArmorCornerOptimizer corner_optimizer;
         int binary_thres = 94;

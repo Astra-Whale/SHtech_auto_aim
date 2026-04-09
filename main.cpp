@@ -235,6 +235,7 @@ bool init(void)
     // 第三步：初始化任务和注入依赖
     bool entrystage_submodule_registered = false;
     bool sensor_submodule_registered = false;
+    bool preprocess_submodule_registered = false;
     bool detect_submodule_registered = false;
     bool predict_submodule_registered = false;
     bool planner_submodule_registered = false;
@@ -290,6 +291,8 @@ bool init(void)
         *sensor_from_serial_attitude_bridge, 
         *sensor_from_serial_robot_status_bridge);
 
+    preprocess_submodule_registered = sensor_composite->register_submodule_with_params<detect::PreprocessSubModule>();
+
     detect_submodule_registered = detect_composite->register_submodule_with_params<detect::DetectSubModule>(info["model"], display["detect_adjust"]);
 
     predict_submodule_registered = predict_composite->register_submodule_with_params<predict::MultiPolicyPredictorSubModule>(
@@ -325,6 +328,7 @@ bool init(void)
     // 检查所有关键子模块是否注册成功
     if (!entrystage_submodule_registered 
         || !sensor_submodule_registered 
+        || !preprocess_submodule_registered
         || !detect_submodule_registered 
         || !predict_submodule_registered 
         || !planner_submodule_registered
