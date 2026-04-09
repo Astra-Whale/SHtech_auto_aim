@@ -71,6 +71,7 @@ enum class SubModuleName : uint8_t
     SENSOR,
     PREPROCESS,
     DETECT,
+    CORNER_REFINE,
     MULTI_POLICY_PREDICTOR,
     PLANNER,
 
@@ -94,6 +95,7 @@ inline const char* getSubModuleName(SubModuleName module) {
         case SubModuleName::SENSOR: return "Sensor";
         case SubModuleName::PREPROCESS: return "Preprocess";
         case SubModuleName::DETECT: return "Detect";
+        case SubModuleName::CORNER_REFINE: return "CornerRefine";
         case SubModuleName::MULTI_POLICY_PREDICTOR: return "Predict";
         case SubModuleName::PLANNER: return "Planner";
         default: return "Unknown";

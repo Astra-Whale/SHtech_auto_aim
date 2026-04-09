@@ -52,6 +52,7 @@ namespace predict
     bool MultiPolicyPredictorSubModule::should_skip(std::shared_ptr<ThreadDataPack> data) const
     {
         if(data->submodule_results[static_cast<uint8_t>(SubModuleName::DETECT)] != SubModuleResult::SUCCESS || 
+           data->submodule_results[static_cast<uint8_t>(SubModuleName::CORNER_REFINE)] != SubModuleResult::SUCCESS ||
            data->submodule_results[static_cast<uint8_t>(SubModuleName::PREPROCESS)] != SubModuleResult::SUCCESS ||
            data->submodule_results[static_cast<uint8_t>(SubModuleName::SENSOR)] != SubModuleResult::SUCCESS
         )
