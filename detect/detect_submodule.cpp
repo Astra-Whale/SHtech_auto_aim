@@ -17,6 +17,23 @@
 
 namespace detect
 {
+    static inline void map_bbox_to_source(const DetectInputMap &map, bbox_t &bbox)
+    {
+        if (!map.valid || map.dst_size.width <= 0 || map.dst_size.height <= 0)
+        {
+            return;
+        }
+
+        const float scale_x = static_cast<float>(map.src_roi.width) / static_cast<float>(map.dst_size.width);
+        const float scale_y = static_cast<float>(map.src_roi.height) / static_cast<float>(map.dst_size.height);
+
+        for (auto &pt : bbox.pts)
+        {
+            pt.x = map.src_roi.x + pt.x * scale_x;
+            pt.y = map.src_roi.y + pt.y * scale_y;
+        }
+    }
+
     DetectSubModule::DetectSubModule(const std::string& OnnxFileName, bool adjust_) 
     : SubModule(SubModuleName::DETECT),
       adjust(adjust_),
@@ -52,7 +69,9 @@ namespace detect
 
     bool DetectSubModule::should_skip(std::shared_ptr<ThreadDataPack> data) const
     {
-        if(data->submodule_results[static_cast<uint8_t>(SubModuleName::SENSOR)] != SubModuleResult::SUCCESS)
+        if (data->submodule_results[static_cast<uint8_t>(SubModuleName::SENSOR)] != SubModuleResult::SUCCESS)
+            return true;
+        if (data->submodule_results[static_cast<uint8_t>(SubModuleName::PREPROCESS)] != SubModuleResult::SUCCESS)
             return true;
         return false;
     }
@@ -62,31 +81,24 @@ namespace detect
     {
         auto t1 = std::chrono::steady_clock::now();
 
-        cv::Mat input_frame = data->frame;
         std::vector<bbox_t> output_bboxes;
-        int halfx = input_frame.size[1] / 2;
-        int halfy = input_frame.size[0] / 2;
-        if (center)
-        {
-            input_frame = input_frame.rowRange(halfy - 256, halfy + 256).colRange(halfx - 320, halfx + 320); // crop size 384*640 in center
-        }
+        data->bboxes.clear();
         auto t2 = std::chrono::steady_clock::now();
 
+        if (!data->detect_input_map.valid || data->detect_input.empty())
+        {
+            LOGE_S("[detect] missing preprocess output");
+            return SubModuleResult::FAILURE;
+        }
+
         // 执行推理
-        (*model)(input_frame, output_bboxes);
+        (*model)(data->detect_input, output_bboxes);
 
         auto t3 = std::chrono::steady_clock::now();
 
-        if (center)
+        for (auto &t_bbox : output_bboxes)
         {
-            for (auto &t_bbox : output_bboxes)
-            {
-                for (int i = 0; i < 4; i++)
-                {
-                    t_bbox.pts[i].x += halfx - 320;
-                    t_bbox.pts[i].y += halfy - 256;
-                }
-            }
+            map_bbox_to_source(data->detect_input_map, t_bbox);
         }
         data->bboxes = output_bboxes;
 
@@ -198,10 +210,6 @@ namespace detect
                 // cv::putText(im2show, std::to_string(b.tag_id), b.pts[0], cv::FONT_HERSHEY_SIMPLEX, 1, colors[b.color_id]);
 
                 cv::putText(im2show, ((b.source==DetectionSource::TRADITIONAL)?"T":"N"), b.pts[0], cv::FONT_HERSHEY_SIMPLEX, 1, colors[b.color_id]);
-                // if (center)
-                //     cv::putText(im2show, "center", b.pts[2], cv::FONT_HERSHEY_SIMPLEX, 1, colors[b.color_id]);
-                // else
-                //     cv::putText(im2show, "all", b.pts[2], cv::FONT_HERSHEY_SIMPLEX, 1, colors[b.color_id]);
             }
 
             for (const auto &b : output_bboxes)
@@ -251,10 +259,6 @@ namespace detect
                 std::chrono::duration_cast<std::chrono::duration<double>>(t4 - t3).count()*1000
             );
 
-        if (output_bboxes.size() == 0)
-        {
-            center = !center;
-        }
         
         // 检测总是成功的，返回 true
         return SubModuleResult::SUCCESS;
