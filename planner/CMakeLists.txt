@@ -8,11 +8,6 @@ find_package(Eigen3 REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 include_directories(${EIGEN3_INCLUDE_DIR})
 
-# # 只编译新的合并后的 LinearPredictorSubModule
-# FILE(GLOB PLANNER_SRC_LIST 
-#     planner_submodule.cpp
-# )
-
 FILE(GLOB PLANNER_SRC_LIST *.cpp)
 
 add_subdirectory(./tinympc)

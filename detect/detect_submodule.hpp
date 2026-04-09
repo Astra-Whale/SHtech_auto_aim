@@ -11,7 +11,6 @@
 
 // modules
 #include "common.hpp"
-#include "armor_corner_optimizer.hpp"
 
 // packages
 #include <iostream>
@@ -21,9 +20,6 @@
 
 namespace detect
 {
-    const int bin_threshold_for_blue = 70;
-    const int bin_threshold_for_red = 60;
-
     /**
      * @brief   检测子模块
      * @details 包装原有 Detect 逻辑为 SubModule，用于 PipelineTask
@@ -35,7 +31,7 @@ namespace detect
          * @brief   构造函数
          * @param[in] OnnxFileName 用于推理的 Onnx 文件路径
          */
-        DetectSubModule(const std::string& OnnxFileName, bool adjust_);
+        explicit DetectSubModule(const std::string& OnnxFileName);
         virtual ~DetectSubModule() = default;
 
         bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
@@ -51,10 +47,6 @@ namespace detect
 
     private:
         std::unique_ptr<BackEnd> model; /*!< 推理模型指针 */
-        bool center = false;
-        bool adjust = false;
-        ArmorCornerOptimizer corner_optimizer;
-        int binary_thres = 94;
     };
 }
 
