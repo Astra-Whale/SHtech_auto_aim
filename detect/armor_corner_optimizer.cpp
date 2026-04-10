@@ -7,25 +7,21 @@ namespace detect
 {
   ArmorCornerOptimizer::ArmorCornerOptimizer(const bool adjust_, const int &bin_thres, const LightParams &light_params, 
                                               const YoloModelCharacteristics &yolo_params)
-  : binary_thres(bin_thres), light_params(light_params), yolo_params(yolo_params), adjust(adjust_)
+  : binary_thres(bin_thres), light_params(light_params), yolo_params(yolo_params)
   {
   }
   
-  std::vector<cv::Point2f> ArmorCornerOptimizer::optimizeCorners(
+  std::optional<std::array<cv::Point2f, 4>> ArmorCornerOptimizer::optimizeCorners(
       const cv::Mat &input,
       const cv::Point2f yolo_corners[],
       bool _show)
   {
-      std::vector<cv::Point2f> optimized_corners;
-
       if (input.empty()) {
-        optimized_corners.clear();
-        return optimized_corners;
+        return std::nullopt;
       }
 
-      for(int i=0;i<4;i++){
-        optimized_corners.push_back(yolo_corners[i]);
-      }
+      std::array<cv::Point2f, 4> optimized_corners{};
+      std::copy_n(yolo_corners, optimized_corners.size(), optimized_corners.begin());
 
       // Calculate centers, estimated heights and angles of light bars from YOLO corners
       cv::Point2f left_center = (yolo_corners[0] + yolo_corners[1]) * 0.5f;
@@ -93,21 +89,17 @@ namespace detect
         left_roi.x + left_roi.width >= input.cols || left_roi.y + left_roi.height >= input.rows ||
         right_roi.x <= 0 || right_roi.y <= 0 || right_roi.width <= 0 || right_roi.height <= 0 ||
         right_roi.x + right_roi.width >= input.cols || right_roi.y + right_roi.height >= input.rows) {
-        optimized_corners.clear();
-
-        return optimized_corners;
+        return std::nullopt;
       }
 
       cv::Mat left_binary = preprocessImage(input, left_roi);
       cv::Mat right_binary = preprocessImage(input, right_roi);
 
-      std::vector<LightBar> left_lights = findLightBars(input, left_binary, left_roi);
-      std::vector<LightBar> right_lights = findLightBars(input, right_binary, right_roi);
+      std::vector<LightBar> left_lights = findLightBars(left_binary, left_roi);
+      std::vector<LightBar> right_lights = findLightBars(right_binary, right_roi);
 
       if (left_lights.empty() || right_lights.empty()) {
-        optimized_corners.clear();
-
-        return optimized_corners;
+        return std::nullopt;
       }
 
       // If light bars are found, update corners
@@ -156,12 +148,7 @@ namespace detect
       }
 
       if (light_length_ratio < 0.7 || fabs(left_light_angle_deg - right_light_angle_deg) > 5) {
-        optimized_corners.clear();
-
-        // cout << light_length_ratio << endl;
-        // cout << fabs(left_light_angle_deg - right_light_angle_deg) << endl;
-
-        return optimized_corners;
+        return std::nullopt;
       }
 
       // create visulaztion for conor optimizer
@@ -287,7 +274,7 @@ namespace detect
   }
 
   std::vector<LightBar> ArmorCornerOptimizer::findLightBars(
-      const cv::Mat &rgb_img, const cv::Mat &binary_img, const cv::Rect &roi)
+      const cv::Mat &binary_img, const cv::Rect &roi)
   {
     // Find contours in binary image
     std::vector<std::vector<cv::Point>> contours;
@@ -295,6 +282,7 @@ namespace detect
     cv::findContours(binary_img, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
     std::vector<LightBar> light_bars;
+    light_bars.reserve(contours.size());
 
     // Process each contour
     for (const auto &contour : contours)
@@ -310,6 +298,7 @@ namespace detect
       // Create mask for the contour
       cv::Mat mask = cv::Mat::zeros(b_rect.size(), CV_8UC1);
       std::vector<cv::Point> mask_contour;
+      mask_contour.reserve(contour.size());
       for (const auto &p : contour)
       {
         mask_contour.emplace_back(p - cv::Point(b_rect.x, b_rect.y));
@@ -365,46 +354,6 @@ namespace detect
       // light.width = cv::norm(cv::Point2f(r_rect.size.width, r_rect.size.height)) / 2.0;
       light.width = points.size()/light.length;
       light.tilt_angle = angle_k;
-
-      // Determine color if needed
-      if (b_rect.x >= 0 && b_rect.y >= 0 &&
-          b_rect.x + b_rect.width <= rgb_img.cols &&
-          b_rect.y + b_rect.height <= rgb_img.rows)
-      {
-
-        cv::Rect adjusted_rect(b_rect.x + roi.x, b_rect.y + roi.y, b_rect.width, b_rect.height);
-
-        if (adjusted_rect.x >= 0 && adjusted_rect.y >= 0 &&
-            adjusted_rect.x + adjusted_rect.width <= rgb_img.cols &&
-            adjusted_rect.y + adjusted_rect.height <= rgb_img.rows)
-        {
-
-          auto roi_img = rgb_img(adjusted_rect);
-          int sum_r = 0, sum_b = 0;
-
-          // Iterate through the ROI to determine color
-          for (int i = 0; i < roi_img.rows; i++)
-          {
-            for (int j = 0; j < roi_img.cols; j++)
-            {
-              cv::Point global_pt(j + adjusted_rect.x, i + adjusted_rect.y);
-              cv::Point local_pt(global_pt.x - roi.x, global_pt.y - roi.y);
-
-              if (local_pt.x >= 0 && local_pt.y >= 0 &&
-                  local_pt.x < binary_img.cols && local_pt.y < binary_img.rows)
-              {
-                if (binary_img.at<uchar>(local_pt) > 0)
-                {
-                  sum_r += roi_img.at<cv::Vec3b>(i, j)[0]; // R channel
-                  sum_b += roi_img.at<cv::Vec3b>(i, j)[2]; // B channel
-                }
-              }
-            }
-          }
-
-          light.color = sum_r > sum_b ? RED : BLUE;
-        }
-      }
 
       // Validate light bar
       if (isValidLightBar(light))

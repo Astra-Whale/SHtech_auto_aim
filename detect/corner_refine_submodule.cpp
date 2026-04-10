@@ -54,29 +54,23 @@ namespace detect
         }
 
         auto t_opt_start = std::chrono::steady_clock::now();
-        std::vector<bbox_t> refined_bboxes;
-        refined_bboxes.reserve(data->bboxes.size());
 
-        for (auto bbox : data->bboxes)
+        for (auto& bbox : data->bboxes)
         {
-            std::vector<cv::Point2f> refined_corners =
+            const auto refined_corners =
                 corner_optimizer.optimizeCorners(data->frame, bbox.pts, _imgshow);
 
-            if (!refined_corners.empty()) {
+            if (refined_corners.has_value()) {
                 for (int i = 0; i < 4; i++)
                 {
-                    bbox.pts[i] = refined_corners[i];
+                    bbox.pts[i] = (*refined_corners)[i];
                 }
 
                 bbox.source = DetectionSource::TRADITIONAL;
             } else {
                 bbox.source = DetectionSource::NEURAL_NETWORK;
             }
-
-            refined_bboxes.push_back(bbox);
         }
-
-        data->bboxes = std::move(refined_bboxes);
 
         auto t_opt_end = std::chrono::steady_clock::now();
         if (_debugprint)
