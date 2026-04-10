@@ -133,9 +133,6 @@ namespace detect
     void setLightParams(const LightParams &params) { light_params = params; }
     void setYoloModelCharacteristics(const YoloModelCharacteristics &params) { yolo_params = params; }
 
-    // Get debug image
-    cv::Mat getDebugImage() const { return debug_img; }
-
   private:
     // Preprocess image
     cv::Mat preprocessImage(const cv::Mat &rgb_img, const cv::Rect &roi);
@@ -170,9 +167,6 @@ namespace detect
     LightParams light_params;
     YoloModelCharacteristics yolo_params;
     bool adjust;
-
-    // Debug
-    cv::Mat debug_img;
 
     // Constants
     static constexpr int RED = 0;
