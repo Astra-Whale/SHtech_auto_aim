@@ -127,7 +127,7 @@ namespace detect
 
             int key = cv::waitKey(1);
             if (key == 'p' || key == 'P') {
-                std::string filename = output_dir + "corner_refine_" + std::to_string(data->frame_counter) + ".png";
+                std::string filename = output_dir + "corner_refine_" + std::to_string(data->index) + ".png";
                 cv::imwrite(filename, im2show);
             }
 
