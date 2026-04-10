@@ -27,9 +27,6 @@ namespace detect
         optimized_corners.push_back(yolo_corners[i]);
       }
 
-      // Create debug image if needed
-      debug_img = input.clone();
-
       // Calculate centers, estimated heights and angles of light bars from YOLO corners
       cv::Point2f left_center = (yolo_corners[0] + yolo_corners[1]) * 0.5f;
       cv::Point2f right_center = (yolo_corners[2] + yolo_corners[3]) * 0.5f;
@@ -414,8 +411,6 @@ namespace detect
       {
         light_bars.push_back(light);
 
-        // Draw on debug image
-        cv::line(debug_img, light.top, light.bottom, cv::Scalar(0, 255, 0), 2);
       }
 
     }
