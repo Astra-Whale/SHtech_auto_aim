@@ -21,6 +21,18 @@
 
 namespace detect
 {
+  struct CornerRefineCallStats
+  {
+    double roi_ms = 0.0;
+    double preprocess_ms = 0.0;
+    double find_light_ms = 0.0;
+    double select_ms = 0.0;
+    double final_check_ms = 0.0;
+    double visualize_ms = 0.0;
+
+    int candidate_light_bars = 0;
+    int successful_lights = 0;
+  };
 
   // Light structure to represent a light bar
   struct LightBar
@@ -126,7 +138,8 @@ namespace detect
     std::optional<std::array<cv::Point2f, 4>> optimizeCorners(
         const cv::Mat &input,
         const cv::Point2f yolo_corners[],
-        const bool _show
+        const bool _show,
+        CornerRefineCallStats* stats = nullptr
       );
 
     // Set parameters

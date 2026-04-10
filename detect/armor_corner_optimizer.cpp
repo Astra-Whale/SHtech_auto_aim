@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 #include "armor_corner_optimizer.hpp"
+#include <chrono>
 
 namespace detect
 {
@@ -14,8 +15,18 @@ namespace detect
   std::optional<std::array<cv::Point2f, 4>> ArmorCornerOptimizer::optimizeCorners(
       const cv::Mat &input,
       const cv::Point2f yolo_corners[],
-      bool _show)
+      bool _show,
+      CornerRefineCallStats* stats)
   {
+      using Clock = std::chrono::steady_clock;
+      auto duration_ms = [](const Clock::time_point& start, const Clock::time_point& end) {
+        return std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(end - start).count();
+      };
+
+      if (stats) {
+        *stats = {};
+      }
+
       if (input.empty()) {
         return std::nullopt;
       }
@@ -60,6 +71,7 @@ namespace detect
                             std::min(right_height, float(yolo_params.max_light_height)));
       
       // Calculate ROIs with adaptive parameters
+      const auto t_roi_start = Clock::now();
       cv::Rect left_roi = calculateLightRoi(left_center, left_height, left_width,left_length);
       cv::Rect right_roi = calculateLightRoi(right_center, right_height, right_width,right_length);
 
@@ -84,6 +96,9 @@ namespace detect
       // Ensure ROIs stay within image boundaries
       left_roi = validateRect(left_roi, input.cols, input.rows);
       right_roi = validateRect(right_roi, input.cols, input.rows);
+      if (stats) {
+        stats->roi_ms += duration_ms(t_roi_start, Clock::now());
+      }
 
       if (left_roi.x <= 0 || left_roi.y <= 0 || left_roi.width <= 0 || left_roi.height <= 0 || 
         left_roi.x + left_roi.width >= input.cols || left_roi.y + left_roi.height >= input.rows ||
@@ -92,17 +107,27 @@ namespace detect
         return std::nullopt;
       }
 
+      const auto t_preprocess_start = Clock::now();
       cv::Mat left_binary = preprocessImage(input, left_roi);
       cv::Mat right_binary = preprocessImage(input, right_roi);
+      if (stats) {
+        stats->preprocess_ms += duration_ms(t_preprocess_start, Clock::now());
+      }
 
+      const auto t_find_light_start = Clock::now();
       std::vector<LightBar> left_lights = findLightBars(left_binary, left_roi);
       std::vector<LightBar> right_lights = findLightBars(right_binary, right_roi);
+      if (stats) {
+        stats->find_light_ms += duration_ms(t_find_light_start, Clock::now());
+        stats->candidate_light_bars = static_cast<int>(left_lights.size() + right_lights.size());
+      }
 
       if (left_lights.empty() || right_lights.empty()) {
         return std::nullopt;
       }
 
       // If light bars are found, update corners
+      const auto t_select_start = Clock::now();
       if (!left_lights.empty())
       {
           // Find best matching light bar
@@ -111,6 +136,9 @@ namespace detect
           {
             optimized_corners[0] = left_lights[best_idx].top;
             optimized_corners[1] = left_lights[best_idx].bottom;
+            if (stats) {
+              stats->successful_lights++;
+            }
           }
       }
 
@@ -122,10 +150,17 @@ namespace detect
           {
             optimized_corners[3] = right_lights[best_idx].top;
             optimized_corners[2] = right_lights[best_idx].bottom;
+            if (stats) {
+              stats->successful_lights++;
+            }
           }
           
       }
+      if (stats) {
+        stats->select_ms += duration_ms(t_select_start, Clock::now());
+      }
 
+      const auto t_final_check_start = Clock::now();
       cv::Vec2f left_light_vector = optimized_corners[1] - optimized_corners[0];
       cv::Vec2f right_light_vector = optimized_corners[2] - optimized_corners[3];
 
@@ -148,16 +183,26 @@ namespace detect
       }
 
       if (light_length_ratio < 0.7 || fabs(left_light_angle_deg - right_light_angle_deg) > 5) {
+        if (stats) {
+          stats->final_check_ms += duration_ms(t_final_check_start, Clock::now());
+        }
         return std::nullopt;
+      }
+      if (stats) {
+        stats->final_check_ms += duration_ms(t_final_check_start, Clock::now());
       }
 
       // create visulaztion for conor optimizer
       if(_show)
       {
+        const auto t_visualize_start = Clock::now();
         cv::Mat roi_visualization = visualizeROIs(input, left_roi, right_roi);
         cv::Mat binary_visualization = visualizeBinaryResults(input, left_binary, right_binary, left_roi, right_roi);
         cv::imshow("ROI Visualization", roi_visualization);
         cv::imshow("Binary Visualization", binary_visualization);
+        if (stats) {
+          stats->visualize_ms += duration_ms(t_visualize_start, Clock::now());
+        }
       }
 
       return optimized_corners;
