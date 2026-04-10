@@ -56,7 +56,7 @@ namespace entrystage
         
         if(_filelog)
         {
-            LOGM_F("\n[EntryStage] recording frame index: %d", data->index);
+            LOGM_F("[EntryStage] recording frame index: %d", data->index);
             LOGM_F("[EntryStage] total time cost: %ld ms", total_duration);
             LOGM_F("[EntryStage] start time: %ld",
                    std::chrono::duration_cast<std::chrono::milliseconds>(start_time.time_since_epoch()).count());
@@ -68,7 +68,7 @@ namespace entrystage
                     if (i > 0 && timings[i * 2 - 1] >= 0) {
                         LOGM_F("[EntryStage] \"%s\" %ldμs | gap: %ldμs", module_name, timings[i * 2], timings[i * 2 - 1]);
                     } else {
-                        LOGM_F("[EntryStage] \"%s\" %ldμs\n", module_name, timings[i * 2]);
+                        LOGM_F("[EntryStage] \"%s\" %ldμs", module_name, timings[i * 2]);
                     }
                 }
             }
