@@ -10,6 +10,9 @@
 #include <opencv2/imgproc.hpp>
 
 // STD
+#include <algorithm>
+#include <array>
+#include <optional>
 #include <vector>
 #include <cmath>
 #include <iostream>
@@ -28,8 +31,6 @@ namespace detect
     float length;       // Length of light
     float width;        // Width of light
     float tilt_angle;   // Tilt angle of light
-    int color;          // Color of light (RED or BLUE)
-
     LightBar() = default;
 
     LightBar(const cv::Point2f &t, const cv::Point2f &b)
@@ -122,7 +123,7 @@ namespace detect
      * @param yolo_corners Four corners from YOLO (ordered as: left_top, left_bottom, right_top, right_bottom)
      * @return Optimized four corners
      */
-    std::vector<cv::Point2f> optimizeCorners(
+    std::optional<std::array<cv::Point2f, 4>> optimizeCorners(
         const cv::Mat &input,
         const cv::Point2f yolo_corners[],
         const bool _show
@@ -138,7 +139,7 @@ namespace detect
     cv::Mat preprocessImage(const cv::Mat &rgb_img, const cv::Rect &roi);
 
     // Find light bars in ROI
-    std::vector<LightBar> findLightBars(const cv::Mat &rgb_img, const cv::Mat &binary_img, const cv::Rect &roi);
+    std::vector<LightBar> findLightBars(const cv::Mat &binary_img, const cv::Rect &roi);
 
     // Check if a contour is a valid light bar
     bool isValidLightBar(const LightBar &light);
@@ -166,11 +167,6 @@ namespace detect
     int binary_thres;
     LightParams light_params;
     YoloModelCharacteristics yolo_params;
-    bool adjust;
-
-    // Constants
-    static constexpr int RED = 0;
-    static constexpr int BLUE = 1;
   };
 
 } // namespace detect
