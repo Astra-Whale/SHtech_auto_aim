@@ -13,7 +13,6 @@
 #include <vector>
 #include <cmath>
 #include <iostream>
-#include <numeric>
 
 #include "common.hpp"
 
@@ -139,7 +138,7 @@ namespace detect
 
   private:
     // Preprocess image
-    cv::Mat preprocessImage(const cv::Mat &rgb_img, const cv::Rect &roi, float light_length, cv::Mat &img_grey);
+    cv::Mat preprocessImage(const cv::Mat &rgb_img, const cv::Rect &roi);
 
     // Find light bars in ROI
     std::vector<LightBar> findLightBars(const cv::Mat &rgb_img, const cv::Mat &binary_img, const cv::Rect &roi);
@@ -161,8 +160,6 @@ namespace detect
         float expected_height,
         float expected_angle);
     
-    void PCA_corner_optimize(const cv::Mat &grey_img, const cv::Mat &light_roi_grey, LightBar &light_bar, const cv::Rect &roi);
-
     cv::Mat visualizeROIs(const cv::Mat &input, const cv::Rect &left_roi, const cv::Rect &right_roi);
 
     cv::Mat visualizeBinaryResults(const cv::Mat &input, const cv::Mat &left_binary, const cv::Mat &right_binary, 
