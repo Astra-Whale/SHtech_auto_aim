@@ -7,12 +7,12 @@
 
 namespace detect
 {
-    CornerRefineSubModule::CornerRefineSubModule(bool adjust_)
+    CornerRefineSubModule::CornerRefineSubModule(const CornerRefineConfig& config)
         : SubModule(SubModuleName::CORNER_REFINE),
-          adjust(adjust_),
-          corner_optimizer(adjust_)
+          config_(config),
+          corner_optimizer(config.adjust_threshold)
     {
-        if (adjust) {
+        if (config_.adjust_threshold) {
             cv::namedWindow("detector trackbar", cv::WINDOW_AUTOSIZE);
             cv::createTrackbar(
                 "Binary Threshold",
@@ -34,7 +34,7 @@ namespace detect
     SubModuleResult CornerRefineSubModule::process(std::shared_ptr<ThreadDataPack> data,
                                                    const pipeline::BasicTask* parent)
     {
-        if (adjust) {
+        if (config_.adjust_threshold) {
             corner_optimizer.setBinaryThreshold(binary_thres);
         } else {
             if (data->robotstatus.enemy_color == EnemyColor::RED) {
@@ -71,7 +71,11 @@ namespace detect
         {
             CornerRefineCallStats stats;
             const auto refined_corners =
-                corner_optimizer.optimizeCorners(data->frame, bbox.pts, _imgshow, _filelog ? &stats : nullptr);
+                corner_optimizer.optimizeCorners(
+                    data->frame,
+                    bbox.pts,
+                    config_.debug.show_image,
+                    config_.debug.log_text ? &stats : nullptr);
 
             total_roi_ms += stats.roi_ms;
             total_preprocess_ms += stats.preprocess_ms;
@@ -98,7 +102,7 @@ namespace detect
 
         static std::string output_dir = "./frames/";
 
-        if (_imgshow)
+        if (config_.debug.show_image)
         {
             static const cv::Scalar colors[3] = {{255, 0, 0}, {0, 0, 255}, {255, 255, 255}};
             cv::Mat im2show = data->frame.clone();
@@ -136,7 +140,7 @@ namespace detect
         }
 
         auto t_opt_end = std::chrono::steady_clock::now();
-        if (_filelog)
+        if (config_.debug.log_text)
         {
             const double frame_total_ms =
                 std::chrono::duration_cast<std::chrono::duration<double>>(t_opt_end - t_opt_start).count() * 1000;

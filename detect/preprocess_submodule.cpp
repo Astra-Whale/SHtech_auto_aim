@@ -7,8 +7,8 @@
 
 namespace detect
 {
-    PreprocessSubModule::PreprocessSubModule()
-        : SubModule(SubModuleName::PREPROCESS)
+    PreprocessSubModule::PreprocessSubModule(const PreprocessConfig& config)
+        : SubModule(SubModuleName::PREPROCESS), config_(config)
     {
         LOGM_S("[preprocess] construction completed");
     }
@@ -39,13 +39,13 @@ namespace detect
         data->detect_input_map.dst_size = cv::Size(INPUT_W, INPUT_H);
         data->detect_input_map.valid = true;
 
-        if (_imgshow)
+        if (config_.debug.show_image)
         {
             cv::imshow("detect_preprocess", data->detect_input);
             cv::waitKey(1);
         }
 
-        if (_debugprint)
+        if (config_.debug.log_text)
         {
             // LOGM_S("[preprocess] output %dx%d from source %dx%d",
             //        data->detect_input.cols,

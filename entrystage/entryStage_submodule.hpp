@@ -22,6 +22,10 @@
 
 namespace entrystage
 {
+    struct EntryStageConfig : pipeline::ModuleConfig
+    {
+    };
+
     /**
      * @brief   入口阶段子模块
      */
@@ -31,7 +35,8 @@ namespace entrystage
         /**
          * @brief   构造函数
          */
-        EntryStageSubModule(pipeline::bridge::EntryStageToFoxgloveRobotBridge& robot_bridge,
+        EntryStageSubModule(const EntryStageConfig& config,
+                           pipeline::bridge::EntryStageToFoxgloveRobotBridge& robot_bridge,
                            pipeline::bridge::EntryStageToFoxgloveAliveBridge& alive_bridge);
         virtual ~EntryStageSubModule() = default;
 
@@ -47,6 +52,7 @@ namespace entrystage
                     const pipeline::BasicTask* parent) override;
 
     private:
+        EntryStageConfig config_;
         int totalframecounter = 0;              /*!< 总帧数计数器 */
         pipeline::bridge::EntryStageToFoxgloveRobotBridge& robot_bridge_;  /*!< 机器人状态消息桥接 */
         pipeline::bridge::EntryStageToFoxgloveAliveBridge& alive_bridge_;  /*!< 存活信号消息桥接 */

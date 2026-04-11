@@ -21,6 +21,10 @@
 
 namespace hardware
 {
+    struct TimedSerialConfig : pipeline::ModuleConfig
+    {
+    };
+
     /**
      * @brief   串口定时通讯子模块（重构版）
      * @details 
@@ -39,7 +43,8 @@ namespace hardware
          * @param[in] driver_impl 串口驱动实现的独占指针（依赖注入）
          * @param[in] message_bridge 消息桥接对象引用
          */
-        TimedSerial(std::unique_ptr<SerialInterface> driver_impl, 
+        TimedSerial(const TimedSerialConfig& config,
+                        std::unique_ptr<SerialInterface> driver_impl, 
                         pipeline::bridge::PlannerToSerialBridge &planner_bridge,
                         pipeline::bridge::SensorFromSerialAttitudeBridge &attitude_bridge,
                         pipeline::bridge::SensorFromSerialRobotStatusBridge &status_bridge
@@ -53,6 +58,7 @@ namespace hardware
         void operator()() override;
 
     private:
+        TimedSerialConfig config_;
         /**
          * @brief   读取最新命令和姿态数据，基于时间戳进行线性插值
          * @return  bool 成功返回true，命令数组耗尽返回false

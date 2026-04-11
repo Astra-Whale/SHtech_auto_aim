@@ -126,9 +126,9 @@ std::atomic<bool> g_stop_request{false};
 
 // 第一步：声明指针
 // 使用通用的 PipelineTask 架构
-pipeline::PipelineTask* sensor_composite = nullptr;
-pipeline::PipelineTask* detect_composite = nullptr;
-pipeline::PipelineTask* predict_composite = nullptr;
+pipeline::PipelineTask* pipeline_stage0 = nullptr;
+pipeline::PipelineTask* pipeline_stage1 = nullptr;
+pipeline::PipelineTask* pipeline_stage2 = nullptr;
 
 hardware::TimedSerial* timed_serial = nullptr;
 // foxgloveSer::FoxgloveServer_t* foxglove_server = nullptr;
@@ -209,7 +209,7 @@ bool init(void)
 
     // 初始化 CoordTransformer 单例
     try {
-        mathutils::CoordTransformer::Init(info["camera_para"], display["transformer_adjust"]);
+        mathutils::CoordTransformer::Init(info["camera_para"], display["transformer_adjust_armor_size"]);
         LOGM_S("CoordTransformer initialized.");
     } catch (const std::exception& e) {
         LOGE_S("[init] Failed to initialize CoordTransformer: %s", e.what());
@@ -219,9 +219,9 @@ bool init(void)
 
     // 第二步: 分配内存
     // 初始化复合任务
-    sensor_composite = new pipeline::PipelineTask();
-    detect_composite = new pipeline::PipelineTask();
-    predict_composite = new pipeline::PipelineTask();
+    pipeline_stage0 = new pipeline::PipelineTask();
+    pipeline_stage1 = new pipeline::PipelineTask();
+    pipeline_stage2 = new pipeline::PipelineTask();
 
     // 创建消息桥
     planner_to_serial_bridge = new pipeline::bridge::PlannerToSerialBridge();
@@ -233,6 +233,56 @@ bool init(void)
 
 
     // 第三步：初始化任务和注入依赖
+
+    hardware::TimedSerialConfig timed_serial_config;
+    timed_serial_config.debug.log_text = display["timed_serial_log_text"];
+    timed_serial_config.debug.log_file = display["timed_serial_log_file"];
+    timed_serial_config.debug.show_image = display["timed_serial_show_image"];
+
+    entrystage::EntryStageConfig entrystage_config;
+    entrystage_config.debug.log_text = display["entrystage_log_text"];
+    entrystage_config.debug.log_file = display["entrystage_log_file"];
+    entrystage_config.debug.show_image = display["entrystage_show_image"];
+
+    sensor::SensorConfig sensor_config;
+    sensor_config.debug.log_text = display["sensor_log_text"];
+    sensor_config.debug.log_file = display["sensor_log_file"];
+    sensor_config.debug.show_image = display["sensor_show_image"];
+
+    detect::PreprocessConfig preprocess_config;
+    preprocess_config.debug.log_text = display["preprocess_log_text"];
+    preprocess_config.debug.log_file = display["preprocess_log_file"];
+    preprocess_config.debug.show_image = display["preprocess_show_image"];
+
+    detect::DetectConfig detect_config;
+    detect_config.debug.log_text = display["detect_log_text"];
+    detect_config.debug.log_file = display["detect_log_file"];
+    detect_config.debug.show_image = display["detect_show_image"];
+
+    detect::CornerRefineConfig corner_refine_config;
+    corner_refine_config.debug.log_text = display["corner_refine_log_text"];
+    corner_refine_config.debug.log_file = display["corner_refine_log_file"];
+    corner_refine_config.debug.show_image = display["corner_refine_show_image"];
+    corner_refine_config.adjust_threshold = display["corner_refine_adjust_threshold"];
+
+    predict::MultiPolicyPredictorConfig predictor_config;
+    predictor_config.debug.log_text = display["predictor_log_text"];
+    predictor_config.debug.log_file = display["predictor_log_file"];
+    predictor_config.debug.show_image = display["predictor_show_image"];
+    predictor_config.adjust_mode = display["predictor_adjust_mode"];
+    predictor_config.adjust_tracker_noise = display["predictor_adjust_tracker_noise"];
+
+    plan::PlannerConfig planner_config;
+    planner_config.debug.log_text = display["planner_log_text"];
+    planner_config.debug.log_file = display["planner_log_file"];
+    planner_config.debug.show_image = display["planner_show_image"];
+    planner_config.plot = display["planner_plot"];
+
+    foxgloveSer::FoxgloveServerConfig foxglove_server_config;
+    foxglove_server_config.debug.log_text = display["foxglove_server_log_text"];
+    foxglove_server_config.debug.log_file = display["foxglove_server_log_file"];
+    foxglove_server_config.debug.show_image = display["foxglove_server_show_image"];
+
     bool entrystage_submodule_registered = false;
     bool sensor_submodule_registered = false;
     bool preprocess_submodule_registered = false;
@@ -257,8 +307,8 @@ bool init(void)
             driver = std::make_unique<UartDriver>(info["port"]);
         }
 
-
-        timed_serial = new hardware::TimedSerial(std::move(driver),
+        timed_serial = new hardware::TimedSerial(timed_serial_config,
+                                                std::move(driver),
                                                 *planner_to_serial_bridge,
                                                 *sensor_from_serial_attitude_bridge,
                                                 *sensor_from_serial_robot_status_bridge);
@@ -269,63 +319,30 @@ bool init(void)
         LOGE_S("[init] Failed to create TimedSerial: %s", e.what());
         timed_serial_independenttask_registered = false;
     }
-    
-    // try{
-    //     foxglove_server = new foxgloveSer::FoxgloveServer_t(*entrystage_to_foxglove_robot_bridge, 
-    //                                                     *entrystage_to_foxglove_alive_bridge);
-    //     foxglove_server_independenttask_registered = true;
-    // }
-    // catch (const std::exception &e)
-    // {
-    //     LOGE_S("[init] Failed to create FoxgloveServer: %s", e.what());
-    //     foxglove_server_independenttask_registered = false;
-    // }
 
-    // 将参数和桥传递给流水线子模块，并注册它们到流水级任务
-    entrystage_submodule_registered = sensor_composite->register_submodule_with_params<entrystage::EntryStageSubModule>(
-        *entrystage_to_foxglove_robot_bridge, 
+    entrystage_submodule_registered = pipeline_stage0->register_submodule_with_params<entrystage::EntryStageSubModule>(
+        entrystage_config,
+        *entrystage_to_foxglove_robot_bridge,
         *entrystage_to_foxglove_alive_bridge);
 
-    sensor_submodule_registered = sensor_composite->register_submodule_with_params<sensor::SensorSubModule>(
-        info["source"], 
-        info["flip"], 
-        *sensor_from_serial_attitude_bridge, 
+    sensor_submodule_registered = pipeline_stage0->register_submodule_with_params<sensor::SensorSubModule>(
+        sensor_config,
+        info["source"],
+        info["flip"],
+        *sensor_from_serial_attitude_bridge,
         *sensor_from_serial_robot_status_bridge);
 
-    preprocess_submodule_registered = sensor_composite->register_submodule_with_params<detect::PreprocessSubModule>();
+    preprocess_submodule_registered = pipeline_stage0->register_submodule_with_params<detect::PreprocessSubModule>(preprocess_config);
 
-    detect_submodule_registered = detect_composite->register_submodule_with_params<detect::DetectSubModule>(info["model"]);
+    detect_submodule_registered = pipeline_stage1->register_submodule_with_params<detect::DetectSubModule>(detect_config, info["model"]);
 
-    corner_refine_submodule_registered = predict_composite->register_submodule_with_params<detect::CornerRefineSubModule>(display["detect_adjust"]);
+    corner_refine_submodule_registered = pipeline_stage2->register_submodule_with_params<detect::CornerRefineSubModule>(corner_refine_config);
 
-    predict_submodule_registered = predict_composite->register_submodule_with_params<predict::MultiPolicyPredictorSubModule>(
-        display["predic_debug"], display["predic_adjust"], display["tracker_adjust"]
-        );
+    predict_submodule_registered = pipeline_stage2->register_submodule_with_params<predict::MultiPolicyPredictorSubModule>(
+        predictor_config);
 
-    planner_submodule_registered = predict_composite->register_submodule_with_params<plan::PlannerSubModule>(*planner_to_serial_bridge, 
-        info["planner_para"], display["predic_debug"], display["predic_show"], display["predic_plot"]);
-
-    // 设置各个任务的调试和显示选项
-    timed_serial->set_debug_print(display["timed_serial_debug"]);
-    std::cout<<"display timedserial_debug:"<<display["timedserial_debug"]<<std::endl;
-    timed_serial->set_img_show(display["timed_serial_show"]);
-    timed_serial->set_file_log(display["timed_serial_filelog"]);
-
-    sensor_composite->set_debug_print(display["sensor_debug"]);
-    sensor_composite->set_img_show(display["sensor_show"]);
-    sensor_composite->set_file_log(display["sensor_filelog"]);
-
-    detect_composite->set_debug_print(display["detect_debug"]);
-    detect_composite->set_img_show(display["detect_show"]);
-    detect_composite->set_file_log(display["detect_filelog"]);
-
-    // foxglove_server->set_debug_print(display["foxglove_server_debug"]);
-    // foxglove_server->set_img_show(display["foxglove_server_show"]);
-    // foxglove_server->set_file_log(display["foxglove_server_filelog"]);
-
-    predict_composite->set_debug_print(display["predic_debug"]);
-    predict_composite->set_img_show(display["predic_show"]);
-    predict_composite->set_file_log(display["predic_filelog"]);
+    planner_submodule_registered = pipeline_stage2->register_submodule_with_params<plan::PlannerSubModule>(
+        planner_config, *planner_to_serial_bridge, info["planner_para"]);
 
     
     // 检查所有关键子模块是否注册成功
@@ -358,9 +375,9 @@ int main(void)
     {
         // 第六步第二处: 在 init 失败时释放已分配的内存
         LOGE_S("Init Fail, Quit");
-        delete sensor_composite;
-        delete detect_composite;
-        delete predict_composite;
+        delete pipeline_stage0;
+        delete pipeline_stage1;
+        delete pipeline_stage2;
         delete timed_serial;
         // delete foxglove_server;
         delete planner_to_serial_bridge;
@@ -397,13 +414,13 @@ int main(void)
 
     // 创建线程但初始状态为等待
     t_sensor = std::thread([&]()
-                           { (*sensor_composite)(pre2cap, cap2det); });
+                           { (*pipeline_stage0)(pre2cap, cap2det); });
 
     t_detect = std::thread([&]()
-                           { (*detect_composite)(cap2det, det2pre); });
+                           { (*pipeline_stage1)(cap2det, det2pre); });
 
     t_predict = std::thread([&]()
-                            { (*predict_composite)(det2pre, pre2cap); });
+                            { (*pipeline_stage2)(det2pre, pre2cap); });
                             
     t_timed_serial = std::thread([&]()
                           { (*timed_serial)(); });
@@ -416,9 +433,9 @@ int main(void)
     // 启动所有任务开始工作
     LOGM_S("Starting all composite tasks...");
     timed_serial->start();
-    sensor_composite->start();
-    detect_composite->start();
-    predict_composite->start();
+    pipeline_stage0->start();
+    pipeline_stage1->start();
+    pipeline_stage2->start();
     // foxglove_server->start();
     LOGM_S("All composite tasks started successfully!");
 
@@ -433,9 +450,9 @@ int main(void)
 
     // 向各个线程发出终止信号
     if (timed_serial) timed_serial->terminate();
-    if (sensor_composite) sensor_composite->terminate();
-    if (detect_composite) detect_composite->terminate();
-    if (predict_composite) predict_composite->terminate();
+    if (pipeline_stage0) pipeline_stage0->terminate();
+    if (pipeline_stage1) pipeline_stage1->terminate();
+    if (pipeline_stage2) pipeline_stage2->terminate();
     // if (foxglove_server) foxglove_server->terminate();
 
     // 将各个线程的 Join 任务放入监控列表
@@ -493,9 +510,9 @@ int main(void)
     // 第五步结束
 
     // 第六步：手动释放内存
-    delete sensor_composite;
-    delete detect_composite;
-    delete predict_composite;
+    delete pipeline_stage0;
+    delete pipeline_stage1;
+    delete pipeline_stage2;
     delete timed_serial;
     // delete foxglove_server;
     delete planner_to_serial_bridge;

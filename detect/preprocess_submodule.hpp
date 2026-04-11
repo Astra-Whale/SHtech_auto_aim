@@ -10,13 +10,17 @@
 
 namespace detect
 {
+    struct PreprocessConfig : pipeline::ModuleConfig
+    {
+    };
+
     class PreprocessSubModule : public pipeline::SubModule
     {
     public:
         static constexpr int INPUT_W = 640;
         static constexpr int INPUT_H = 512;
 
-        PreprocessSubModule();
+        explicit PreprocessSubModule(const PreprocessConfig& config);
         virtual ~PreprocessSubModule() = default;
 
         bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
@@ -25,6 +29,7 @@ namespace detect
                                 const pipeline::BasicTask* parent) override;
 
     private:
+        PreprocessConfig config_;
         cv::Mat resized_bgr_;
     };
 }

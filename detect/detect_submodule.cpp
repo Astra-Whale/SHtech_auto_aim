@@ -34,8 +34,8 @@ namespace detect
         }
     }
 
-    DetectSubModule::DetectSubModule(const std::string& OnnxFileName)
-        : SubModule(SubModuleName::DETECT)
+    DetectSubModule::DetectSubModule(const DetectConfig& config, const std::string& OnnxFileName)
+        : SubModule(SubModuleName::DETECT), config_(config)
     {
         LOGM_S("[detect] constructing with model: %s", OnnxFileName.c_str());
 #if INFERENCE_BACKEND_TYPE == 1
@@ -85,7 +85,7 @@ namespace detect
         static int frame_counter = 0;
         static std::string output_dir = "./frames/";
 
-        if (_imgshow)
+        if (config_.debug.show_image)
         {
             static const cv::Scalar colors[3] = {{255, 0, 0}, {0, 0, 255}, {255, 255, 255}};
             cv::Mat im2show = data->frame.clone();
@@ -115,7 +115,7 @@ namespace detect
             cv::waitKey(1);
         }
 
-        if (_debugprint)
+        if (config_.debug.log_text)
         {
             LOGM_S("[detect] Info: detected %ld objects", data->bboxes.size());
             for (const auto &b : data->bboxes)
@@ -125,7 +125,7 @@ namespace detect
         }
 
         auto t4 = std::chrono::steady_clock::now();
-        if (_debugprint)
+        if (config_.debug.log_text)
             LOGM_S(
                 "DetectSubModule Inference %.2lfms Show %.2lfms",
                 std::chrono::duration_cast<std::chrono::duration<double>>(t3 - t2).count() * 1000,

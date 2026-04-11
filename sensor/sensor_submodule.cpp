@@ -18,11 +18,12 @@
 namespace sensor
 {
     // SensorSubModule 实现
-    SensorSubModule::SensorSubModule(const std::string &VideoSource, 
+    SensorSubModule::SensorSubModule(const SensorConfig& config, 
+                                    const std::string &VideoSource, 
                                     const std::string &flip_image, 
                                     pipeline::bridge::SensorFromSerialAttitudeBridge& attitude_bridge, 
                                     pipeline::bridge::SensorFromSerialRobotStatusBridge& status_bridge) 
-        : SubModule(SubModuleName::SENSOR), attitude_bridge(attitude_bridge), status_bridge(status_bridge)
+        : SubModule(SubModuleName::SENSOR), config_(config), attitude_bridge(attitude_bridge), status_bridge(status_bridge)
     {
         LOGM_S("[sensor_submodule] constructing with video: %s", VideoSource.c_str());
         // 初始化视频源
@@ -81,7 +82,7 @@ namespace sensor
         auto t1 = std::chrono::steady_clock::now();
 
         // 读取图像
-        bool state = video->read(data->frame, _debugprint);
+        bool state = video->read(data->frame, config_.debug.log_text);
         data->time = std::chrono::high_resolution_clock::now();
 
         // 读取imu
@@ -91,13 +92,13 @@ namespace sensor
         if (!state)
         {
             LOGE_S("[sensor_submodule]Error: read image fail!");
-            if (_debugprint)
+            if (config_.debug.log_text)
             {
                 LOGM_S("[sensor_submodule] Total frames handled: %d", data->index);
                 LOGM_S("[sensor_submodule] ReOpen Camera");
             }
-            video->close(_debugprint);
-            video->init(_debugprint);
+            video->close(config_.debug.log_text);
+            video->init(config_.debug.log_text);
             // 在失败情况下，返回 false 表示不应该传递到下游
             return SubModuleResult::FAILURE;
         }
@@ -117,7 +118,7 @@ namespace sensor
         auto t2 = std::chrono::steady_clock::now();
 
         // 显示图像（如果需要）
-        if (_imgshow)
+        if (config_.debug.show_image)
         {
             cv::Mat im2show = data->frame.clone();
             cv::imshow("sensor_submodule", im2show);
@@ -125,7 +126,7 @@ namespace sensor
         }
 
         // 调试信息
-        if (_debugprint)
+        if (config_.debug.log_text)
         {
             CNT_FPS(total_fps, {});
             // LOGM_S("[sensor_submodule]Info: Idx = %d, Bytes = %d", data->index, data->frame.size().height * data->frame.size().width);

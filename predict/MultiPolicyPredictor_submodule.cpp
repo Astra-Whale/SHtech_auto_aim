@@ -26,21 +26,20 @@ namespace predict
      * @details 初始化跟踪器和规划器，设置各种显示和调试选项
      *          CoordTransformer 已在 main 中初始化，直接使用单例
      */ 
-    MultiPolicyPredictorSubModule::MultiPolicyPredictorSubModule(bool debug_, bool predic_adjust_, bool tracker_adjust_)
+    MultiPolicyPredictorSubModule::MultiPolicyPredictorSubModule(const MultiPolicyPredictorConfig& config)
     : SubModule(SubModuleName::MULTI_POLICY_PREDICTOR),
-      debug(debug_),
-      adjust(predic_adjust_),
+      config_(config),
       coord_transformer(CoordTransformer::Get()),
       autoaim_mode_counter(0),
       in_autoaim_mode(false),
       fixed_target_id(0)
     {
         for (int i = 0; i < NUM_TRACKER; ++i) {
-            trackers[i].set_debug(debug);
-            trackers[i].set_adjust(tracker_adjust_);
+            trackers[i].set_debug(config_.debug.log_text);
+            trackers[i].set_adjust(config_.adjust_tracker_noise);
         }
 
-        if (adjust) {
+        if (config_.adjust_mode) {
             cv::namedWindow("predictor trackbar", cv::WINDOW_AUTOSIZE);
         
             cv::createTrackbar("in_autoaim_mode", "predictor trackbar", &in_autoaim_mode_adjust, 1, 0);
@@ -73,7 +72,7 @@ namespace predict
         auto t2 = std::chrono::steady_clock::now();
 
         // 调试信息
-        if (_debugprint)
+        if (config_.debug.log_text)
         {
             // auto &send = data->robotcommand;
             // LOGM_S("[MultiPolicyPredictorSubModule] pitch %6.2f, yaw %6.2f, dist %4.1f",
@@ -82,7 +81,7 @@ namespace predict
         }
         
         // 显示结果（如果需要）
-        if (_imgshow)
+        if (config_.debug.show_image)
         {
             // 预测模块的显示逻辑（如果需要的话）
         }
@@ -151,11 +150,11 @@ namespace predict
             }
         }
 
-        if (adjust) {
+        if (config_.adjust_mode) {
             in_autoaim_mode = in_autoaim_mode_adjust > 0;
         }
 
-        if (debug) {
+        if (config_.debug.log_text) {
             cout << "in_autoaim_mode: " << in_autoaim_mode 
                  << std::endl;
         }
@@ -174,7 +173,7 @@ namespace predict
 
         // todo: 多个跟踪器实例test
         for (const auto &armor : detected_armors) {
-            // 根据颜色和距离筛选装甲板， 并且如果装甲板已经在跟踪中，则加入到 armors_in_tracking 列表，否则筛选角点来源为传统视觉的装甲板加入到 new_armors 列表
+            // 根据颜色和距离筛选装甲板�?并且如果装甲板已经在跟踪中，则加入到 armors_in_tracking 列表，否则筛选角点来源为传统视觉的装甲板加入到 new_armors 列表
             if (armor.color_id == (robot_status.enemy_color==EnemyColor::BLUE)) {
                 float yaw_in_camera;
                 Eigen::Matrix<double, 4, 1> measurement;
@@ -233,7 +232,7 @@ namespace predict
             if (tracker.get_tracker_state() == TrackingState::IDLE) {                
                 // === 空闲状态：寻找新目标或重置系统 ===
                 if (new_armors.empty()) {
-                    if (debug)
+                    if (config_.debug.log_text)
                         std::cout << "[predict] empty detection" << std::endl;
                 }
                 else {
@@ -254,7 +253,7 @@ namespace predict
                                                                                 attitude_yaw, R_world2imu, yaw_in_camera, tracked_measurement);
 
                     if (!success) {
-                        if (debug)
+                        if (config_.debug.log_text)
                             std::cout << "[predict] pnp failed for initial target" << std::endl;
 
                         return;
@@ -263,7 +262,7 @@ namespace predict
                     // 重置跟踪器并初始化目标
                     auto &target = tracker.reset_target(tracked_measurement, tp);
                     
-                    if (debug)
+                    if (config_.debug.log_text)
                         std::cout << "[predict] start tracking" << std::endl;
                 }
             }
@@ -329,7 +328,7 @@ namespace predict
                     }
                 }
 
-                if (debug)
+                if (config_.debug.log_text)
                     std::cout << "[predict] same id armor count: " << same_id_armor_count << std::endl;
 
                 // 更新跟踪目标，优先选择来源于传统视觉的装甲板
