@@ -93,7 +93,7 @@ namespace pipeline
          * @brief   构造函数
          * @param[in] _max 缓存队列的最大容量
          */
-        BufferedPipeline(const int _max) : max(_max), count(0){};
+        BufferedPipeline(const int _max) : max(_max){};
 
         /**
          * @brief   获取报文对象
@@ -102,17 +102,32 @@ namespace pipeline
          */
         inline std::shared_ptr<T> get(BasicTask* employee = nullptr)
         {
-            bool stat = wait_for_get(employee);
-            if (stat && count > 0)
+            std::unique_lock<std::mutex> lock(mtx);
+            if (employee != nullptr)
             {
-                count--;
-                auto p = ptr_queue.front();
-                ptr_queue.pop();
-                cv.notify_all();
-                return p;
+                while (ptr_queue.empty() && employee->isalive())
+                {
+                    cv.wait_for(lock, std::chrono::seconds(1));
+                }
+                if (!employee->isalive())
+                {
+                    std::cout<<"employee dead"<<std::endl;
+                    return nullptr;
+                }
             }
-            std::cout<<"employee dead"<<std::endl;
-            return nullptr;
+            else
+            {
+                while (ptr_queue.empty())
+                {
+                    cv.wait(lock);
+                }
+            }
+
+            auto p = ptr_queue.front();
+            ptr_queue.pop();
+            lock.unlock();
+            cv.notify_all();
+            return p;
         }
 
         /**
@@ -122,15 +137,35 @@ namespace pipeline
          */
         inline bool put(std::shared_ptr<T> &&p, BasicTask* employee = nullptr)
         {
-            bool stat = wait_for_put(employee);
-            if (!stat || count < max)
+            std::unique_lock<std::mutex> lock(mtx);
+            if (employee != nullptr)
             {
-                count++;
-                ptr_queue.push(std::move(p));
-                cv.notify_all();
-                return true;
+                while (static_cast<int>(ptr_queue.size()) >= max && employee->isalive())
+                {
+                    cv.wait_for(lock, std::chrono::seconds(1));
+                }
+                if (!employee->isalive())
+                {
+                    return false;
+                }
             }
-            return false;
+            else
+            {
+                while (static_cast<int>(ptr_queue.size()) >= max)
+                {
+                    cv.wait(lock);
+                }
+            }
+
+            if (static_cast<int>(ptr_queue.size()) >= max)
+            {
+                return false;
+            }
+
+            ptr_queue.push(std::move(p));
+            lock.unlock();
+            cv.notify_all();
+            return true;
         }
 
         /**
@@ -140,33 +175,42 @@ namespace pipeline
          */
         inline bool put(std::shared_ptr<T> &p, BasicTask* employee = nullptr)
         {
-            bool stat = wait_for_put(employee);
-            if (!stat || count < max)
+            std::unique_lock<std::mutex> lock(mtx);
+            if (employee != nullptr)
             {
-                count++;
-                ptr_queue.push(p);
-                cv.notify_all();
-                return true;
+                while (static_cast<int>(ptr_queue.size()) >= max && employee->isalive())
+                {
+                    cv.wait_for(lock, std::chrono::seconds(1));
+                }
+                if (!employee->isalive())
+                {
+                    return false;
+                }
             }
-            return false;
+            else
+            {
+                while (static_cast<int>(ptr_queue.size()) >= max)
+                {
+                    cv.wait(lock);
+                }
+            }
+
+            if (static_cast<int>(ptr_queue.size()) >= max)
+            {
+                return false;
+            }
+
+            ptr_queue.push(p);
+            lock.unlock();
+            cv.notify_all();
+            return true;
         }
 
     private:
         int max;
-        int count;
         std::mutex mtx;
         std::condition_variable cv;
         std::queue<std::shared_ptr<T> > ptr_queue;
-
-        /**
-         * @brief   等待缓存队列空闲
-         */
-        inline bool wait_for_put(BasicTask* employee);
-
-        /**
-         * @brief   等待缓存队列空闲
-         */
-        inline bool wait_for_get(BasicTask* employee);
     };
 
     /**
@@ -365,8 +409,11 @@ namespace pipeline
          */
         virtual void stop(void)
         {
-            std::lock_guard<std::mutex> lock(state_mutex);
-            _should_run = false;
+            {
+                std::lock_guard<std::mutex> lock(state_mutex);
+                _should_run = false;
+            }
+            state_cv.notify_all();
         }
 
         /**
@@ -387,8 +434,12 @@ namespace pipeline
          */
         void reset(void)
         {
-            _should_terminate = false;
-            _should_run = true;
+            {
+                std::lock_guard<std::mutex> lock(state_mutex);
+                _should_terminate = false;
+                _should_run = true;
+            }
+            state_cv.notify_all();
         }
 
         /**
@@ -409,6 +460,7 @@ namespace pipeline
          */
         bool isalive() const
         {
+            std::lock_guard<std::mutex> lock(state_mutex);
             return _should_run && !_should_terminate;
         }
 
@@ -418,6 +470,7 @@ namespace pipeline
          */
         bool isterminated() const
         {
+            std::lock_guard<std::mutex> lock(state_mutex);
             return _should_terminate;
         }
 
@@ -438,7 +491,7 @@ namespace pipeline
         bool _should_run;       /*!< 外部控制：任务是否应该运行 */
         bool _should_terminate; /*!< 外部控制：任务是否应该被彻底终止 */
         
-        std::mutex state_mutex;                    /*!< 状态变更的互斥锁 */
+        mutable std::mutex state_mutex;            /*!< 状态变更的互斥锁 */
         std::condition_variable state_cv;          /*!< 状态变更的条件变量 */
     };
     
@@ -629,45 +682,6 @@ namespace pipeline
         std::vector<std::unique_ptr<SubModule>> submodules;
     };
 
-    template<typename T>
-    inline bool BufferedPipeline<T>::wait_for_put(BasicTask* employee)
-    {
-        std::unique_lock<std::mutex> lock(mtx);
-        if (employee != nullptr)
-        {
-            while (count >= max && employee->isalive())
-            {
-                cv.wait_for(lock, std::chrono::seconds(1));
-            }
-            return employee->isalive();
-        }
-        else
-        {
-            while (count >= max)
-                cv.wait_for(lock, std::chrono::seconds(1));
-            return true;
-        }
-    }
-
-    template<typename T>
-    inline bool BufferedPipeline<T>::wait_for_get(BasicTask* employee)
-    {
-        std::unique_lock<std::mutex> lock(mtx);
-        if (employee != nullptr)
-        {
-            while (count == 0 && employee->isalive())
-            {
-                cv.wait_for(lock, std::chrono::seconds(1)); 
-            }
-            return employee->isalive();
-        }
-        else
-        {
-            while (count == 0)
-                cv.wait_for(lock, std::chrono::seconds(1));
-            return true;
-        }
-    }
 }
 
 #endif //COMMON_pipeline_H
