@@ -21,6 +21,10 @@
 
 namespace sensor
 {
+    struct SensorConfig : pipeline::ModuleConfig
+    {
+    };
+
     /**
      * @brief   传感器子模块
      * @details 包装原有 Sensor 逻辑为 SubModule，专注于相机数据处理
@@ -34,7 +38,7 @@ namespace sensor
          * @param[in] VideoSource 视频源路径
          * @param[in] flip_image 是否翻转图像
          */
-        SensorSubModule(const std::string& VideoSource, const std::string& flip_image, pipeline::bridge::SensorFromSerialAttitudeBridge &attitude_bridge, pipeline::bridge::SensorFromSerialRobotStatusBridge &status_bridge); 
+        SensorSubModule(const SensorConfig& config, const std::string& VideoSource, const std::string& flip_image, pipeline::bridge::SensorFromSerialAttitudeBridge &attitude_bridge, pipeline::bridge::SensorFromSerialRobotStatusBridge &status_bridge); 
         virtual ~SensorSubModule();
 
         bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
@@ -49,6 +53,7 @@ namespace sensor
                     const pipeline::BasicTask* parent) override;
 
     private:
+        SensorConfig config_;
         // 传感器相关成员变量
         WrapperHead *video = nullptr;           /*!< 视频输入接口指针 */
         bool is_image_input_flipped = false;    /*!< 标记输入图像是否需要翻转 */

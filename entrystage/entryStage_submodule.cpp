@@ -8,9 +8,10 @@
 namespace entrystage
 {
 
-    EntryStageSubModule::EntryStageSubModule(pipeline::bridge::EntryStageToFoxgloveRobotBridge& robot_bridge,
-                                            pipeline::bridge::EntryStageToFoxgloveAliveBridge& alive_bridge)
-        : SubModule(SubModuleName::ENTRYSTAGE), robot_bridge_(robot_bridge), alive_bridge_(alive_bridge)
+    EntryStageSubModule::EntryStageSubModule(const EntryStageConfig& config,
+                                             pipeline::bridge::EntryStageToFoxgloveRobotBridge& robot_bridge,
+                                             pipeline::bridge::EntryStageToFoxgloveAliveBridge& alive_bridge)
+        : SubModule(SubModuleName::ENTRYSTAGE), config_(config), robot_bridge_(robot_bridge), alive_bridge_(alive_bridge)
     {
         LOGM_S("[EntryStage] construction completed");
     }
@@ -54,7 +55,7 @@ namespace entrystage
             }
         }
         
-        if(_filelog)
+        if(config_.debug.log_file)
         {
             LOGM_F("[EntryStage] recording frame index: %d", data->index);
             LOGM_F("[EntryStage] total time cost: %ld ms", total_duration);

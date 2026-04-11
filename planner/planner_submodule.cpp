@@ -7,14 +7,11 @@
 
 namespace plan
 {
-    PlannerSubModule::PlannerSubModule(pipeline::bridge::PlannerToSerialBridge &message_bridge, const std::string planner_param,
-        bool debug_, bool show_, bool plot_) 
-        : SubModule(SubModuleName::PLANNER), planner_bridge(message_bridge),
-          planner(planner_param, debug_),
-          coord_transformer(CoordTransformer::Get()),
-          debug(debug_),
-          show(show_),
-          plot(plot_)
+    PlannerSubModule::PlannerSubModule(const PlannerConfig& config,
+        pipeline::bridge::PlannerToSerialBridge &message_bridge, const std::string planner_param)
+        : SubModule(SubModuleName::PLANNER), config_(config), planner_bridge(message_bridge),
+          planner(planner_param, config.debug.log_text),
+          coord_transformer(CoordTransformer::Get())
     {
         LOGM_S("[Planner] construction completed");
     }
@@ -66,7 +63,7 @@ namespace plan
                 attitude_yaw, attitude_pitch, R_world2imu, tp);
 
             // 输出数据用于绘图分析（可选）
-            if (plot)
+            if (config_.plot)
                 output_data_to_plot(target, plan, data);
         }
 
@@ -76,7 +73,7 @@ namespace plan
         update_information_to_send(has_fixed_target, target, plan, send, attitude_yaw, attitude_pitch);
 
         // === 可视化显示（可选） ===
-        if (show) {
+        if (config_.debug.show_image) {
             show_real_world(target, plan, data, R_world2imu);  // 显示真实世界视图
             show_sim(target, plan);                           // 显示仿真俯视图
         }
@@ -116,7 +113,7 @@ namespace plan
                 send.target_id = 0;
             }
 
-            if (debug)
+            if (config_.debug.log_text)
                 cout << "[predictor] plan: not fixed" << endl;
         }
         else {
@@ -139,7 +136,7 @@ namespace plan
 
                 send.target_id = target.tracked_armor.tag_id;
 
-                if (debug)
+                if (config_.debug.log_text)
                     cout << "[predictor] plan: sent" << endl;
             }
             else {
@@ -154,7 +151,7 @@ namespace plan
                 send.yaw_acc = 0.0f;
                 send.target_id = 0;
 
-                if (debug)
+                if (config_.debug.log_text)
                     cout << "[predictor] plan: none" << endl;
             }
         }

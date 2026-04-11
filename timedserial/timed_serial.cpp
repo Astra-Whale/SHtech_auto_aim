@@ -8,11 +8,13 @@
 namespace hardware
 {
     // TimedSerial 实现
-    TimedSerial::TimedSerial(std::unique_ptr<SerialInterface> driver_impl, 
+    TimedSerial::TimedSerial(const TimedSerialConfig& config,
+                                   std::unique_ptr<SerialInterface> driver_impl, 
                                    pipeline::bridge::PlannerToSerialBridge &planner_bridge,
                                    pipeline::bridge::SensorFromSerialAttitudeBridge &attitude_bridge,
                                    pipeline::bridge::SensorFromSerialRobotStatusBridge &status_bridge) 
         : BasicTask(), 
+          config_(config),
           driver_(std::move(driver_impl)), 
           planner_bridge_(planner_bridge),
           attitude_bridge_(attitude_bridge),
@@ -83,7 +85,7 @@ namespace hardware
         std::lock_guard<std::mutex> lock(sensor_mutex_);
         latest_attitude_ = att;
         
-        if (_debugprint)
+        if (config_.debug.log_text)
         {
             // LOGM_S("[TimedSerial] Attitude updated: yaw=%.2f, pitch=%.2f", 
             //        att.yaw(), att.pitch);
@@ -136,7 +138,7 @@ namespace hardware
             latest_robot_status_.program_mode = sts.program_mode;
         }
         
-        if (_debugprint)
+        if (config_.debug.log_text)
         {
             // LOGM_S("[TimedSerial] Status updated: enemy_color=%d, speed=%.2f", 
             //        static_cast<int>(latest_robot_status_.enemy_color), 
@@ -211,7 +213,7 @@ namespace hardware
 
                 if (!driver_)
                 {
-                    if (_debugprint)
+                    if (config_.debug.log_text)
                     {
                         LOGE_S("[TimedSerial] Driver not available");
                     }
@@ -223,7 +225,7 @@ namespace hardware
                 if (read_latest_command_and_attitude())
                 {
                     auto read_time_cost = std::chrono::high_resolution_clock::now() - start_time;
-                    if(_debugprint)
+                    if(config_.debug.log_text)
                         if(read_time_cost > std::chrono::microseconds(500))
                             LOGM_S("[timedserial] Cost time: %lld us", 
                                    (long long)std::chrono::duration_cast<std::chrono::microseconds>(read_time_cost).count());
@@ -239,7 +241,7 @@ namespace hardware
                         command_cache_.fire_enable,
                         command_cache_.target_id);
 
-                    if (_debugprint)
+                    if (config_.debug.log_text)
                     {
                         LOGM_S("[TimedSerial][transmit] p-m:%6.2f | p-s:%6.2f | ps-s:%6.2f | y-m:%6.2f | y-s:%6.2f | ys-s:%6.2f | shoot_s:%6.2f | enemy_color:%d | target_id:%d | in_autoaim:%d | fire:%d",
                                attitude_cache_.pitch(),
@@ -257,11 +259,11 @@ namespace hardware
                 }
                 else
                 {
-                    if (_debugprint)
+                    if (config_.debug.log_text)
                         LOGW_S("[TimedSerial] No new command to send");
                 }
 
-                if (_debugprint)
+                if (config_.debug.log_text)
                 {
                     CNT_FPS(total_fps, {});
                 }

@@ -14,10 +14,15 @@ namespace detect
     const int bin_threshold_for_blue = 70;
     const int bin_threshold_for_red = 60;
 
+    struct CornerRefineConfig : pipeline::ModuleConfig
+    {
+        bool adjust_threshold = false;
+    };
+
     class CornerRefineSubModule : public pipeline::SubModule
     {
     public:
-        explicit CornerRefineSubModule(bool adjust_);
+        explicit CornerRefineSubModule(const CornerRefineConfig& config);
         virtual ~CornerRefineSubModule() = default;
 
         bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
@@ -26,7 +31,7 @@ namespace detect
                                 const pipeline::BasicTask* parent) override;
 
     private:
-        bool adjust = false;
+        CornerRefineConfig config_;
         ArmorCornerOptimizer corner_optimizer;
         int binary_thres = 94;
     };

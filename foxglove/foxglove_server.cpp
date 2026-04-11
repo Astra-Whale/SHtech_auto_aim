@@ -7,9 +7,10 @@
 
 namespace foxgloveSer
 {
-    FoxgloveServer_t::FoxgloveServer_t(pipeline::bridge::EntryStageToFoxgloveRobotBridge& robot_bridge,
+    FoxgloveServer_t::FoxgloveServer_t(const FoxgloveServerConfig& config,
+                                      pipeline::bridge::EntryStageToFoxgloveRobotBridge& robot_bridge,
                                       pipeline::bridge::EntryStageToFoxgloveAliveBridge& alive_bridge)
-        : BasicTask(), robot_bridge_(robot_bridge), alive_bridge_(alive_bridge)
+        : BasicTask(), config_(config), robot_bridge_(robot_bridge), alive_bridge_(alive_bridge)
     {
         // 注册消息接收回调
         robot_bridge_.set_receiver([this](const pipeline::bridge::EntryStageToFoxgloveRobotMessage& msg) {
@@ -69,7 +70,7 @@ namespace foxgloveSer
     {
         const auto& enemy_robot_pose = msg.enemy_robot_state;
         foxglove::schemas::Pose pose;
-        if(_debugprint)
+        if(false)
         {
             LOGM_S("[foxglove_server] State: x %.2f y %.2f z %.2f", enemy_robot_pose(0,0), enemy_robot_pose(2,0), enemy_robot_pose(4,0));
         }
