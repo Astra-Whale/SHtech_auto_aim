@@ -44,10 +44,17 @@ public:
     void operator()(const cv::Mat &src, std::vector<bbox_t> &det);
 
 private:
-    AX_ENGINE_HANDLE handle;
-    AX_ENGINE_IO_T io_data;
+    AX_ENGINE_HANDLE handle{};
+    AX_ENGINE_IO_T io_data{};
     std::vector<char> model_buffer;
     std::vector<uint8_t> inputTensorValues;
+    bool sys_initialized{false};
+    bool engine_initialized{false};
+    bool ready{false};
+
+    void releaseIo();
+    void releaseHandle();
+    void shutdownRuntime();
 };
 
 #endif /* _AXCLMODULE_HPP_ */
