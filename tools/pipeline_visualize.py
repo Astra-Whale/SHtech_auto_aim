@@ -3,6 +3,23 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import matplotlib.colors as mcolors
 
+
+def get_stage_names(frames):
+    stage_names = []
+    seen = set()
+    for frame in frames:
+        for stage in frame['stages']:
+            name = stage['name']
+            if name not in seen:
+                seen.add(name)
+                stage_names.append(name)
+    return stage_names
+
+
+def build_stage_color_map(stage_names):
+    palette = list(mcolors.TABLEAU_COLORS.values()) + list(mcolors.CSS4_COLORS.values())
+    return {name: palette[i % len(palette)] for i, name in enumerate(stage_names)}
+
 def clean_text(text):
     """
     清洗文本：移除 标签、ANSI 颜色码、时间戳头
@@ -30,9 +47,9 @@ def parse_log(log_content):
     re_start_time = re.compile(r'start time:\s*(\d+)')
     
     # 匹配: "StageName" 123μs
-    re_stage_proc = re.compile(r'"(\w+)"\s+(\d+)[μµ]s')
+    re_stage_proc = re.compile(r'"([^"]+)"\s+(\d+)[μµ渭碌]s')
     # 匹配: gap: 456μs
-    re_stage_gap = re.compile(r'gap:\s+(\d+)[μµ]s')
+    re_stage_gap = re.compile(r'gap:\s+(\d+)[μµ渭碌]s')
 
     lines = log_content.split('\n')
     
@@ -107,12 +124,8 @@ def visualize_by_packet(frames, start_idx=None, end_idx=None):
 
     fig, ax = plt.subplots(figsize=(12, 6))
     
-    # 颜色定义
-    stage_map = {
-        'Entry':   '#1f77b4', 'Sensor':  '#ff7f0e',
-        'Detect':  '#2ca02c', 'Predict': '#d62728',
-        'Planner': '#9467bd'
-    }
+    stage_names = get_stage_names(target_frames)
+    stage_map = build_stage_color_map(stage_names)
     
     global_start = min(f['start_time_us'] for f in target_frames)
     y_ticks, y_labels = [], []
@@ -144,7 +157,7 @@ def visualize_by_packet(frames, start_idx=None, end_idx=None):
     ax.set_title('View 1: Packet Lifecycle (Row = Frame)')
     
     # Legend
-    patches = [mpatches.Patch(color=c, label=n) for n,c in stage_map.items()]
+    patches = [mpatches.Patch(color=stage_map[name], label=name) for name in stage_names]
     patches.append(mpatches.Patch(facecolor='#cccccc', hatch='///', label='Gap'))
     ax.legend(handles=patches)
     plt.tight_layout()
@@ -163,10 +176,8 @@ def visualize_by_stage(frames, start_idx=None, end_idx=None):
 
     fig, ax = plt.subplots(figsize=(12, 6))
     
-    # 提取所有可能的 Stage 名称以保持顺序
-    stage_names = []
-    if target_frames:
-        stage_names = [s['name'] for s in target_frames[0]['stages']]
+    # 提取所有出现过的 Stage 名称，并按日志首次出现顺序保持排列
+    stage_names = get_stage_names(target_frames)
     
     # 建立 Stage -> Y轴坐标 的映射
     stage_y_map = {name: i for i, name in enumerate(stage_names)}
@@ -224,7 +235,7 @@ def visualize_by_stage(frames, start_idx=None, end_idx=None):
 # ==========================================
 
 # 模拟读取你的 log.txt 内容
-with open('log/2026-03-20-20:56:28.txt', 'r', encoding='utf-8') as f: log_content = f.read()
+with open('25.txt', 'r', encoding='utf-8') as f: log_content = f.read()
 
 if __name__ == "__main__":
     # 1. 解析
@@ -232,7 +243,7 @@ if __name__ == "__main__":
     
     # 2. 视图1：原始视图 (以Packet为行)
     print("Generating Packet View...")
-    visualize_by_packet(parsed_data, start_idx=0, end_idx=40)
+    visualize_by_packet(parsed_data, start_idx=699, end_idx=719)
     
     # 3. 视图2：新视图 (以流水级Stage为行，查看模块占用) //逻辑有误，暂停使用
     # print("Generating Stage View...")
