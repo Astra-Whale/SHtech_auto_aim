@@ -7,12 +7,12 @@
 
 namespace detect
 {
-    CornerRefineSubModule::CornerRefineSubModule(bool adjust_)
+    CornerRefineSubModule::CornerRefineSubModule(const CornerRefineConfig& config)
         : SubModule(SubModuleName::CORNER_REFINE),
-          adjust(adjust_),
-          corner_optimizer(adjust_)
+          config_(config),
+          corner_optimizer(config.adjust_threshold)
     {
-        if (adjust) {
+        if (config_.adjust_threshold) {
             cv::namedWindow("detector trackbar", cv::WINDOW_AUTOSIZE);
             cv::createTrackbar(
                 "Binary Threshold",
@@ -34,7 +34,7 @@ namespace detect
     SubModuleResult CornerRefineSubModule::process(std::shared_ptr<ThreadDataPack> data,
                                                    const pipeline::BasicTask* parent)
     {
-        if (adjust) {
+        if (config_.adjust_threshold) {
             corner_optimizer.setBinaryThreshold(binary_thres);
         } else {
             if (data->robotstatus.enemy_color == EnemyColor::RED) {
@@ -60,7 +60,7 @@ namespace detect
         for (auto bbox : data->bboxes)
         {
             std::vector<cv::Point2f> refined_corners =
-                corner_optimizer.optimizeCorners(data->frame, bbox.pts, _imgshow);
+                corner_optimizer.optimizeCorners(data->frame, bbox.pts, config_.debug.show_image);
 
             if (!refined_corners.empty()) {
                 for (int i = 0; i < 4; i++)
@@ -79,7 +79,7 @@ namespace detect
         data->bboxes = std::move(refined_bboxes);
 
         auto t_opt_end = std::chrono::steady_clock::now();
-        if (_debugprint)
+        if (config_.debug.log_text)
         {
             LOGM_S("[corner_refine] Info: corner refinement took %.2lfms",
                    std::chrono::duration_cast<std::chrono::duration<double>>(t_opt_end - t_opt_start).count() * 1000);

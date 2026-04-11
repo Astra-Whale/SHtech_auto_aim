@@ -20,6 +20,10 @@
 
 namespace detect
 {
+    struct DetectConfig : pipeline::ModuleConfig
+    {
+    };
+
     /**
      * @brief   检测子模块
      * @details 包装原有 Detect 逻辑为 SubModule，用于 PipelineTask
@@ -31,7 +35,7 @@ namespace detect
          * @brief   构造函数
          * @param[in] OnnxFileName 用于推理的 Onnx 文件路径
          */
-        explicit DetectSubModule(const std::string& OnnxFileName);
+        DetectSubModule(const DetectConfig& config, const std::string& OnnxFileName);
         virtual ~DetectSubModule() = default;
 
         bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
@@ -46,6 +50,7 @@ namespace detect
                     const pipeline::BasicTask* parent) override;
 
     private:
+        DetectConfig config_;
         std::unique_ptr<BackEnd> model; /*!< 推理模型指针 */
     };
 }

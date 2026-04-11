@@ -40,6 +40,12 @@ using namespace mathutils;
 
 namespace predict
 {
+    struct MultiPolicyPredictorConfig : pipeline::ModuleConfig
+    {
+        bool adjust_mode = false;
+        bool adjust_tracker_noise = false;
+    };
+
     /**
      * @brief   多策略预测子模块
      * @details 合并原有 PredictSubModule 和 MultiPolicyPredictor 的功能，
@@ -58,7 +64,7 @@ namespace predict
          * @param adjust_ 参数调整模式标志
          * @details 初始化所有核心组件，设置配置参数
          */
-        MultiPolicyPredictorSubModule(bool debug_, bool predic_adjust_, bool tracker_adjust_);
+        explicit MultiPolicyPredictorSubModule(const MultiPolicyPredictorConfig& config);
         virtual ~MultiPolicyPredictorSubModule() = default;
 
         bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
@@ -94,11 +100,9 @@ namespace predict
     private:
         // === 配置参数 ===
         /// @brief 调试模式标志 - 控制调试信息输出
-        bool debug;
+        MultiPolicyPredictorConfig config_;
         
         /// @brief 参数调整模式标志 - 控制实时参数调整界面
-        bool adjust;
-
         int in_autoaim_mode_adjust = 0;
 
         // === 核心组件 ===

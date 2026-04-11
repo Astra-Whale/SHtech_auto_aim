@@ -26,6 +26,11 @@ namespace plan
 {
     using namespace predict;
 
+    struct PlannerConfig : pipeline::ModuleConfig
+    {
+        bool plot = false;
+    };
+
     /**
      * @brief   入口阶段子模块
      */
@@ -36,8 +41,9 @@ namespace plan
          * @brief   构造函数
          * @param[in] message_bridge 消息桥接对象引用
          */
-        PlannerSubModule(pipeline::bridge::PlannerToSerialBridge &message_bridge, const std::string planner_param,
-                            bool debug_, bool show_, bool plot_);
+        PlannerSubModule(const PlannerConfig& config,
+                         pipeline::bridge::PlannerToSerialBridge &message_bridge,
+                         const std::string planner_param);
         virtual ~PlannerSubModule() = default;
 
         bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
@@ -58,11 +64,8 @@ namespace plan
         
         command_array_t generate_command_array(const RobotCommand& command);
 
+        PlannerConfig config_;
         pipeline::bridge::PlannerToSerialBridge &planner_bridge;
-
-        bool debug;
-        bool show;
-        bool plot;
 
         Planner planner;
 
