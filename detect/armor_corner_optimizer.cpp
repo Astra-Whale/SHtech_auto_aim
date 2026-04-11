@@ -2,37 +2,37 @@
 // Licensed under the MIT License.
 
 #include "armor_corner_optimizer.hpp"
+#include <chrono>
 
 namespace detect
 {
-  constexpr bool USING_PCA = false;
-  // If the width of the light is too small, the correction is not performed
-  constexpr int PASS_OPTIMIZE_WIDTH = 3;
-
   ArmorCornerOptimizer::ArmorCornerOptimizer(const bool adjust_, const int &bin_thres, const LightParams &light_params, 
                                               const YoloModelCharacteristics &yolo_params)
-  : binary_thres(bin_thres), light_params(light_params), yolo_params(yolo_params), adjust(adjust_)
+  : binary_thres(bin_thres), light_params(light_params), yolo_params(yolo_params)
   {
   }
   
-  std::vector<cv::Point2f> ArmorCornerOptimizer::optimizeCorners(
+  std::optional<std::array<cv::Point2f, 4>> ArmorCornerOptimizer::optimizeCorners(
       const cv::Mat &input,
       const cv::Point2f yolo_corners[],
-      bool _show)
+      bool _show,
+      CornerRefineCallStats* stats)
   {
-      std::vector<cv::Point2f> optimized_corners;
+      using Clock = std::chrono::steady_clock;
+      auto duration_ms = [](const Clock::time_point& start, const Clock::time_point& end) {
+        return std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(end - start).count();
+      };
+
+      if (stats) {
+        *stats = {};
+      }
 
       if (input.empty()) {
-        optimized_corners.clear();
-        return optimized_corners;
+        return std::nullopt;
       }
 
-      for(int i=0;i<4;i++){
-        optimized_corners.push_back(yolo_corners[i]);
-      }
-
-      // Create debug image if needed
-      debug_img = input.clone();
+      std::array<cv::Point2f, 4> optimized_corners{};
+      std::copy_n(yolo_corners, optimized_corners.size(), optimized_corners.begin());
 
       // Calculate centers, estimated heights and angles of light bars from YOLO corners
       cv::Point2f left_center = (yolo_corners[0] + yolo_corners[1]) * 0.5f;
@@ -71,6 +71,7 @@ namespace detect
                             std::min(right_height, float(yolo_params.max_light_height)));
       
       // Calculate ROIs with adaptive parameters
+      const auto t_roi_start = Clock::now();
       cv::Rect left_roi = calculateLightRoi(left_center, left_height, left_width,left_length);
       cv::Rect right_roi = calculateLightRoi(right_center, right_height, right_width,right_length);
 
@@ -95,53 +96,49 @@ namespace detect
       // Ensure ROIs stay within image boundaries
       left_roi = validateRect(left_roi, input.cols, input.rows);
       right_roi = validateRect(right_roi, input.cols, input.rows);
+      if (stats) {
+        stats->roi_ms += duration_ms(t_roi_start, Clock::now());
+      }
 
       if (left_roi.x <= 0 || left_roi.y <= 0 || left_roi.width <= 0 || left_roi.height <= 0 || 
         left_roi.x + left_roi.width >= input.cols || left_roi.y + left_roi.height >= input.rows ||
         right_roi.x <= 0 || right_roi.y <= 0 || right_roi.width <= 0 || right_roi.height <= 0 ||
         right_roi.x + right_roi.width >= input.cols || right_roi.y + right_roi.height >= input.rows) {
-        optimized_corners.clear();
-
-        return optimized_corners;
+        return std::nullopt;
       }
 
-      cv::Mat left_grey;
-      cv::Mat right_grey;
-      cv::Mat img_grey;
+      const auto t_preprocess_start = Clock::now();
+      cv::Mat left_binary = preprocessImage(input, left_roi);
+      cv::Mat right_binary = preprocessImage(input, right_roi);
+      if (stats) {
+        stats->preprocess_ms += duration_ms(t_preprocess_start, Clock::now());
+      }
 
-      // Rest of the processing remains the same
-      cv::Mat left_binary = preprocessImage(input, left_roi,left_length, left_grey);
-      cv::Mat right_binary = preprocessImage(input, right_roi,right_length, right_grey);
-
-      std::vector<LightBar> left_lights = findLightBars(input, left_binary, left_roi);
-      std::vector<LightBar> right_lights = findLightBars(input, right_binary, right_roi);
+      const auto t_find_light_start = Clock::now();
+      std::vector<LightBar> left_lights = findLightBars(left_binary, left_roi);
+      std::vector<LightBar> right_lights = findLightBars(right_binary, right_roi);
+      if (stats) {
+        stats->find_light_ms += duration_ms(t_find_light_start, Clock::now());
+        stats->candidate_light_bars = static_cast<int>(left_lights.size() + right_lights.size());
+      }
 
       if (left_lights.empty() || right_lights.empty()) {
-        optimized_corners.clear();
-
-        return optimized_corners;
+        return std::nullopt;
       }
 
       // If light bars are found, update corners
+      const auto t_select_start = Clock::now();
       if (!left_lights.empty())
       {
           // Find best matching light bar
           int best_idx = selectBestLightBar(left_lights, left_center, left_height, left_angle_deg);
           if(best_idx!=-1)
           {
-            if (USING_PCA) {
-              if (left_lights[best_idx].width > PASS_OPTIMIZE_WIDTH) {
-                PCA_corner_optimize(img_grey, left_grey, left_lights[best_idx], left_roi);
-                optimized_corners[0] = left_lights[best_idx].top;
-                optimized_corners[1] = left_lights[best_idx].bottom;
-              }
+            optimized_corners[0] = left_lights[best_idx].top;
+            optimized_corners[1] = left_lights[best_idx].bottom;
+            if (stats) {
+              stats->successful_lights++;
             }
-            else {
-              // Update optimized corners with the found light bar
-              optimized_corners[0] = left_lights[best_idx].top;
-              optimized_corners[1] = left_lights[best_idx].bottom;
-            }
-            
           }
       }
 
@@ -151,24 +148,19 @@ namespace detect
           int best_idx = selectBestLightBar(right_lights, right_center, right_height, right_angle_deg);
           if(best_idx!=-1)
           {
-            if (USING_PCA) {
-              if (right_lights[best_idx].width > PASS_OPTIMIZE_WIDTH) {
-                PCA_corner_optimize(img_grey, right_grey, right_lights[best_idx], right_roi);
-                optimized_corners[3] = right_lights[best_idx].top;
-                optimized_corners[2] = right_lights[best_idx].bottom;
-              }
+            optimized_corners[3] = right_lights[best_idx].top;
+            optimized_corners[2] = right_lights[best_idx].bottom;
+            if (stats) {
+              stats->successful_lights++;
             }
-            else {
-              // Update optimized corners with the found light bar
-              optimized_corners[3] = right_lights[best_idx].top;
-              optimized_corners[2] = right_lights[best_idx].bottom;
-            }
-
-
           }
           
       }
+      if (stats) {
+        stats->select_ms += duration_ms(t_select_start, Clock::now());
+      }
 
+      const auto t_final_check_start = Clock::now();
       cv::Vec2f left_light_vector = optimized_corners[1] - optimized_corners[0];
       cv::Vec2f right_light_vector = optimized_corners[2] - optimized_corners[3];
 
@@ -191,138 +183,30 @@ namespace detect
       }
 
       if (light_length_ratio < 0.7 || fabs(left_light_angle_deg - right_light_angle_deg) > 5) {
-        optimized_corners.clear();
-
-        // cout << light_length_ratio << endl;
-        // cout << fabs(left_light_angle_deg - right_light_angle_deg) << endl;
-
-        return optimized_corners;
+        if (stats) {
+          stats->final_check_ms += duration_ms(t_final_check_start, Clock::now());
+        }
+        return std::nullopt;
+      }
+      if (stats) {
+        stats->final_check_ms += duration_ms(t_final_check_start, Clock::now());
       }
 
       // create visulaztion for conor optimizer
       if(_show)
       {
+        const auto t_visualize_start = Clock::now();
         cv::Mat roi_visualization = visualizeROIs(input, left_roi, right_roi);
         cv::Mat binary_visualization = visualizeBinaryResults(input, left_binary, right_binary, left_roi, right_roi);
         cv::imshow("ROI Visualization", roi_visualization);
         cv::imshow("Binary Visualization", binary_visualization);
+        if (stats) {
+          stats->visualize_ms += duration_ms(t_visualize_start, Clock::now());
+        }
       }
 
       return optimized_corners;
   }
-
-  void ArmorCornerOptimizer::PCA_corner_optimize(const cv::Mat &grey_img, const cv::Mat &light_roi_grey, LightBar &light_bar, const cv::Rect &roi)
-  {
-    // A. Find the symmetry axis of the light
-    constexpr float MAX_BRIGHTNESS = 25;
-    constexpr float SCALE = 0.07;
-
-    cv::Mat light_roi_grey_copy = light_roi_grey.clone();
-
-    float mean_val = cv::mean(light_roi_grey_copy)[0];
-    light_roi_grey_copy.convertTo(light_roi_grey_copy, CV_32F);
-    cv::normalize(light_roi_grey_copy, light_roi_grey_copy, 0, MAX_BRIGHTNESS, cv::NORM_MINMAX);
-
-    // Calculate the centroid
-    cv::Moments moments = cv::moments(light_roi_grey_copy, false);
-    cv::Point2f centroid = cv::Point2f(moments.m10 / moments.m00, moments.m01 / moments.m00) +
-                          cv::Point2f(roi.x, roi.y);
-
-    // Initialize the PointCloud
-    std::vector<cv::Point2f> points;
-    for (int i = 0; i < light_roi_grey_copy.rows; i++) {
-      for (int j = 0; j < light_roi_grey_copy.cols; j++) {
-        for (int k = 0; k < std::round(light_roi_grey_copy.at<float>(i, j)); k++) {
-          points.emplace_back(cv::Point2f(j, i));
-        }
-      }
-    }
-    cv::Mat points_mat = cv::Mat(points).reshape(1);
-
-    // PCA (Principal Component Analysis)
-    auto pca = cv::PCA(points_mat, cv::Mat(), cv::PCA::DATA_AS_ROW);
-
-    // Get the symmetry axis
-    cv::Point2f axis =
-      cv::Point2f(pca.eigenvectors.at<float>(0, 0), pca.eigenvectors.at<float>(0, 1));
-
-    // Normalize the axis
-    axis = axis / cv::norm(axis);
-
-    if (axis.y > 0) {
-      axis = -axis;
-    }
-
-
-    // B. Find the corner of the light
-    constexpr float START = 0.8 / 2;
-    constexpr float END = 1.2 / 2;
-
-    auto inImage = [&grey_img](const cv::Point &point) -> bool {
-      return point.x >= 0 && point.x < grey_img.cols && point.y >= 0 && point.y < grey_img.rows;
-    };
-
-    auto distance = [](float x0, float y0, float x1, float y1) -> float {
-      return std::sqrt((x0 - x1) * (x0 - x1) + (y0 - y1) * (y0 - y1));
-    };
-
-    int oper = 1;
-    for (int i = 1; i != 3; i++) {
-      float L = light_bar.length;
-      float dx = axis.x * oper;
-      float dy = axis.y * oper;
-
-      std::vector<cv::Point2f> candidates;
-
-      // Select multiple corner candidates and take the average as the final corner
-      int n = light_bar.width - 2;
-      int half_n = std::round(n / 2);
-      for (int i = -half_n; i <= half_n; i++) {
-        float x0 = centroid.x + L * START * dx + i;
-        float y0 = centroid.y + L * START * dy;
-
-        cv::Point2f prev = cv::Point2f(x0, y0);
-        cv::Point2f corner = cv::Point2f(x0, y0);
-        float max_brightness_diff = 0;
-        bool has_corner = false;
-        // Search along the symmetry axis to find the corner that has the maximum brightness difference
-        for (float x = x0 + dx, y = y0 + dy; distance(x, y, x0, y0) < L * (END - START);
-            x += dx, y += dy) {
-          cv::Point2f cur = cv::Point2f(x, y);
-          if (!inImage(cv::Point(cur))) {
-            break;
-          }
-
-          float brightness_diff = grey_img.at<uchar>(prev) - grey_img.at<uchar>(cur);
-          if (brightness_diff > max_brightness_diff && grey_img.at<uchar>(prev) > mean_val) {
-            max_brightness_diff = brightness_diff;
-            corner = prev;
-            has_corner = true;
-          }
-
-          prev = cur;
-        }
-
-        if (has_corner) {
-          candidates.emplace_back(corner);
-        }
-      }
-
-      if (!candidates.empty()) {
-        cv::Point2f result = std::accumulate(candidates.begin(), candidates.end(), cv::Point2f(0, 0));
-        if (oper == 1) {
-          light_bar.top = result / static_cast<float>(candidates.size());
-        }
-        else {
-          light_bar.bottom = result / static_cast<float>(candidates.size());
-        }
-      }
-
-      oper *= -1;
-    }
-    
-
-  } 
 
   cv::Rect ArmorCornerOptimizer::calculateLightRoi(
       const cv::Point2f &center, 
@@ -405,7 +289,7 @@ namespace detect
       return best_idx;
   }
     
-  cv::Mat ArmorCornerOptimizer::preprocessImage(const cv::Mat &rgb_img, const cv::Rect &roi, float light_length, cv::Mat &img_grey)
+  cv::Mat ArmorCornerOptimizer::preprocessImage(const cv::Mat &rgb_img, const cv::Rect &roi)
   {
     // Extract ROI from the image
     cv::Mat roi_img = rgb_img(roi);
@@ -423,44 +307,7 @@ namespace detect
     
     cv::Mat green_channel;
     cv::cvtColor(roi_img, green_channel, cv::COLOR_RGB2GRAY);
-    img_grey = green_channel;
-
-    // cv::extractChannel(roi_img, green_channel, 1);
-
     // Calculate the light bar area: length × (length/4) considering 4:1 ratio
-    float light_area = light_length * (light_length / 4.0f);
-    
-    // Calculate fraction of pixels that should be bright
-    float bright_pixel_ratio = light_area / (roi.width * roi.height);
-
-    bright_pixel_ratio *= 0.6;
-    
-    // Add tolerance and clamp to reasonable range
-    bright_pixel_ratio = std::min(0.3f, std::max(0.05f, bright_pixel_ratio * 1.2f));
-    
-    // Fast histogram calculation
-    int histogram[256] = {0};
-    for (int i = 0; i < green_channel.rows; i++) {
-      const uchar* row = green_channel.ptr<uchar>(i);
-      for (int j = 0; j < green_channel.cols; j++) {
-        histogram[row[j]]++;
-      }
-    }
-    
-    // Determine threshold to keep exactly the calculated ratio of bright pixels
-    int total_pixels = green_channel.rows * green_channel.cols;
-    int pixels_to_keep = static_cast<int>(total_pixels * bright_pixel_ratio);
-    int cumulative_count = 0;
-    int threshold = 0;
-    
-    for (int i = 255; i >= 0; i--) {
-      cumulative_count += histogram[i];
-      if (cumulative_count >= pixels_to_keep) {
-        threshold = i;
-        break;
-      }
-    }
-
     // Apply threshold
     cv::Mat binary_img;
     cv::threshold(green_channel, binary_img, binary_thres, 255, cv::THRESH_BINARY);
@@ -472,7 +319,7 @@ namespace detect
   }
 
   std::vector<LightBar> ArmorCornerOptimizer::findLightBars(
-      const cv::Mat &rgb_img, const cv::Mat &binary_img, const cv::Rect &roi)
+      const cv::Mat &binary_img, const cv::Rect &roi)
   {
     // Find contours in binary image
     std::vector<std::vector<cv::Point>> contours;
@@ -480,6 +327,7 @@ namespace detect
     cv::findContours(binary_img, contours, hierarchy, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
     std::vector<LightBar> light_bars;
+    light_bars.reserve(contours.size());
 
     // Process each contour
     for (const auto &contour : contours)
@@ -495,6 +343,7 @@ namespace detect
       // Create mask for the contour
       cv::Mat mask = cv::Mat::zeros(b_rect.size(), CV_8UC1);
       std::vector<cv::Point> mask_contour;
+      mask_contour.reserve(contour.size());
       for (const auto &p : contour)
       {
         mask_contour.emplace_back(p - cv::Point(b_rect.x, b_rect.y));
@@ -551,53 +400,11 @@ namespace detect
       light.width = points.size()/light.length;
       light.tilt_angle = angle_k;
 
-      // Determine color if needed
-      if (b_rect.x >= 0 && b_rect.y >= 0 &&
-          b_rect.x + b_rect.width <= rgb_img.cols &&
-          b_rect.y + b_rect.height <= rgb_img.rows)
-      {
-
-        cv::Rect adjusted_rect(b_rect.x + roi.x, b_rect.y + roi.y, b_rect.width, b_rect.height);
-
-        if (adjusted_rect.x >= 0 && adjusted_rect.y >= 0 &&
-            adjusted_rect.x + adjusted_rect.width <= rgb_img.cols &&
-            adjusted_rect.y + adjusted_rect.height <= rgb_img.rows)
-        {
-
-          auto roi_img = rgb_img(adjusted_rect);
-          int sum_r = 0, sum_b = 0;
-
-          // Iterate through the ROI to determine color
-          for (int i = 0; i < roi_img.rows; i++)
-          {
-            for (int j = 0; j < roi_img.cols; j++)
-            {
-              cv::Point global_pt(j + adjusted_rect.x, i + adjusted_rect.y);
-              cv::Point local_pt(global_pt.x - roi.x, global_pt.y - roi.y);
-
-              if (local_pt.x >= 0 && local_pt.y >= 0 &&
-                  local_pt.x < binary_img.cols && local_pt.y < binary_img.rows)
-              {
-                if (binary_img.at<uchar>(local_pt) > 0)
-                {
-                  sum_r += roi_img.at<cv::Vec3b>(i, j)[0]; // R channel
-                  sum_b += roi_img.at<cv::Vec3b>(i, j)[2]; // B channel
-                }
-              }
-            }
-          }
-
-          light.color = sum_r > sum_b ? RED : BLUE;
-        }
-      }
-
       // Validate light bar
       if (isValidLightBar(light))
       {
         light_bars.push_back(light);
 
-        // Draw on debug image
-        cv::line(debug_img, light.top, light.bottom, cv::Scalar(0, 255, 0), 2);
       }
 
     }

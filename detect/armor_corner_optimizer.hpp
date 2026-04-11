@@ -10,15 +10,29 @@
 #include <opencv2/imgproc.hpp>
 
 // STD
+#include <algorithm>
+#include <array>
+#include <optional>
 #include <vector>
 #include <cmath>
 #include <iostream>
-#include <numeric>
 
 #include "common.hpp"
 
 namespace detect
 {
+  struct CornerRefineCallStats
+  {
+    double roi_ms = 0.0;
+    double preprocess_ms = 0.0;
+    double find_light_ms = 0.0;
+    double select_ms = 0.0;
+    double final_check_ms = 0.0;
+    double visualize_ms = 0.0;
+
+    int candidate_light_bars = 0;
+    int successful_lights = 0;
+  };
 
   // Light structure to represent a light bar
   struct LightBar
@@ -29,8 +43,6 @@ namespace detect
     float length;       // Length of light
     float width;        // Width of light
     float tilt_angle;   // Tilt angle of light
-    int color;          // Color of light (RED or BLUE)
-
     LightBar() = default;
 
     LightBar(const cv::Point2f &t, const cv::Point2f &b)
@@ -123,10 +135,11 @@ namespace detect
      * @param yolo_corners Four corners from YOLO (ordered as: left_top, left_bottom, right_top, right_bottom)
      * @return Optimized four corners
      */
-    std::vector<cv::Point2f> optimizeCorners(
+    std::optional<std::array<cv::Point2f, 4>> optimizeCorners(
         const cv::Mat &input,
         const cv::Point2f yolo_corners[],
-        const bool _show
+        const bool _show,
+        CornerRefineCallStats* stats = nullptr
       );
 
     // Set parameters
@@ -134,15 +147,12 @@ namespace detect
     void setLightParams(const LightParams &params) { light_params = params; }
     void setYoloModelCharacteristics(const YoloModelCharacteristics &params) { yolo_params = params; }
 
-    // Get debug image
-    cv::Mat getDebugImage() const { return debug_img; }
-
   private:
     // Preprocess image
-    cv::Mat preprocessImage(const cv::Mat &rgb_img, const cv::Rect &roi, float light_length, cv::Mat &img_grey);
+    cv::Mat preprocessImage(const cv::Mat &rgb_img, const cv::Rect &roi);
 
     // Find light bars in ROI
-    std::vector<LightBar> findLightBars(const cv::Mat &rgb_img, const cv::Mat &binary_img, const cv::Rect &roi);
+    std::vector<LightBar> findLightBars(const cv::Mat &binary_img, const cv::Rect &roi);
 
     // Check if a contour is a valid light bar
     bool isValidLightBar(const LightBar &light);
@@ -161,8 +171,6 @@ namespace detect
         float expected_height,
         float expected_angle);
     
-    void PCA_corner_optimize(const cv::Mat &grey_img, const cv::Mat &light_roi_grey, LightBar &light_bar, const cv::Rect &roi);
-
     cv::Mat visualizeROIs(const cv::Mat &input, const cv::Rect &left_roi, const cv::Rect &right_roi);
 
     cv::Mat visualizeBinaryResults(const cv::Mat &input, const cv::Mat &left_binary, const cv::Mat &right_binary, 
@@ -172,14 +180,6 @@ namespace detect
     int binary_thres;
     LightParams light_params;
     YoloModelCharacteristics yolo_params;
-    bool adjust;
-
-    // Debug
-    cv::Mat debug_img;
-
-    // Constants
-    static constexpr int RED = 0;
-    static constexpr int BLUE = 1;
   };
 
 } // namespace detect
