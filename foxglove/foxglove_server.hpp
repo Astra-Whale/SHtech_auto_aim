@@ -25,16 +25,22 @@
 
 namespace foxgloveSer
 {
+    struct FoxgloveServerConfig : pipeline::ModuleConfig
+    {
+    };
+
     class FoxgloveServer_t : public pipeline::BasicTask
     {
     public:
-        FoxgloveServer_t(pipeline::bridge::EntryStageToFoxgloveRobotBridge& robot_bridge,
+        FoxgloveServer_t(const FoxgloveServerConfig& config,
+                        pipeline::bridge::EntryStageToFoxgloveRobotBridge& robot_bridge,
                         pipeline::bridge::EntryStageToFoxgloveAliveBridge& alive_bridge);
         virtual ~FoxgloveServer_t();
 
         void operator()() override;
  
     private:
+        FoxgloveServerConfig config_;
         // 消息桥接引用
         pipeline::bridge::EntryStageToFoxgloveRobotBridge& robot_bridge_;
         pipeline::bridge::EntryStageToFoxgloveAliveBridge& alive_bridge_;
