@@ -1,6 +1,5 @@
 //
-// LinearPredictorSubModule - Merged PredictSubModule and LinearPredictor
-// Combines pipeline integration and prediction algorithm in one class
+// EntryStageSubModule
 //
 
 #include "entryStage_submodule.hpp"
