@@ -427,7 +427,7 @@ struct ThreadDataPack
     RobotStatus robotstatus;    /*!< 上行机器人状态 */
     Attitude attitude;          /*!< 上行位姿数据 */
     RobotCommand robotcommand;
-    int index;                  /*!< 报文序号 */
+    int index = 0;              /*!< 报文序号 */
 
 };
 
