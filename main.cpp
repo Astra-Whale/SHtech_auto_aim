@@ -185,36 +185,32 @@ ThreadMonitor create_monitor(std::string name, std::thread& t)
     };
 };
 
+// [DEPRECATED PLACEHOLDER] 带病启动策略模板（当前禁用）
+// 如需恢复“非关键模块失败仍可启动”，请将该逻辑移动回 init 的注册检查阶段。
+// static bool allow_degraded_startup(bool optional_module_ok)
+// {
+//     if (!optional_module_ok) {
+//         LOGW_S("[init] Optional module unavailable, continue with degraded mode");
+//     }
+//     return true;
+// }
+
 bool init(void)
 {
     signal(SIGINT, int_handler);
     signal(SIGTERM, int_handler);
     signal(SIGSEGV, segv_handler);
-    cmd_parser parser;
-    map<string, string> info;
-    map<string, bool> display;
     screen = new Log();
-    try
-    {
-        parser.parse("launch.cfg", info, display);
-    }
-    catch (const char *msg)
-    {
-        LOGE(screen, "%s", msg);
-        return false;
-    }
+
+    try {
+    cmd_parser parser("launch.cfg");
 
     LOGM_F("open log file success!");
     LOGM_S("open log file success!");
 
     // 初始化 CoordTransformer 单例
-    try {
-        mathutils::CoordTransformer::Init(info["camera_para"], display["transformer_adjust_armor_size"]);
-        LOGM_S("CoordTransformer initialized.");
-    } catch (const std::exception& e) {
-        LOGE_S("[init] Failed to initialize CoordTransformer: %s", e.what());
-        return false;
-    }
+    mathutils::CoordTransformer::Init(parser.get_string("camera_para"), parser.get_bool("transformer_adjust_armor_size"));
+    LOGM_S("CoordTransformer initialized.");
 
 
     // 第二步: 分配内存
@@ -235,53 +231,53 @@ bool init(void)
     // 第三步：初始化任务和注入依赖
 
     hardware::TimedSerialConfig timed_serial_config;
-    timed_serial_config.debug.log_text = display["timed_serial_log_text"];
-    timed_serial_config.debug.log_file = display["timed_serial_log_file"];
-    timed_serial_config.debug.show_image = display["timed_serial_show_image"];
+    timed_serial_config.debug.log_text = parser.get_bool("timed_serial_log_text");
+    timed_serial_config.debug.log_file = parser.get_bool("timed_serial_log_file");
+    timed_serial_config.debug.show_image = parser.get_bool("timed_serial_show_image");
 
     entrystage::EntryStageConfig entrystage_config;
-    entrystage_config.debug.log_text = display["entrystage_log_text"];
-    entrystage_config.debug.log_file = display["entrystage_log_file"];
-    entrystage_config.debug.show_image = display["entrystage_show_image"];
+    entrystage_config.debug.log_text = parser.get_bool("entrystage_log_text");
+    entrystage_config.debug.log_file = parser.get_bool("entrystage_log_file");
+    entrystage_config.debug.show_image = parser.get_bool("entrystage_show_image");
 
     sensor::SensorConfig sensor_config;
-    sensor_config.debug.log_text = display["sensor_log_text"];
-    sensor_config.debug.log_file = display["sensor_log_file"];
-    sensor_config.debug.show_image = display["sensor_show_image"];
+    sensor_config.debug.log_text = parser.get_bool("sensor_log_text");
+    sensor_config.debug.log_file = parser.get_bool("sensor_log_file");
+    sensor_config.debug.show_image = parser.get_bool("sensor_show_image");
 
     detect::PreprocessConfig preprocess_config;
-    preprocess_config.debug.log_text = display["preprocess_log_text"];
-    preprocess_config.debug.log_file = display["preprocess_log_file"];
-    preprocess_config.debug.show_image = display["preprocess_show_image"];
+    preprocess_config.debug.log_text = parser.get_bool("preprocess_log_text");
+    preprocess_config.debug.log_file = parser.get_bool("preprocess_log_file");
+    preprocess_config.debug.show_image = parser.get_bool("preprocess_show_image");
 
     detect::DetectConfig detect_config;
-    detect_config.debug.log_text = display["detect_log_text"];
-    detect_config.debug.log_file = display["detect_log_file"];
-    detect_config.debug.show_image = display["detect_show_image"];
+    detect_config.debug.log_text = parser.get_bool("detect_log_text");
+    detect_config.debug.log_file = parser.get_bool("detect_log_file");
+    detect_config.debug.show_image = parser.get_bool("detect_show_image");
 
     detect::CornerRefineConfig corner_refine_config;
-    corner_refine_config.debug.log_text = display["corner_refine_log_text"];
-    corner_refine_config.debug.log_file = display["corner_refine_log_file"];
-    corner_refine_config.debug.show_image = display["corner_refine_show_image"];
-    corner_refine_config.adjust_threshold = display["corner_refine_adjust_threshold"];
+    corner_refine_config.debug.log_text = parser.get_bool("corner_refine_log_text");
+    corner_refine_config.debug.log_file = parser.get_bool("corner_refine_log_file");
+    corner_refine_config.debug.show_image = parser.get_bool("corner_refine_show_image");
+    corner_refine_config.adjust_threshold = parser.get_bool("corner_refine_adjust_threshold");
 
     predict::MultiPolicyPredictorConfig predictor_config;
-    predictor_config.debug.log_text = display["predictor_log_text"];
-    predictor_config.debug.log_file = display["predictor_log_file"];
-    predictor_config.debug.show_image = display["predictor_show_image"];
-    predictor_config.adjust_mode = display["predictor_adjust_mode"];
-    predictor_config.adjust_tracker_noise = display["predictor_adjust_tracker_noise"];
+    predictor_config.debug.log_text = parser.get_bool("predictor_log_text");
+    predictor_config.debug.log_file = parser.get_bool("predictor_log_file");
+    predictor_config.debug.show_image = parser.get_bool("predictor_show_image");
+    predictor_config.adjust_mode = parser.get_bool("predictor_adjust_mode");
+    predictor_config.adjust_tracker_noise = parser.get_bool("predictor_adjust_tracker_noise");
 
     plan::PlannerConfig planner_config;
-    planner_config.debug.log_text = display["planner_log_text"];
-    planner_config.debug.log_file = display["planner_log_file"];
-    planner_config.debug.show_image = display["planner_show_image"];
-    planner_config.plot = display["planner_plot"];
+    planner_config.debug.log_text = parser.get_bool("planner_log_text");
+    planner_config.debug.log_file = parser.get_bool("planner_log_file");
+    planner_config.debug.show_image = parser.get_bool("planner_show_image");
+    planner_config.plot = parser.get_bool("planner_plot");
 
     foxgloveSer::FoxgloveServerConfig foxglove_server_config;
-    foxglove_server_config.debug.log_text = display["foxglove_server_log_text"];
-    foxglove_server_config.debug.log_file = display["foxglove_server_log_file"];
-    foxglove_server_config.debug.show_image = display["foxglove_server_show_image"];
+    foxglove_server_config.debug.log_text = parser.get_bool("foxglove_server_log_text");
+    foxglove_server_config.debug.log_file = parser.get_bool("foxglove_server_log_file");
+    foxglove_server_config.debug.show_image = parser.get_bool("foxglove_server_show_image");
 
     bool entrystage_submodule_registered = false;
     bool sensor_submodule_registered = false;
@@ -290,35 +286,26 @@ bool init(void)
     bool corner_refine_submodule_registered = false;
     bool predict_submodule_registered = false;
     bool planner_submodule_registered = false;
-    bool timed_serial_independenttask_registered = false;
     // bool foxglove_server_independenttask_registered = false;
     // 初始化独立任务
-    try
-    {
-        std::unique_ptr<SerialInterface> driver;
-        // 根据配置选择驱动类型
-        if (info["port"] == "None" || info["port"].empty()) {
-            // 使用 MockDriver（无硬件模式）
-            LOGW_S("[init] Using MockDriver (no hardware mode)");
-            driver = std::make_unique<MockDriver>();
-        } else {
-            // 使用真实的 UartDriver
-            LOGM_S("[init] Using UartDriver with port: %s", info["port"].c_str());
-            driver = std::make_unique<UartDriver>(info["port"]);
-        }
+    std::unique_ptr<SerialInterface> driver;
+    const std::string &port = parser.get_string("port");
+    // 根据配置选择驱动类型
+    if (port == "None" || port.empty()) {
+        // 使用 MockDriver（无硬件模式）
+        LOGW_S("[init] Using MockDriver (no hardware mode)");
+        driver = std::make_unique<MockDriver>();
+    } else {
+        // 使用真实的 UartDriver
+        LOGM_S("[init] Using UartDriver with port: %s", port.c_str());
+        driver = std::make_unique<UartDriver>(port);
+    }
 
-        timed_serial = new hardware::TimedSerial(timed_serial_config,
-                                                std::move(driver),
-                                                *planner_to_serial_bridge,
-                                                *sensor_from_serial_attitude_bridge,
-                                                *sensor_from_serial_robot_status_bridge);
-        timed_serial_independenttask_registered = true;
-    }
-    catch (const std::exception &e)
-    {
-        LOGE_S("[init] Failed to create TimedSerial: %s", e.what());
-        timed_serial_independenttask_registered = false;
-    }
+    timed_serial = new hardware::TimedSerial(timed_serial_config,
+                                            std::move(driver),
+                                            *planner_to_serial_bridge,
+                                            *sensor_from_serial_attitude_bridge,
+                                            *sensor_from_serial_robot_status_bridge);
 
     entrystage_submodule_registered = pipeline_stage0->register_submodule_with_params<entrystage::EntryStageSubModule>(
         entrystage_config,
@@ -327,14 +314,14 @@ bool init(void)
 
     sensor_submodule_registered = pipeline_stage0->register_submodule_with_params<sensor::SensorSubModule>(
         sensor_config,
-        info["source"],
-        info["flip"],
+        parser.get_string("source"),
+        parser.get_string("flip"),
         *sensor_from_serial_attitude_bridge,
         *sensor_from_serial_robot_status_bridge);
 
     preprocess_submodule_registered = pipeline_stage0->register_submodule_with_params<detect::PreprocessSubModule>(preprocess_config);
 
-    detect_submodule_registered = pipeline_stage1->register_submodule_with_params<detect::DetectSubModule>(detect_config, info["model"]);
+    detect_submodule_registered = pipeline_stage1->register_submodule_with_params<detect::DetectSubModule>(detect_config, parser.get_string("model"));
 
     corner_refine_submodule_registered = pipeline_stage2->register_submodule_with_params<detect::CornerRefineSubModule>(corner_refine_config);
 
@@ -342,7 +329,7 @@ bool init(void)
         predictor_config);
 
     planner_submodule_registered = pipeline_stage2->register_submodule_with_params<plan::PlannerSubModule>(
-        planner_config, *planner_to_serial_bridge, info["planner_para"]);
+        planner_config, *planner_to_serial_bridge, parser.get_string("planner_para"));
 
     
     // 检查所有关键子模块是否注册成功
@@ -354,18 +341,25 @@ bool init(void)
         || !predict_submodule_registered 
         || !planner_submodule_registered
         // || !foxglove_server_independenttask_registered
-        || !timed_serial_independenttask_registered) 
+        ) 
     {
         LOGE_S("[init] Critical modules unavailable, system cannot start");
         return false;
     }
 
-    if (false) {
-        LOGE_S("[init] some composite tasks unavailable, system still can start");
-    }
-
     LOGM_S("[init] all composite tasks registered successfully, system can start");
     return true;
+    }
+    catch (const std::exception &e)
+    {
+        LOGE_S("[init] Config/init failed: %s", e.what());
+        return false;
+    }
+    catch (...)
+    {
+        LOGE_S("[init] Config/init failed: unknown exception");
+        return false;
+    }
     // 第三步结束
 }
 
