@@ -12,21 +12,6 @@
 #include <opencv2/imgproc.hpp>
 #include <algorithm>
 
-#define SAMPLE_AX_ENGINE_DEAL_HANDLE            \
-    if (0 != ret)                               \
-    {                                           \
-        AX_ENGINE_DestroyHandle(handle);        \
-        return;                                 \
-    }
-
-#define SAMPLE_AX_ENGINE_DEAL_HANDLE_IO         \
-    if (0 != ret)                               \
-    {                                           \
-        free_io(&io_data);                      \
-        AX_ENGINE_DestroyHandle(handle);        \
-        return;                                 \
-    }
-
 #define AX_CMM_ALIGN_SIZE 128
 
 typedef enum
@@ -39,29 +24,63 @@ typedef std::pair<AX_ENGINE_ALLOC_BUFFER_STRATEGY_T, AX_ENGINE_ALLOC_BUFFER_STRA
 
 const char* AX_CMM_SESSION_NAME = "ax-samples-cmm";
 
+namespace
+{
+void release_io_buffer(AX_ENGINE_IO_BUFFER_T* buffer)
+{
+    if (buffer == nullptr)
+    {
+        return;
+    }
+
+    if (buffer->phyAddr != 0 || buffer->pVirAddr != nullptr)
+    {
+        AX_SYS_MemFree(buffer->phyAddr, buffer->pVirAddr);
+        buffer->phyAddr = 0;
+        buffer->pVirAddr = nullptr;
+    }
+
+    buffer->nSize = 0;
+}
+}
+
 void free_io_index(AX_ENGINE_IO_BUFFER_T* io_buf, size_t index)
 {
     for (int i = 0; i < (int)index; ++i)
     {
-        AX_ENGINE_IO_BUFFER_T* pBuf = io_buf + i;
-        AX_SYS_MemFree(pBuf->phyAddr, pBuf->pVirAddr);
+        release_io_buffer(io_buf + i);
     }
 }
 
 void free_io(AX_ENGINE_IO_T* io)
 {
-    for (size_t j = 0; j < io->nInputSize; ++j)
+    if (io == nullptr)
     {
-        AX_ENGINE_IO_BUFFER_T* pBuf = io->pInputs + j;
-        AX_SYS_MemFree(pBuf->phyAddr, pBuf->pVirAddr);
+        return;
     }
-    for (size_t j = 0; j < io->nOutputSize; ++j)
+
+    if (io->pInputs != nullptr)
     {
-        AX_ENGINE_IO_BUFFER_T* pBuf = io->pOutputs + j;
-        AX_SYS_MemFree(pBuf->phyAddr, pBuf->pVirAddr);
+        for (size_t j = 0; j < io->nInputSize; ++j)
+        {
+            release_io_buffer(io->pInputs + j);
+        }
+        delete[] io->pInputs;
+        io->pInputs = nullptr;
     }
-    delete[] io->pInputs;
-    delete[] io->pOutputs;
+
+    if (io->pOutputs != nullptr)
+    {
+        for (size_t j = 0; j < io->nOutputSize; ++j)
+        {
+            release_io_buffer(io->pOutputs + j);
+        }
+        delete[] io->pOutputs;
+        io->pOutputs = nullptr;
+    }
+
+    io->nInputSize = 0;
+    io->nOutputSize = 0;
 }
 
 static inline int prepare_io(AX_ENGINE_IO_INFO_T* info, AX_ENGINE_IO_T* io_data, INPUT_OUTPUT_ALLOC_STRATEGY strategy)
@@ -88,6 +107,9 @@ static inline int prepare_io(AX_ENGINE_IO_INFO_T* info, AX_ENGINE_IO_T* io_data,
         if (ret != 0)
         {
             free_io_index(io_data->pInputs, i);
+            delete[] io_data->pInputs;
+            io_data->pInputs = nullptr;
+            io_data->nInputSize = 0;
             LOGE_S( "[AXCL] Allocate input{%d} { phy: %p, vir: %p, size: %lu Bytes }. fail \n", i, (void*)buffer->phyAddr, buffer->pVirAddr, (long)meta.nSize);
             return ret;
         }
@@ -115,6 +137,12 @@ static inline int prepare_io(AX_ENGINE_IO_INFO_T* info, AX_ENGINE_IO_T* io_data,
             LOGE_S( "[AXCL] Allocate output{%d} { phy: %p, vir: %p, size: %lu Bytes }. fail \n", i, (void*)buffer->phyAddr, buffer->pVirAddr, (long)meta.nSize);
             free_io_index(io_data->pInputs, io_data->nInputSize);
             free_io_index(io_data->pOutputs, i);
+            delete[] io_data->pInputs;
+            delete[] io_data->pOutputs;
+            io_data->pInputs = nullptr;
+            io_data->pOutputs = nullptr;
+            io_data->nInputSize = 0;
+            io_data->nOutputSize = 0;
             return ret;
         }
         // LOGE_S( "[AXCL] Allocate output{%d} { phy: %p, vir: %p, size: %lu Bytes }.\n", i, (void*)buffer->phyAddr, buffer->pVirAddr, (long)meta.nSize);
@@ -229,17 +257,25 @@ AXCL::AXCL(const std::string &model_file) : BackEnd(), inputTensorValues(3*512*6
         LOGE_S( "Read Run-Joint model(%s).\n", axcl_file.c_str());
     }
 
-    AX_SYS_Init();
+    auto ret = AX_SYS_Init();
+    if (0 != ret)
+    {
+        LOGE_S( "[AXCL] Init SYS failed.\n");
+        return;
+    }
+    sys_initialized = true;
+
     AX_ENGINE_NPU_ATTR_T npu_attr;
     memset(&npu_attr, 0, sizeof(npu_attr));
     npu_attr.eHardMode = AX_ENGINE_VIRTUAL_NPU_DISABLE;
-    auto ret = AX_ENGINE_Init(&npu_attr);
+    ret = AX_ENGINE_Init(&npu_attr);
 
     if (0 != ret)
     {
         LOGE_S( "[AXCL] Init ENGINE failed.\n");
         return;
     }
+    engine_initialized = true;
 
     // 2. load model
     if (!read_file(axcl_file, model_buffer))
@@ -250,18 +286,30 @@ AXCL::AXCL(const std::string &model_file) : BackEnd(), inputTensorValues(3*512*6
 
     // 3. create handle
     ret = AX_ENGINE_CreateHandle(&handle, model_buffer.data(), model_buffer.size());
-    SAMPLE_AX_ENGINE_DEAL_HANDLE
+    if (0 != ret)
+    {
+        LOGE_S( "[AXCL] Engine create handle failed.\n");
+        return;
+    }
     LOGM_S( "[AXCL] Engine creating handle is done.\n");
 
     // 4. create context
     ret = AX_ENGINE_CreateContext(handle);
-    SAMPLE_AX_ENGINE_DEAL_HANDLE
+    if (0 != ret)
+    {
+        LOGE_S( "[AXCL] Engine create context failed.\n");
+        return;
+    }
     LOGM_S( "[AXCL] Engine creating context is done.\n");
 
     // 5. set io
     AX_ENGINE_IO_INFO_T* io_info;
     ret = AX_ENGINE_GetIOInfo(handle, &io_info);
-    SAMPLE_AX_ENGINE_DEAL_HANDLE
+    if (0 != ret)
+    {
+        LOGE_S( "[AXCL] Engine get io info failed.\n");
+        return;
+    }
     LOGM_S( "[AXCL] Engine get io info is done. \n");
 
     for (int i = 0; i < io_info->nOutputSize; i++)
@@ -271,16 +319,54 @@ AXCL::AXCL(const std::string &model_file) : BackEnd(), inputTensorValues(3*512*6
 
     // 6. alloc io
     ret = prepare_io(io_info, &io_data, std::make_pair(AX_ENGINE_ABST_DEFAULT, AX_ENGINE_ABST_CACHED));
-    SAMPLE_AX_ENGINE_DEAL_HANDLE
+    if (0 != ret)
+    {
+        LOGE_S( "[AXCL] Engine alloc io failed.\n");
+        return;
+    }
     LOGM_S( "[AXCL] Engine alloc io is done. \n");
+
+    ready = true;
+}
+
+void AXCL::releaseIo()
+{
+    free_io(&io_data);
+    ready = false;
+}
+
+void AXCL::releaseHandle()
+{
+    if (handle)
+    {
+        AX_ENGINE_DestroyHandle(handle);
+        handle = {};
+    }
+    ready = false;
+}
+
+void AXCL::shutdownRuntime()
+{
+    if (engine_initialized)
+    {
+        AX_ENGINE_Deinit();
+        engine_initialized = false;
+    }
+
+    if (sys_initialized)
+    {
+        AX_SYS_Deinit();
+        sys_initialized = false;
+    }
+
+    ready = false;
 }
 
 AXCL::~AXCL()
 {
-    free_io(&io_data);
-    AX_ENGINE_DestroyHandle(handle);
-    AX_ENGINE_Deinit();
-    AX_SYS_Deinit();
+    releaseIo();
+    releaseHandle();
+    shutdownRuntime();
 }
 
 void AXCL::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
@@ -289,6 +375,12 @@ void AXCL::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
 
     // pre-process [RGB uint8]
     det.clear();
+    if (!ready)
+    {
+        LOGE_S("[AXCL] Inference requested before backend initialization completed.\n");
+        return;
+    }
+
     if (src.cols != 640 || src.rows != 512)
     {
         LOGW_S("[AXCL] Warning: preprocess output size mismatch, expected 640x512 but got %dx%d",
@@ -321,7 +413,14 @@ void AXCL::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
     memcpy(io_data.pInputs[0].pVirAddr, inputTensorValues.data(), inputTensorValues.size());
     
     auto ret = AX_ENGINE_RunSync(handle, &io_data);
-    SAMPLE_AX_ENGINE_DEAL_HANDLE_IO
+    if (0 != ret)
+    {
+        LOGE_S("[AXCL] RunSync failed.\n");
+        releaseIo();
+        releaseHandle();
+        shutdownRuntime();
+        return;
+    }
 
     std::vector<bbox_t> candidates;
     float* out = (float*)io_data.pOutputs[0].pVirAddr;

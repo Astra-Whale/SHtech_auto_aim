@@ -6,6 +6,9 @@
 #include "sensor_submodule.hpp"
 
 // submodules
+#include <chrono>
+#include <stdexcept>
+#include <thread>
 #include <video/video_wrapper.hpp>
 #ifdef ENABLE_HIKCAM
 #warning ENABLE_HIKCAM
@@ -26,24 +29,49 @@ namespace sensor
         : SubModule(SubModuleName::SENSOR), config_(config), attitude_bridge(attitude_bridge), status_bridge(status_bridge)
     {
         LOGM_S("[sensor_submodule] constructing with video: %s", VideoSource.c_str());
+        const bool is_camera_source = (VideoSource == "0");
+
         // 初始化视频源
-        if (VideoSource == "0")
+        if (is_camera_source)
         {
-            #ifdef ENABLE_HIKCAM
-                video = new HikCamWrapper();
-            #else
-                LOGE_S("[sensor_submodule] hikcam not enabled!");
-            #endif
+#ifdef ENABLE_HIKCAM
+            video = new HikCamWrapper();
+#else
+            throw std::runtime_error("camera source requested but ENABLE_HIKCAM is disabled");
+#endif
         }
         else
         {
             video = new VideoWrapper(VideoSource);
         }
 
-        // 初始化视频设备
-        while (!video->init())
+        if (!video)
         {
-            LOGE_S("[sensor_submodule]Error: Initialize video stream failed");
+            throw std::runtime_error("failed to create video source wrapper");
+        }
+
+        // 初始化视频设备
+        if (is_camera_source)
+        {
+            int retry_count = 0;
+            while (!video->init())
+            {
+                ++retry_count;
+                if (retry_count == 1 || retry_count % 10 == 0)
+                {
+                    LOGE_S("[sensor_submodule]Error: Initialize camera stream failed, retrying at 10Hz... (%d)", retry_count);
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+
+            if (retry_count > 0)
+            {
+                LOGM_S("[sensor_submodule] camera stream initialized after %d retries", retry_count);
+            }
+        }
+        else if (!video->init())
+        {
+            throw std::runtime_error("failed to initialize video stream: " + VideoSource);
         }
         LOGM_S("[sensor_submodule] video initialized");
 
