@@ -144,8 +144,8 @@ namespace predict
         }
 
         if (debug) {
-            cout << "dt: " << dt << std::endl;
-            cout << "[predict] predict" << std::endl;
+            std::cout << "dt: " << dt << std::endl;
+            std::cout << "[predict] predict" << std::endl;
         }
 
         // 更新跟踪器状态机
@@ -192,7 +192,7 @@ namespace predict
                     target.armor_z_state = armor_z_kf.update(target.armor_z_measurement); 
 
                     if (debug)
-                        cout << "[predictor] kf update" << endl;
+                        std::cout << "[predictor] kf update" << std::endl;
                 }
                 else {
                     // 位置跳变，重置装甲板模型滤波器
@@ -224,19 +224,19 @@ namespace predict
             if (target.updating_model_type != UpdatingModelType::ARMOR_MODEL) {
                 if (same_id_armor_count == 1) {
                     int id = match_armor_id(target.tracked_measurement);
-                    // cout << "matched id: " << id << std::endl;
+                    // std::cout << "matched id: " << id << std::endl;
 
                     target.tracked_state = whole_state_ekf.update(target.tracked_measurement, id);
                 }
                 else if (same_id_armor_count == 2) {
                     int id = match_armor_id(target.tracked_measurement);
-                    // cout << "matched id: " << id << std::endl;
+                    // std::cout << "matched id: " << id << std::endl;
 
                     target.tracked_state = whole_state_ekf.update(target.tracked_measurement, id);
 
                     // on axcl
                     // id = match_armor_id(secondary_measurement);
-                    // cout << "matched id: " << id << std::endl;
+                    // std::cout << "matched id: " << id << std::endl;
 
                     // target.tracked_state = whole_state_ekf.update(secondary_measurement, id);
                 }
@@ -258,12 +258,12 @@ namespace predict
                     }
 
                     if (debug)
-                        cout << "[predict] armor jump" << std::endl;
+                        std::cout << "[predict] armor jump" << std::endl;
                 }
 
 
                 if (debug)
-                    cout << "[predict] ekf update" << std::endl;
+                    std::cout << "[predict] ekf update" << std::endl;
 
                 // 限制旋转半径在合理范围内
                 radium_limit();
@@ -282,7 +282,7 @@ namespace predict
                 //     reset_whole_state_ekf();
 
                 //     if (debug)
-                //         cout << "[predict] vehicle model converge" << endl;
+                //         std::cout << "[predict] vehicle model converge" << std::endl;
                 // }
             }
             else {
@@ -290,7 +290,7 @@ namespace predict
                 reset_whole_state_ekf();
 
                 if (debug)
-                    cout << "[predict] armor model update only" << endl;
+                    std::cout << "[predict] armor model update only" << std::endl;
             }
         }
         else {
@@ -1099,7 +1099,7 @@ namespace predict
             yaw_speed_diverge_counter = 0;
             yaw_speed_diverge = true;
 
-            cout << "Yaw speed diverge detected! Resetting EKF..." << endl;
+            std::cout << "Yaw speed diverge detected! Resetting EKF..." << std::endl;
         }
 
         return yaw_diverge || yaw_speed_diverge;
