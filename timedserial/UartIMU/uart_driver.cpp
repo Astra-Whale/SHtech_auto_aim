@@ -56,7 +56,7 @@ void UartDriver::on_receive_imu(drivers::packet_data_t* packet_ptr, drivers::pac
        return;
     }
 
-    // cout << "Received IMU data packet, length: " << len << endl;
+    // std::cout << "Received IMU data packet, length: " << len << std::endl;
 
     pc_mcu_data_t* _tmp_ptr = (pc_mcu_data_t*)packet_ptr;
 
@@ -83,7 +83,7 @@ void UartDriver::on_receive_imu(drivers::packet_data_t* packet_ptr, drivers::pac
         }
         temp_status.program_mode = (ProgramMode)_tmp_ptr->autoaim_mode;
 
-        // cout << "Autoaim Mode: " << (int)_tmp_ptr->autoaim_mode << endl;
+        // std::cout << "Autoaim Mode: " << (int)_tmp_ptr->autoaim_mode << std::endl;
 
         this->status_cb_(temp_status);
     }
@@ -106,14 +106,14 @@ void UartDriver::on_receive_sts(drivers::packet_data_t* packet_ptr, drivers::pac
         return;
     }
 
-    // cout << "Received Robot Status data packet, length: " << len << endl;
+    // std::cout << "Received Robot Status data packet, length: " << len << std::endl;
     
     robot_data_t* state_ptr = (robot_data_t*)packet_ptr;
 
     // 构造临时的 RobotStatus 对象
     RobotStatus temp_status;
 
-    // cout << (int)state_ptr->robot_id << endl;
+    // std::cout << (int)state_ptr->robot_id << std::endl;
     
     // 根据 robot_id 判断己方颜色，从而确定敌方颜色
     // 1-20: 红方机器人，敌方是蓝色
@@ -140,7 +140,7 @@ void UartDriver::on_receive_sts(drivers::packet_data_t* packet_ptr, drivers::pac
         temp_status.enemy_color = EnemyColor::GRAY;
     }
 
-    // cout << "Enemy Color: " << (int)temp_status.enemy_color << endl;
+    // std::cout << "Enemy Color: " << (int)temp_status.enemy_color << std::endl;
 
     // 触发回调
     if (this->status_cb_) {

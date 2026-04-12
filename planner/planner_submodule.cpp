@@ -114,7 +114,7 @@ namespace plan
             }
 
             if (config_.debug.log_text)
-                cout << "[predictor] plan: not fixed" << endl;
+                std::cout << "[predictor] plan: not fixed" << std::endl;
         }
         else {
             if (plan.aimed_target_type != AimedTargetType::NONE) {
@@ -124,7 +124,7 @@ namespace plan
 
                 // if (send.fire_enable == 3) {
                 //     LOGT_S();
-                //     cout << "fire 11111111111111111111111111111111" << endl;
+                //     std::cout << "fire 11111111111111111111111111111111" << std::endl;
                 // }
 
                 send.pitch_angle = (plan.target_pitch - attitude_pitch) / M_PI * 180.0f;         // 俯仰角（转换为度数）
@@ -137,7 +137,7 @@ namespace plan
                 send.target_id = target.tracked_armor.tag_id;
 
                 if (config_.debug.log_text)
-                    cout << "[predictor] plan: sent" << endl;
+                    std::cout << "[predictor] plan: sent" << std::endl;
             }
             else {
                 // 无有效目标时，清除所有控制指令与目标ID
@@ -152,7 +152,7 @@ namespace plan
                 send.target_id = 0;
 
                 if (config_.debug.log_text)
-                    cout << "[predictor] plan: none" << endl;
+                    std::cout << "[predictor] plan: none" << std::endl;
             }
         }
 
@@ -174,68 +174,68 @@ namespace plan
     {
         LOGT_S();
 
-        // cout << data->robotstatus.robot_speed_mps << endl;
+        // std::cout << data->robotstatus.robot_speed_mps << std::endl;
 
-        // cout << data->attitude.yaw() << endl;
-        // cout << data->attitude.pitch() << endl;
+        // std::cout << data->attitude.yaw() << std::endl;
+        // std::cout << data->attitude.pitch() << std::endl;
 
-        // cout << (tracked_armor.source == DetectionSource::TRADITIONAL ? 1 : 0) << endl;
+        // std::cout << (tracked_armor.source == DetectionSource::TRADITIONAL ? 1 : 0) << std::endl;
 
-        // cout << target.tracked_measurement(0, 0) << std::endl;
-        // cout << target.tracked_measurement(1, 0) << std::endl;
-        // cout << target.tracked_measurement(2, 0) << std::endl;
-        // cout << target.tracked_measurement(3, 0) << std::endl;
+        // std::cout << target.tracked_measurement(0, 0) << std::endl;
+        // std::cout << target.tracked_measurement(1, 0) << std::endl;
+        // std::cout << target.tracked_measurement(2, 0) << std::endl;
+        // std::cout << target.tracked_measurement(3, 0) << std::endl;
 
-        // cout << target.tracked_measurement(0, 0) + target.tracked_state(8, 0) * cos(target.tracked_state(6, 0)) << std::endl;
-        // cout << target.tracked_measurement(1, 0) + target.tracked_state(8, 0) * sin(target.tracked_state(6, 0)) << std::endl;
-        // cout << target.tracked_state(0, 0) - target.tracked_state(8, 0) * cos(target.tracked_state(6, 0)) << std::endl;
-        // cout << target.tracked_state(2, 0) - target.tracked_state(8, 0) * sin(target.tracked_state(6, 0)) << std::endl;
-        // cout << target.tracked_measurement(2, 0) << std::endl;
-        // cout << target.tracked_measurement(3, 0) << std::endl;
+        // std::cout << target.tracked_measurement(0, 0) + target.tracked_state(8, 0) * cos(target.tracked_state(6, 0)) << std::endl;
+        // std::cout << target.tracked_measurement(1, 0) + target.tracked_state(8, 0) * sin(target.tracked_state(6, 0)) << std::endl;
+        // std::cout << target.tracked_state(0, 0) - target.tracked_state(8, 0) * cos(target.tracked_state(6, 0)) << std::endl;
+        // std::cout << target.tracked_state(2, 0) - target.tracked_state(8, 0) * sin(target.tracked_state(6, 0)) << std::endl;
+        // std::cout << target.tracked_measurement(2, 0) << std::endl;
+        // std::cout << target.tracked_measurement(3, 0) << std::endl;
 
         // std::cout << static_cast<int>(target.predictor_state) << std::endl;
-        // cout << target.ab_counter << std::endl;
+        // std::cout << target.ab_counter << std::endl;
 
-        // cout << target.yaw_state(0, 0) << endl;
-        // cout << target.yaw_state(1, 0) << endl;
+        // std::cout << target.yaw_state(0, 0) << std::endl;
+        // std::cout << target.yaw_state(1, 0) << std::endl;
 
-        // cout << target.armor_y_state(0, 0) << endl;
-        // cout << target.armor_y_state(1, 0) << endl;
+        // std::cout << target.armor_y_state(0, 0) << std::endl;
+        // std::cout << target.armor_y_state(1, 0) << std::endl;
 
-        // cout << target.armor_x_state(0, 0) << endl;
-        // cout << target.armor_x_state(1, 0) << endl;
+        // std::cout << target.armor_x_state(0, 0) << std::endl;
+        // std::cout << target.armor_x_state(1, 0) << std::endl;
 
-        // cout << target.armor_z_state(0, 0) << endl;
-        // cout << target.armor_z_state(1, 0) << endl;
+        // std::cout << target.armor_z_state(0, 0) << std::endl;
+        // std::cout << target.armor_z_state(1, 0) << std::endl;
 
-        // cout << target.tracked_state(0, 0) << std::endl;
-        // cout << target.tracked_state(1, 0) << std::endl;
-        // cout << target.tracked_state(2, 0) << std::endl;
-        // cout << target.tracked_state(3, 0) << std::endl;
-        // cout << target.tracked_state(4, 0) << std::endl;
-        // cout << target.tracked_state(5, 0) << std::endl;
-        // cout << target.tracked_state(6, 0) << std::endl;
-        // cout << target.tracked_state(7, 0) << std::endl;
-        // cout << target.tracked_state(8, 0) << std::endl;
-        // cout << target.tracked_state(9, 0) << std::endl;
-        // cout << target.tracked_state(10, 0) << std::endl;
+        // std::cout << target.tracked_state(0, 0) << std::endl;
+        // std::cout << target.tracked_state(1, 0) << std::endl;
+        // std::cout << target.tracked_state(2, 0) << std::endl;
+        // std::cout << target.tracked_state(3, 0) << std::endl;
+        // std::cout << target.tracked_state(4, 0) << std::endl;
+        // std::cout << target.tracked_state(5, 0) << std::endl;
+        // std::cout << target.tracked_state(6, 0) << std::endl;
+        // std::cout << target.tracked_state(7, 0) << std::endl;
+        // std::cout << target.tracked_state(8, 0) << std::endl;
+        // std::cout << target.tracked_state(9, 0) << std::endl;
+        // std::cout << target.tracked_state(10, 0) << std::endl;
 
-        // cout << target.vehicle_model_trust << std::endl;
+        // std::cout << target.vehicle_model_trust << std::endl;
 
-        // cout << plan.aimed_armor_pos(0, 0) << endl;
-        // cout << plan.aimed_armor_pos(1, 0) << endl;
-        // cout << plan.aimed_armor_pos(2, 0) << endl;
+        // std::cout << plan.aimed_armor_pos(0, 0) << std::endl;
+        // std::cout << plan.aimed_armor_pos(1, 0) << std::endl;
+        // std::cout << plan.aimed_armor_pos(2, 0) << std::endl;
 
-        // cout << plan.target_yaw << std::endl;
-        // cout << plan.target_yaw / M_PI * 180.0f << std::endl;
-        // cout << plan.target_yaw_speed << std::endl;
-        // cout << plan.target_yaw_acc << endl;
+        // std::cout << plan.target_yaw << std::endl;
+        // std::cout << plan.target_yaw / M_PI * 180.0f << std::endl;
+        // std::cout << plan.target_yaw_speed << std::endl;
+        // std::cout << plan.target_yaw_acc << std::endl;
 
-        // cout << plan.target_pitch / M_PI * 180.0f << std::endl;
-        // cout << plan.target_pitch_speed / M_PI * 180.0f << std::endl;
-        // cout << plan.target_pitch_acc / M_PI * 180.0f << endl;
+        // std::cout << plan.target_pitch / M_PI * 180.0f << std::endl;
+        // std::cout << plan.target_pitch_speed / M_PI * 180.0f << std::endl;
+        // std::cout << plan.target_pitch_acc / M_PI * 180.0f << std::endl;
 
-        cout << plan.fire_enable << endl;
+        std::cout << plan.fire_enable << std::endl;
     }
 
     // === 枚举转字符串辅助函数 ===
