@@ -160,7 +160,7 @@ namespace predict
             plan.fire_enable = 2;
 
             if (debug)
-                cout << "[predictor] target: armor with no model" << endl;
+                std::cout << "[predictor] target: armor with no model" << std::endl;
         }
         
         // === 策略2: 装甲板模型预测 ===
@@ -207,7 +207,7 @@ namespace predict
             plan.fire_enable = 2;
 
             if (debug)
-                cout << "[predictor] target: armor with armor model" << endl;
+                std::cout << "[predictor] target: armor with armor model" << std::endl;
         }
         
         // === 策略3: 整车模型预测装甲板位置 ===
@@ -271,7 +271,7 @@ namespace predict
             }
 
             double dt_since_jump = duration_cast<microseconds>(std::chrono::high_resolution_clock::now() - armor_jump_tp).count() / 1e6;
-            // cout << dt_since_jump << endl;
+            // std::cout << dt_since_jump << std::endl;
 
             if (dt_since_jump > armor_jump_interval) {
                 armor_jump = false;
@@ -286,23 +286,23 @@ namespace predict
             //     LOGT_S();
 
             //     for (int i=0; i != HORIZON; i++) {
-            //         cout << traj(0, i) + yaw0 << endl;
+            //         std::cout << traj(0, i) + yaw0 << std::endl;
             //     }
 
             //     for (int i=0; i != HORIZON; i++) {
-            //         cout << (yaw_solver_->work->x(0, i) + yaw0) << endl;
+            //         std::cout << (yaw_solver_->work->x(0, i) + yaw0) << std::endl;
             //     }
             // }
             // a++;
 
             // LOGT_S();
 
-            // cout << traj(0, HALF_HORIZON + shoot_offset) + yaw0 << endl;
-            // cout << (yaw_solver_->work->x(0, HALF_HORIZON + shoot_offset) + yaw0) << endl;
+            // std::cout << traj(0, HALF_HORIZON + shoot_offset) + yaw0 << std::endl;
+            // std::cout << (yaw_solver_->work->x(0, HALF_HORIZON + shoot_offset) + yaw0) << std::endl;
 
-            // cout << target_yaw_raw << endl;
-            // cout << plan.target_yaw << endl;
-            // cout << armor_jump << endl;
+            // std::cout << target_yaw_raw << std::endl;
+            // std::cout << plan.target_yaw << std::endl;
+            // std::cout << armor_jump << std::endl;
 
             // === 射击决策 ===
             // 基于轨迹跟踪精度决定是否射击
@@ -312,12 +312,12 @@ namespace predict
             else
                 plan.fire_enable = 0;  // 装甲板切换期间禁止射击
 
-            // cout << plan.fire_enable << endl;
+            // std::cout << plan.fire_enable << std::endl;
 
             plan.target_distance = distance_3D(plan.aimed_armor_pos);
 
             if (debug)
-                cout << "[predictor] target: armor with vehicle model" << endl;
+                std::cout << "[predictor] target: armor with vehicle model" << std::endl;
         }
 
         // === 策略4: 整车模型瞄准车辆中心 ===
@@ -363,17 +363,17 @@ namespace predict
             hit_pos(0, 0) += sin(center_yaw) * next_r;
             hit_pos(1, 0) += cos(center_yaw) * next_r;
 
-            // cout << "bullet speed: " << bullet_speed << endl;
+            // std::cout << "bullet speed: " << bullet_speed << std::endl;
             
             fly_time = cal_fly_time(hit_pos, bullet_speed, consider_air_resistence);
 
             process_latency = duration_cast<microseconds>(std::chrono::high_resolution_clock::now() - tp).count() / 1e6;   
             total_delay = process_latency + comm_latency + fly_time;
 
-            // cout << "total_delay: " << total_delay << endl;
-            // cout << "comm_latency: " << comm_latency << endl;
-            // cout << "fly_time: " << fly_time << endl;
-            // cout << "process_latency: " << process_latency << endl;
+            // std::cout << "total_delay: " << total_delay << std::endl;
+            // std::cout << "comm_latency: " << comm_latency << std::endl;
+            // std::cout << "fly_time: " << fly_time << std::endl;
+            // std::cout << "process_latency: " << process_latency << std::endl;
 
             // 预测车辆中心位置
             Pos3D aimed_center_pos;
@@ -511,7 +511,7 @@ namespace predict
             #endif
 
             if (debug)
-                cout << "[predictor] target: vehicle center with vehicle model" << endl;
+                std::cout << "[predictor] target: vehicle center with vehicle model" << std::endl;
 
         }
 
@@ -555,7 +555,7 @@ namespace predict
         double predicted_yaw = x(6, 0) + x(7, 0) * delay;
 
         // 计算四个装甲板的预测位置
-        vector<Pos3D> predicted_armors_pos;
+        std::vector<Pos3D> predicted_armors_pos;
         for (int i = 0; i != 4; i++) {
             if (i == 0 || i == 2) {
                 // 第0和第2个装甲板：使用当前跟踪的半径

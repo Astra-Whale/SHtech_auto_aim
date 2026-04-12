@@ -157,16 +157,16 @@ namespace mathutils
         }
 
         // for (int i = 0; i < 4; ++i) {
-        //     cout << p[i] << endl;
+        //     std::cout << p[i] << std::endl;
         // }
 
-        // cout << "pw_cur: " << endl;
+        // std::cout << "pw_cur: " << std::endl;
         // for (const auto &pt : pw_cur) {
-        //     cout << pt << endl;
+        //     std::cout << pt << std::endl;
         // }
 
-        // cout << "F_MAT: " << endl << F_MAT << endl;
-        // cout << "C_MAT: " << endl << C_MAT << endl;
+        // std::cout << "F_MAT: " << std::endl << F_MAT << std::endl;
+        // std::cout << "C_MAT: " << std::endl << C_MAT << std::endl;
 
         // 将图像点转换为PnP算法需要的格式
         std::vector<cv::Point2d> pu(p, p + 4);
@@ -186,9 +186,9 @@ namespace mathutils
         
         cv::cv2eigen(tvec, pc);  // PnP得到的是相机坐标系中的位置
 
-        // cout << "T_camera2imu: " << T_camera2imu << endl;
-        // cout << "R_camera2imu: " << R_camera2imu << endl;
-        // cout << "R_world2imu: " << R_world2imu << endl;
+        // std::cout << "T_camera2imu: " << T_camera2imu << std::endl;
+        // std::cout << "R_camera2imu: " << R_camera2imu << std::endl;
+        // std::cout << "R_world2imu: " << R_world2imu << std::endl;
         
         // 相机坐标系 -> IMU坐标系
         pi = R_camera2imu * pc + T_camera2imu;
@@ -225,7 +225,7 @@ namespace mathutils
         yaw_in_camera = atan2(armor_v_z_c[0], -armor_v_z_c[2]);
 
         if (adjust)
-            cout << pc[1] << endl << pc[0] << endl << pc[2] << endl << yaw_in_camera << endl;
+            std::cout << pc[1] << std::endl << pc[0] << std::endl << pc[2] << std::endl << yaw_in_camera << std::endl;
 
         // === 组装最终测量值 ===
         // 测量值格式：[y坐标, x坐标, z坐标, 绝对偏航角]，该测量值对应于ekf的测量项

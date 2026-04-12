@@ -423,11 +423,11 @@ namespace detect
     bool angle_ok = light.tilt_angle < light_params.max_angle;
 
     // if (ratio_ok == false) {
-    //   cout << "Light bar rejected due to ratio: " << ratio << endl;
+    //   std::cout << "Light bar rejected due to ratio: " << ratio << std::endl;
     // }
 
     // if (angle_ok == false) {
-    //   cout << "Light bar rejected due to angle: " << light.tilt_angle << endl;
+    //   std::cout << "Light bar rejected due to angle: " << light.tilt_angle << std::endl;
     // }
 
     return ratio_ok && angle_ok;
