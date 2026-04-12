@@ -155,7 +155,7 @@ namespace predict
         }
 
         if (config_.debug.log_text) {
-            cout << "in_autoaim_mode: " << in_autoaim_mode 
+            std::cout << "in_autoaim_mode: " << in_autoaim_mode 
                  << std::endl;
         }
 
