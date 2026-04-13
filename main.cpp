@@ -274,10 +274,12 @@ bool init(void)
     planner_config.debug.show_image = parser.get_bool("planner_show_image");
     planner_config.plot = parser.get_bool("planner_plot");
 
+#ifdef ENABLE_FOXGLOVE
     foxgloveSer::FoxgloveServerConfig foxglove_server_config;
     foxglove_server_config.debug.log_text = parser.get_bool("foxglove_server_log_text");
     foxglove_server_config.debug.log_file = parser.get_bool("foxglove_server_log_file");
     foxglove_server_config.debug.show_image = parser.get_bool("foxglove_server_show_image");
+#endif
 
     bool entrystage_submodule_registered = false;
     bool sensor_submodule_registered = false;
