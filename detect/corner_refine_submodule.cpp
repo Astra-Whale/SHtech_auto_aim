@@ -26,11 +26,6 @@ namespace detect
         LOGM_S("[corner_refine] construction completed");
     }
 
-    bool CornerRefineSubModule::should_skip(std::shared_ptr<ThreadDataPack> data) const
-    {
-        return data->submodule_results[static_cast<uint8_t>(SubModuleName::DETECT)] != SubModuleResult::SUCCESS;
-    }
-
     SubModuleResult CornerRefineSubModule::process(std::shared_ptr<ThreadDataPack> data,
                                                    const pipeline::BasicTask* parent)
     {

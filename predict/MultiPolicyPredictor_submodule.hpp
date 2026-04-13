@@ -67,8 +67,6 @@ namespace predict
         explicit MultiPolicyPredictorSubModule(const MultiPolicyPredictorConfig& config);
         virtual ~MultiPolicyPredictorSubModule() = default;
 
-        bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
-
         /**
          * @brief   子模块处理函数
          * @param[in,out] data   输入输出数据包，直接在原数据上修改

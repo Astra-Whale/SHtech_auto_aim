@@ -41,8 +41,6 @@ namespace sensor
         SensorSubModule(const SensorConfig& config, const std::string& VideoSource, const std::string& flip_image, pipeline::bridge::SensorFromSerialAttitudeBridge &attitude_bridge, pipeline::bridge::SensorFromSerialRobotStatusBridge &status_bridge); 
         virtual ~SensorSubModule();
 
-        bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
-
         /**
          * @brief   子模块处理函数
          * @param[in,out] data   输入输出数据包，直接在原数据上修改

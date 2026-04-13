@@ -99,11 +99,6 @@ namespace sensor
         }
     }
 
-    bool SensorSubModule::should_skip(std::shared_ptr<ThreadDataPack> data) const
-    {
-        return false;
-    }
-
     SubModuleResult SensorSubModule::process(std::shared_ptr<ThreadDataPack> data,
                                              const pipeline::BasicTask *parent)
     {

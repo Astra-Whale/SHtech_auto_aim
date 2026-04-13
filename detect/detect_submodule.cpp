@@ -50,15 +50,6 @@ namespace detect
         LOGM_S("[detect] model loaded");
     }
 
-    bool DetectSubModule::should_skip(std::shared_ptr<ThreadDataPack> data) const
-    {
-        if (data->submodule_results[static_cast<uint8_t>(SubModuleName::SENSOR)] != SubModuleResult::SUCCESS)
-            return true;
-        if (data->submodule_results[static_cast<uint8_t>(SubModuleName::PREPROCESS)] != SubModuleResult::SUCCESS)
-            return true;
-        return false;
-    }
-
     SubModuleResult DetectSubModule::process(std::shared_ptr<ThreadDataPack> data,
                                              const pipeline::BasicTask* parent)
     {
