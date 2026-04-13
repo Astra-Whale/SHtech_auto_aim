@@ -15,10 +15,6 @@ namespace entrystage
         LOGM_S("[EntryStage] construction completed");
     }
 
-    bool EntryStageSubModule::should_skip(std::shared_ptr<ThreadDataPack> data) const {
-        return false;
-    }
-
     SubModuleResult EntryStageSubModule::process(std::shared_ptr<ThreadDataPack> data, 
                                      const pipeline::BasicTask* parent)
     {

@@ -20,6 +20,8 @@
 #include <memory>
 #include <stdexcept>
 #include <type_traits>
+#include <unordered_map>
+#include <initializer_list>
 
 #include "log/log.hpp"
 
@@ -518,8 +520,6 @@ namespace pipeline
          */
         SubModuleName get_submodule_name() const { return submodule_name; }
 
-        virtual bool should_skip(std::shared_ptr<ThreadDataPack> data) const { return false; }
-
         /**
          * @brief   子模块处理函数
          * @param[in,out] data   输入输出数据包，直接在原数据上修改
@@ -601,6 +601,23 @@ namespace pipeline
             return submodules.size();
         }
 
+        /**
+         * @brief   为指定子模块集中注册 skip 依赖
+         * @details 仅使用集中策略判断是否跳过，不再支持子模块分散 skip 逻辑
+         */
+        void register_skip_dependencies(SubModuleName module,
+                                        std::initializer_list<SubModuleName> dependencies)
+        {
+            std::vector<uint8_t> deps;
+            deps.reserve(dependencies.size());
+            for (const auto dependency : dependencies)
+            {
+                deps.emplace_back(static_cast<uint8_t>(dependency));
+            }
+
+            skip_dependencies_[static_cast<uint8_t>(module)] = std::move(deps);
+        }
+
 
 
         /**
@@ -637,12 +654,12 @@ namespace pipeline
 
                     // 串行执行所有子模块，直接处理数据
                     // 由于注册时已保证所有子模块都有效，不需要再检查 nullptr
-                    // 先调用 should_skip 决定是否跳过子模块
+                    // 先调用集中注册的 skip 策略决定是否跳过子模块
                     // 记录了子模块的开始和结束时间戳，如果跳过则结束和开始时间相同
                     // 通过 process 执行子模块处理，返回值记录处理结果
                     for (auto& submodule : submodules)
                     {
-                        if(submodule->should_skip(data))
+                        if (should_skip_with_registered_policy(submodule->get_submodule_name(), data))
                         {
                             data->submodule_results[static_cast<uint8_t>(submodule->get_submodule_name())] = SubModuleResult::SKIP;
                             data->submodule_timestamps[static_cast<uint8_t>(submodule->get_submodule_name())] = 
@@ -665,6 +682,26 @@ namespace pipeline
         }
 
     private:
+        bool should_skip_with_registered_policy(SubModuleName module,
+                                                const std::shared_ptr<ThreadDataPack>& data) const
+        {
+            const auto module_index = static_cast<uint8_t>(module);
+            const auto it = skip_dependencies_.find(module_index);
+            if (it == skip_dependencies_.end())
+            {
+                return false;
+            }
+
+            for (const auto dependency_index : it->second)
+            {
+                if (data->submodule_results[dependency_index] != SubModuleResult::SUCCESS)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         /**
          * @brief   注册子模块
          * @param[in] submodule 子模块的独占所有权，调用后 submodule 将被移动
@@ -680,6 +717,7 @@ namespace pipeline
         }
 
         std::vector<std::unique_ptr<SubModule>> submodules;
+        std::unordered_map<uint8_t, std::vector<uint8_t>> skip_dependencies_;
     };
 
 }

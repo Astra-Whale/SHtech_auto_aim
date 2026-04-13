@@ -13,11 +13,6 @@ namespace detect
         LOGM_S("[preprocess] construction completed");
     }
 
-    bool PreprocessSubModule::should_skip(std::shared_ptr<ThreadDataPack> data) const
-    {
-        return data->submodule_results[static_cast<uint8_t>(SubModuleName::SENSOR)] != SubModuleResult::SUCCESS;
-    }
-
     SubModuleResult PreprocessSubModule::process(std::shared_ptr<ThreadDataPack> data,
                                                  const pipeline::BasicTask* parent)
     {

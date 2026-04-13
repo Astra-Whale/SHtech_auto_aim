@@ -16,10 +16,6 @@ namespace plan
         LOGM_S("[Planner] construction completed");
     }
 
-    bool PlannerSubModule::should_skip(std::shared_ptr<ThreadDataPack> data) const {
-        return data->submodule_results[static_cast<uint8_t>(SubModuleName::MULTI_POLICY_PREDICTOR)] != SubModuleResult::SUCCESS;
-    }
-
     PlannerSubModule::command_array_t PlannerSubModule::generate_command_array(const RobotCommand& command) {
         constexpr std::chrono::microseconds plan_period{2000};
         command_array_t commands;

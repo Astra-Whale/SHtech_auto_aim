@@ -333,6 +333,21 @@ bool init(void)
     planner_submodule_registered = pipeline_stage2->register_submodule_with_params<plan::PlannerSubModule>(
         planner_config, *planner_to_serial_bridge, parser.get_string("planner_para"));
 
+    // 集中注册 skip 依赖策略
+    pipeline_stage0->register_skip_dependencies(SubModuleName::PREPROCESS,
+                                                {SubModuleName::SENSOR});
+    pipeline_stage1->register_skip_dependencies(SubModuleName::DETECT,
+                                                {SubModuleName::SENSOR, SubModuleName::PREPROCESS});
+    pipeline_stage2->register_skip_dependencies(SubModuleName::CORNER_REFINE,
+                                                {SubModuleName::DETECT});
+    pipeline_stage2->register_skip_dependencies(SubModuleName::MULTI_POLICY_PREDICTOR,
+                                                {SubModuleName::SENSOR,
+                                                 SubModuleName::PREPROCESS,
+                                                 SubModuleName::DETECT,
+                                                 SubModuleName::CORNER_REFINE});
+    pipeline_stage2->register_skip_dependencies(SubModuleName::PLANNER,
+                                                {SubModuleName::MULTI_POLICY_PREDICTOR});
+
     
     // 检查所有关键子模块是否注册成功
     if (!entrystage_submodule_registered 

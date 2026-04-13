@@ -25,8 +25,6 @@ namespace detect
         explicit CornerRefineSubModule(const CornerRefineConfig& config);
         virtual ~CornerRefineSubModule() = default;
 
-        bool should_skip(std::shared_ptr<ThreadDataPack> data) const override;
-
         SubModuleResult process(std::shared_ptr<ThreadDataPack> data,
                                 const pipeline::BasicTask* parent) override;
 
