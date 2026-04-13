@@ -279,7 +279,7 @@ namespace hardware
                 {
                     // LOGW_S("[TimedSerial] sending cost %lld ms", 
                     //     (long long)std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count());
-                    LOGW_S("[TimedSerial] sending overrun by %lld ms", 
+                    LOGW_S("[TimedSerial] sending overrun by %lld us", 
                            (long long)std::chrono::duration_cast<std::chrono::microseconds>(-sleep_duration).count());
                     LOGW_F("[TimedSerial] sending overrun by %lld us", 
                            (long long)std::chrono::duration_cast<std::chrono::microseconds>(-sleep_duration).count());
