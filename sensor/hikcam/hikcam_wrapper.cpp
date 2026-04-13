@@ -209,6 +209,28 @@ bool HikCamWrapper::close(bool debug)
         std::cout << "closing camera...\n";
     int nRet = MV_OK;
 
+    if (cam_handle == nullptr)
+    {
+        if (pData)
+        {
+            free(pData);
+            pData = nullptr;
+        }
+        if (debug)
+            std::cout << "HikCam handle is null, skip SDK close calls" << std::endl;
+        return true;
+    }
+
+    if (NULL != stOutFrame.pBufAddr)
+    {
+        int freeRet = MV_CC_FreeImageBuffer(cam_handle, &stOutFrame);
+        if (freeRet != MV_OK && debug)
+        {
+            std::cout << "Free Image Buffer before close fail! nRet " << std::hex << freeRet << std::endl;
+        }
+        memset(&stOutFrame, 0, sizeof(MV_FRAME_OUT));
+    }
+
     // 停止取流
     // end grab image
     nRet = MV_CC_StopGrabbing(cam_handle);
@@ -235,6 +257,7 @@ bool HikCamWrapper::close(bool debug)
         if (debug)
             std::cout << "MV_CC_DestroyHandle fail! nRet " << nRet << std::endl;
     }
+    cam_handle = nullptr;
     if (pData)
     {
         free(pData);
@@ -278,6 +301,33 @@ bool HikCamWrapper::read(cv::Mat &src, bool debug)
     const unsigned int pixel_type = stOutFrame.stFrameInfo.enPixelType;
     const int cv_type = PixelTypeToCvType(pixel_type);
 
+    if (cv_type < 0)
+    {
+        static bool unexpected_pixel_type_logged = false;
+        if (!unexpected_pixel_type_logged)
+        {
+            std::cerr << "[HikCamWrapper] Reject unsupported pixel type: 0x"
+                      << std::hex << pixel_type << std::dec << std::endl;
+            unexpected_pixel_type_logged = true;
+        }
+
+        if (NULL != stOutFrame.pBufAddr)
+        {
+            int freeRet = MV_CC_FreeImageBuffer(cam_handle, &stOutFrame);
+            if (freeRet != MV_OK)
+            {
+                if (debug)
+                    std::cout << "Free Image Buffer fail! nRet " << std::hex << freeRet << std::endl;
+                fail_cnt++;
+                return false;
+            }
+            memset(&stOutFrame, 0, sizeof(MV_FRAME_OUT));
+        }
+
+        fail_cnt++;
+        return false;
+    }
+
     _src = cv::Mat(stOutFrame.stFrameInfo.nHeight, stOutFrame.stFrameInfo.nWidth, cv_type, stOutFrame.pBufAddr);
 
     cv::cvtColor(_src, src, getCvBayerConversionCode());
@@ -292,6 +342,7 @@ bool HikCamWrapper::read(cv::Mat &src, bool debug)
             fail_cnt++;
             return false;
         }
+        memset(&stOutFrame, 0, sizeof(MV_FRAME_OUT));
     }
     fail_cnt = 0;
     return true;
