@@ -13,7 +13,7 @@ VideoWrapper::VideoWrapper(const std::string &filename)
     video.open(filename);
 }
 
-VideoWrapper::~VideoWrapper() { printf("Close Camera Success!\n"); }
+VideoWrapper::~VideoWrapper() {}
 
 bool VideoWrapper::init(bool debug)
 {
@@ -29,7 +29,8 @@ bool VideoWrapper::read(cv::Mat &src, bool debug)
 
 bool VideoWrapper::setBrightness(int brightness)
 {
-    return true;
+    std::cerr << "[VideoWrapper] setBrightness is not supported for file input" << std::endl;
+    return false;
 }
 
 int VideoWrapper::getFps()

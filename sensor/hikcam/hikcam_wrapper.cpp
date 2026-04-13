@@ -72,13 +72,17 @@ bool HikCamWrapper::init(bool debug)
         }
         for (unsigned int i = 0; i < stDeviceList.nDeviceNum; i++)
         {
-            std::cout << "[device " << i << "]:\n"
-                      << std::endl;
             MV_CC_DEVICE_INFO *pDeviceInfo = stDeviceList.pDeviceInfo[i];
             if (NULL == pDeviceInfo)
             {
+                continue;
             }
-            PrintDeviceInfo(pDeviceInfo);
+            if (debug)
+            {
+                std::cout << "[device " << i << "]:\n"
+                          << std::endl;
+                PrintDeviceInfo(pDeviceInfo);
+            }
         }
         if (stDeviceList.nDeviceNum == 0)
         {
@@ -158,6 +162,7 @@ bool HikCamWrapper::init(bool debug)
         {
             if (debug)
                 std::cout << "Get PayloadSize fail! nRet " << std::hex << nRet << std::endl;
+            break;
         }
 
         // 开始取流
@@ -382,18 +387,36 @@ bool HikCamWrapper::PrintDeviceInfo(MV_CC_DEVICE_INFO *pstMVDevInfo)
 
 int HikCamWrapper::getFps()
 {
+    if (cam_handle == nullptr)
+    {
+        std::cerr << "[HikCamWrapper] getFps called with null camera handle" << std::endl;
+        return 0;
+    }
+
     MV_CC_GetImageInfo(cam_handle, &stCamInfo);
     return stCamInfo.fFrameRateValue;
 }
 
 cv::Size HikCamWrapper::getSize()
 {
+    if (cam_handle == nullptr)
+    {
+        std::cerr << "[HikCamWrapper] getSize called with null camera handle" << std::endl;
+        return cv::Size(0, 0);
+    }
+
     MV_CC_GetImageInfo(cam_handle, &stCamInfo);
     return cv::Size(stOutFrame.stFrameInfo.nWidth, stOutFrame.stFrameInfo.nHeight);
 }
 
 bool HikCamWrapper::setBrightness(int brightness)
 {
+    if (cam_handle == nullptr)
+    {
+        std::cerr << "[HikCamWrapper] setBrightness called with null camera handle" << std::endl;
+        return false;
+    }
+
     return MV_CC_SetBrightness(cam_handle, brightness) == MV_OK;
 }
 
