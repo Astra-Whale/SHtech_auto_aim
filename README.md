@@ -12,6 +12,11 @@
 ---
 
 ## 如何使用:
+### FOR AX650 
+对于使用上海科技大学2026 v1.0版ax650开发平台和配套定制ubuntu镜像的同学，我们提供一键配置脚本。使用方法是：
+1. `git clone https://github.com/Astra-Whale/SHtech_auto_aim_AX650-EnvCfg`。
+2. 进入上述仓库主目录，打开终端，运行`bash AutoInstall.sh`命令。跟随脚本提示，总是选择安装库。
+3. 等脚本运行完，自瞄就已经编译好了，你只需要找到 `auto-aim` 文件夹，终端运行 `./build/auto-aim` ，自瞄就会启动。下面的部分对你而言只需要观赏即可。
 ### 第一步 编译（必做）:
 ```bash
 mkdir build
