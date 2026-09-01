@@ -142,15 +142,30 @@ cmake --build build -j
 
 无硬件模式需要在 `launch.cfg` 中将 `source` 设置为 `test.avi`，将 `port` 设置为 `None`，并选择与构建后端匹配的模型。该模式仍使用包含海康支持的构建产物。
 
-## 可选服务部署
+## 系统服务与开机自启动
 
-`install_service.py` 可生成 systemd 服务和启动别名。该脚本使用固定目录和较高权限，适合内部实验，不属于推荐的公开部署路径。
+`install_service.py` 生成 systemd 服务和启动别名。安装服务不会自动启用开机自启动，需要单独执行 `auto-aim-enable`。该脚本使用固定目录和较高权限，适合内部实验，不属于推荐的公开部署路径。
 
 ```bash
 sudo python3 install_service.py
 source ~/.bashrc
+
+# 设置开机自启动
+auto-aim-enable
+
+# 立即启动
 auto-aim-start
 ```
+
+常用服务命令如下：
+
+| 命令 | 作用 |
+| --- | --- |
+| `auto-aim-enable` | 设置开机自启动 |
+| `auto-aim-disable` | 取消开机自启动 |
+| `auto-aim-start` | 立即启动服务 |
+| `auto-aim-stop` | 停止服务 |
+| `auto-aim-status` | 查看服务状态 |
 
 前台运行和视频演示通过直接执行 `./build/auto-aim` 完成。服务部署前需要确认安装目录、日志权限和停止行为符合目标设备要求。
 
