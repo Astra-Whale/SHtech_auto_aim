@@ -1,14 +1,10 @@
 /**
- * @file MultiPolicyPredictor.cpp
- * @brief 多策略预测器实现 - 整合完整预测系统的主要实现
+ * @file MultiPolicyPredictor_submodule.cpp
+ * @brief 多策略预测子模块实现
  * @author Cao Jingyan
  * @date 2025/11/21
  * 
- * 实现功能：
- * 1. 预测流程的完整执行逻辑
- * 2. 装甲板筛选和目标匹配算法
- * 3. 多种可视化显示实现
- * 4. 机器人控制指令生成
+ * 实现目标筛选、装甲板匹配、跟踪更新和机器人控制指令生成。
  */
 
 #include "MultiPolicyPredictor_submodule.hpp"
@@ -16,15 +12,9 @@
 namespace predict
 {
     /**
-     * @brief 构造函数 - 初始化多策略预测器的所有组件
-     * @param comm_latency_ 通信延迟时间 (毫秒)
-     * @param shoot_latency_ 发射延迟时间 (毫秒)
-     * @param debug_ 调试模式标志
-     * @param show_ 显示模式标志
-     * @param plot_ 绘图模式标志
-     * @param adjust_ 参数调整模式标志
-     * @details 初始化跟踪器和规划器，设置各种显示和调试选项
-     *          CoordTransformer 已在 main 中初始化，直接使用单例
+     * @brief 构造函数
+     * @param config 调试和参数调整配置
+     * @details 初始化跟踪器并获取坐标变换器单例
      */ 
     MultiPolicyPredictorSubModule::MultiPolicyPredictorSubModule(const MultiPolicyPredictorConfig& config)
     : SubModule(SubModuleName::MULTI_POLICY_PREDICTOR),
@@ -51,38 +41,7 @@ namespace predict
     SubModuleResult MultiPolicyPredictorSubModule::process(std::shared_ptr<ThreadDataPack> data, 
                                            const pipeline::BasicTask* parent)
     {
-        auto t1 = std::chrono::steady_clock::now();
-
-        //LOGM_S("[MultiPolicyPredictorSubModule] ready");
-        
-        // 执行预测算法
         predict(data);
-        
-        auto t2 = std::chrono::steady_clock::now();
-
-        // 调试信息
-        if (config_.debug.log_text)
-        {
-            // auto &send = data->robotcommand;
-            // LOGM_S("[MultiPolicyPredictorSubModule] pitch %6.2f, yaw %6.2f, dist %4.1f",
-            //        send.pitch_angle, send.yaw_angle,
-            //        (float)send.distance / 10);
-        }
-        
-        // 显示结果（如果需要）
-        if (config_.debug.show_image)
-        {
-            // 预测模块的显示逻辑（如果需要的话）
-        }
-
-        auto t3 = std::chrono::steady_clock::now();
-        // LOGM_S(
-        //     "MultiPolicyPredictorSubModule Predict %.2lfms Show %.2lfms",
-        //     std::chrono::duration_cast<std::chrono::duration<double>>(t2 - t1).count()*1000,
-        //     std::chrono::duration_cast<std::chrono::duration<double>>(t3 - t2).count()*1000
-        // );
-        
-        // 预测总是成功的，返回 true
         return SubModuleResult::SUCCESS;
     }
 
@@ -160,9 +119,9 @@ namespace predict
         std::vector<std::pair<bbox_t, double>> new_armors;
         std::vector<bbox_t> armors_in_tracking;
 
-        // todo: 多个跟踪器实例test
+        // 遍历当前检测结果，按跟踪状态分配装甲板
         for (const auto &armor : detected_armors) {
-            // 根据颜色和距离筛选装甲板�?并且如果装甲板已经在跟踪中，则加入到 armors_in_tracking 列表，否则筛选角点来源为传统视觉的装甲板加入到 new_armors 列表
+            // 按颜色和距离筛选装甲板，并区分已跟踪目标和候选目标
             if (armor.color_id == (robot_status.enemy_color==EnemyColor::BLUE)) {
                 float yaw_in_camera;
                 Eigen::Matrix<double, 4, 1> measurement;

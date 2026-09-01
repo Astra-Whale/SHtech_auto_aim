@@ -32,7 +32,7 @@ namespace plan
     };
 
     /**
-     * @brief   入口阶段子模块
+     * @brief   规划阶段子模块
      */
     class PlannerSubModule : public pipeline::SubModule
     {

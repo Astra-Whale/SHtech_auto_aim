@@ -74,7 +74,7 @@ void UartDriver::on_receive_imu(drivers::packet_data_t* packet_ptr, drivers::pac
         RobotStatus temp_status;
         temp_status.robot_speed_mps = _tmp_ptr->shoot_speed;
 
-        // todo: temporially fix initial shoot speed
+        // Demo path uses a fixed speed until the protocol source is confirmed.
         temp_status.robot_speed_mps = 24.5f;
 
         // 确保射速不低于最小值

@@ -1,7 +1,7 @@
 //
 // Inherit from SJTU-CV-2021/autoaim/detector/AXCL.hpp commit 7093b430 Harry-hhj on 21-05-24.
-// Modified by Haoran Jiang on 21-10-02: Refact framework.
-// Manage TRT Inference
+// Modified by Haoran Jiang on 21-10-02: Updated the framework.
+// Manage AXCL inference.
 //
 
 #ifndef _AXCLMODULE_HPP_

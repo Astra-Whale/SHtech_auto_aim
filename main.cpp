@@ -181,16 +181,6 @@ ThreadMonitor create_monitor(std::string name, std::thread& t)
     };
 };
 
-// [DEPRECATED PLACEHOLDER] 带病启动策略模板（当前禁用）
-// 如需恢复“非关键模块失败仍可启动”，请将该逻辑移动回 init 的注册检查阶段。
-// static bool allow_degraded_startup(bool optional_module_ok)
-// {
-//     if (!optional_module_ok) {
-//         LOGW_S("[init] Optional module unavailable, continue with degraded mode");
-//     }
-//     return true;
-// }
-
 bool init(void)
 {
     signal(SIGINT, int_handler);

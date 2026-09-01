@@ -48,21 +48,15 @@ namespace predict
 
     /**
      * @brief   多策略预测子模块
-     * @details 合并原有 PredictSubModule 和 MultiPolicyPredictor 的功能，
-     *          既实现 SubModule 接口用于 pipeline，又包含完整的预测算法实现
+     * @details 实现 SubModule 接口，负责目标筛选、跟踪和运动预测
      */
     class MultiPolicyPredictorSubModule : public pipeline::SubModule
     {
     public:
         /**
-         * @brief 带参数构造函数
-         * @param comm_latency_ 通信延迟时间 (毫秒)
-         * @param shoot_latency_ 发射延迟时间 (毫秒)
-         * @param debug_ 调试模式标志
-         * @param show_ 显示模式标志
-         * @param plot_ 绘图模式标志
-         * @param adjust_ 参数调整模式标志
-         * @details 初始化所有核心组件，设置配置参数
+         * @brief 构造函数
+         * @param config 调试和参数调整配置
+         * @details 初始化跟踪器和坐标变换器
          */
         explicit MultiPolicyPredictorSubModule(const MultiPolicyPredictorConfig& config);
         virtual ~MultiPolicyPredictorSubModule() = default;
@@ -71,7 +65,7 @@ namespace predict
          * @brief   子模块处理函数
          * @param[in,out] data   输入输出数据包，直接在原数据上修改
          * @param[in] parent     父任务指针，用于生命周期检查
-         * @return  bool         返回 true 表示数据应该传递到下游，false 表示丢弃数据
+         * @return 处理结果，表示当前数据包是否有效
          */
         SubModuleResult process(std::shared_ptr<ThreadDataPack> data, 
                     const pipeline::BasicTask* parent) override;

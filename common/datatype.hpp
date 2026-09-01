@@ -1,7 +1,7 @@
 //
 // Inherit from SJTU-CV-2021/autoaim/autoaim.hpp commit 7093b430 Harry-hhj on 21-05-24.
-// Modified by Haoran Jiang on 21-10-02: Refact framework: Refact framework
-// Modified by Haoran Jiang on 21-10-21: Refact framework: Modified file structure and components of RobotStatus
+// Modified by Haoran Jiang on 21-10-02: Refactored the framework
+// Modified by Haoran Jiang on 21-10-21: Updated RobotStatus structure and file layout
 // Classes of Common Data Type
 //
 

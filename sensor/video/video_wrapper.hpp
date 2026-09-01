@@ -1,7 +1,7 @@
 //
 // Inherit from auto-aim commit 58e05e7e Guanqi He on 21-05-24.
-// Modified by Haoran Jiang on 21-10-02: Refact framework.
-// Warp image from video files
+// Modified by Haoran Jiang on 21-10-02: Updated the framework.
+// Read images from video files.
 //
 
 #ifndef CAM_VIDEO_WARPPER_H

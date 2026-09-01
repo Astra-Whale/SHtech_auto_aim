@@ -1,7 +1,7 @@
 //
 // Inherit from SJTU-CV-2021/autoaim/detector/TRTModule.hpp commit 7093b430 Harry-hhj on 21-05-24.
-// Modified by Haoran Jiang on 21-10-02: Refact framework.
-// Manage TRT Inference
+// Modified by Haoran Jiang on 21-10-02: Updated the framework.
+// Manage TensorRT inference.
 //
 
 #include "TRTModule.hpp"
@@ -243,7 +243,7 @@ void TRTModule::operator()(const cv::Mat &src, std::vector<bbox_t> &det)
         candidates.emplace_back();
         auto &box = candidates.back();
         memcpy(&box.pts, box_buffer, 8 * sizeof(float));
-        std::swap(box.pts[2],box.pts[3]);   // 2025、04、10系列的新模型具有和旧模型不同的角点顺序：模型输出为：左上，左下，右上，右下。现将其调整为与旧的一致：左上，左下，右下，右上
+        std::swap(box.pts[2],box.pts[3]);   // Normalize model order: left-top, left-bottom, right-bottom, right-top.
         box.confidence = box_buffer[8];
         box.tag_id = argmax(box_buffer + 9, 8);
         box.color_id = argmax(box_buffer + 17, 2);

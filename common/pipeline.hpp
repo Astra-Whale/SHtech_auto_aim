@@ -1,7 +1,7 @@
 //
 // Inherit from auto-aim/main.cpp commit 58e05e7e Guanqi He on 21-05-24.
-// Modified by Haoran Jiang on 21-10-02: Refact framework.
-// Customer - consumer model for threads io
+// Modified by Haoran Jiang on 21-10-02: Updated the framework.
+// Producer-consumer primitives for thread communication.
 //
 
 #ifndef COMMON_pipeline_H

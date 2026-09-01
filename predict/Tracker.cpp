@@ -125,7 +125,7 @@ namespace predict
         // === 扩展卡尔曼滤波预测步骤 ===
         target.tracked_state = whole_state_ekf.predict();
 
-        // special for outpost
+        // 前哨站使用专用状态约束
         if (tag_id == 8) {
             if (abs(target.tracked_state(7, 0)) > outpost_fix_yaw_speed_threshold) {
                 target.tracked_state(7, 0) = target.tracked_state(7, 0) > 0 ? outpost_yaw_speed : -outpost_yaw_speed;
@@ -134,7 +134,7 @@ namespace predict
             target.tracked_state(8, 0) = outpost_r;
             target.tracked_state(9, 0) = 0.0;
 
-            // todo
+            // 前哨站使用固定的过程噪声参数
             p_coord = 1e2;
             p_yaw = 1e1;
         }
@@ -268,7 +268,7 @@ namespace predict
                 // 限制旋转半径在合理范围内
                 radium_limit();
 
-                // special for output
+                // 应用输出阶段的前哨站参数
                 if (tag_id == 0) {
                     if (abs(target.tracked_state(7, 0)) > outpost_fix_yaw_speed_threshold) {
                         target.tracked_state(7, 0) = target.tracked_state(7, 0) > 0 ? outpost_yaw_speed : -outpost_yaw_speed;
@@ -1106,4 +1106,3 @@ namespace predict
     }
 
 } // namespace predict
-

@@ -1,6 +1,6 @@
 //
 // Inherit from auto-aim/others/hikcam_warpper/warpper_head.hpp commit 58e05e7e Guanqi He on 21-05-24.
-// Modified by Haoran Jiang on 21-10-02: Refact framework.
+// Modified by Haoran Jiang on 21-10-02: Updated the framework.
 // Capture image from input sources
 //
 
