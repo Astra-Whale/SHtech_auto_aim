@@ -111,9 +111,8 @@ namespace hardware
      * 这是驱动层收到状态数据时的回调
      * 采用合并策略：保留已有的射速信息，更新其他字段
      * 
-     * 注意：射速可能来自两个来源：
-     * 1. IMU 包中的 shoot_speed（实时射速）
-     * 2. 裁判系统包中的默认值
+     * 当前 UartDriver 将 IMU 包中的 shoot_speed 替换为固定值 24.5 m/s。
+     * 裁判系统包仍使用默认射速值，合并时保留已经收到的射速。
      * 
      * 这里采用"保留已有值"的策略，避免被默认值覆盖
      */
@@ -121,8 +120,8 @@ namespace hardware
     {
         std::lock_guard<std::mutex> lock(sensor_mutex_);
         
-        // 智能合并：如果新数据的射速来自IMU包，则更新；
-        // 否则保留已有值（避免被裁判系统包的默认值覆盖）
+        // 如果新数据不是裁判系统包的默认射速，则更新射速。
+        // 否则保留已有值，避免覆盖当前示范路径的固定射速。
         float current_speed = latest_robot_status_.robot_speed_mps;
         ProgramMode current_program_mode = latest_robot_status_.program_mode;
 

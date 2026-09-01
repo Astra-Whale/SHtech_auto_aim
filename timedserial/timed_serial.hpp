@@ -106,7 +106,7 @@ namespace hardware
         std::chrono::microseconds plan_period_{0};
         std::chrono::steady_clock::time_point command_start_time_{};
         
-        // 来自驱动层的实时数据（受 sensor_mutex_ 保护）
+        // 来自驱动层的数据（受 sensor_mutex_ 保护）
         Attitude latest_attitude_;           /*!< 最新姿态数据 */
         RobotStatus latest_robot_status_;    /*!< 最新机器人状态 */
         

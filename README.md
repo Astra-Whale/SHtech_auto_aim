@@ -133,9 +133,11 @@ cmake --build build -j
 yaw, pitch, yaw_speed, pitch_speed, yaw_acc, pitch_acc, distance, shoot, target_id
 ```
 
-这个顺序与 `advv_detection_t` 的串口字段顺序一致。抽象 `SerialInterface` 和 `MockDriver` 仍使用另一组历史参数名，当前不改变 `UartDriver` 实机路径的传输结果。新增驱动时应按上述字段语义实现，不要只根据位置参数名推断含义。
+上述顺序与 `advv_detection_t` 的串口字段顺序一致。抽象 `SerialInterface` 和 `MockDriver` 仍使用另一组参数名，当前不改变 `UartDriver` 实机路径的传输结果。新增驱动时应按上述字段语义实现，不要只根据位置参数名推断含义。
 
-Uart 路径会读取 MCU 姿态包中的 `shoot_speed`，随后将 `robot_speed_mps` 设置为固定的 `24.5 m/s`。Planner 当前使用这个固定值进行弹道和延迟计算。MockDriver 的初始射速为 `28.0 m/s`。因此，当前项目使用固定射速策略，不提供实时射速合同。协议字段含义确认后，再决定是否接入实时射速。
+`PlannerSubModule` 会将目标角度转换为度，再发送到 `TimedSerial`。角速度和角加速度保持弧度每秒和弧度每秒平方。这里描述的是当前代码的单位，不代替下位机协议约定。
+
+Uart 路径会读取 MCU 姿态包中的 `shoot_speed`，随后将 `robot_speed_mps` 设置为固定的 `24.5 m/s`。Planner 当前使用该固定值进行弹道和延迟计算。MockDriver 的初始射速为 `28.0 m/s`。因此，当前项目使用固定射速策略，不提供实时射速接口。协议字段含义确认后，再决定是否接入实时射速。
 
 ## 模型和示范资产
 

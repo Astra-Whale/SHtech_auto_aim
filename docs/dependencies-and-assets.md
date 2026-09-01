@@ -28,6 +28,8 @@
 
 主线构建默认启用海康支持。编译阶段会包含 `sensor/hikcam`，运行阶段由 `launch.cfg` 的 `source` 选择海康相机或 `test.avi`。离线模式不代表可以省略 AX650 目标环境中的 MVS 安装。
 
+即使 `port=None` 使用 `MockDriver`，`timedserial` 仍会编译 `UartDriver` 并链接 RMCVSerial。离线模式仍需准备 RMCVSerial 的头文件和共享库。
+
 ## EnvCfg 的职责
 
 [AX650 环境配置仓库](https://github.com/Astra-Whale/SHtech_auto_aim_AX650-EnvCfg)面向上科大定制 AX650 镜像。当前 `for_2026_open_source` 分支的 `AutoInstall.sh` 执行以下工作：
@@ -64,19 +66,19 @@ cmake --build build -j4
 - CMake 项目内部版本仍写为 `1.0.0`，与下载标签 `V1.1.1` 不一致
 - `timedserial` 通过链接器名称 `RMCVSerial` 查找安装结果，没有使用导出的 CMake package 配置
 
-内部文档可以把 `V1.1.1`作为当前依赖版本。公开发布前仍需补齐源 commit、许可证文件和第三方声明。
+内部文档可以把 `V1.1.1`作为当前依赖版本。后续资料整理仍需补齐源 commit、许可证文件和第三方声明。
 
 ### Hikvision MVS
 
-`sensor/hikcam/`保存编译所需的 MVS 头文件快照。`hikcam_wrapper.cpp`调用 `MV_CC_*`接口完成 USB 相机枚举、采集、像素格式处理和资源释放。动态库由 EnvCfg 安装到目标设备，CMake 通过 `MVS_PATH` 查找。
+`sensor/hikcam/`保存编译所需的 MVS 头文件快照。`hikcam_wrapper.cpp`调用 `MV_CC_*`接口完成 USB 相机枚举、采集、像素格式处理和资源释放。当前封装只枚举 USB 设备，不包含 GigE 相机枚举路径。动态库由 EnvCfg 安装到目标设备，CMake 通过 `MVS_PATH` 查找。
 
-当前仓库没有记录 MVS SDK 的精确版本。MVS 安装包也不属于 `auto-aim` 主仓库。公开版本应根据海康分发条款单独确认头文件和二进制文件的授权范围。
+当前仓库没有记录 MVS SDK 的精确版本。MVS 安装包也不属于 `auto-aim` 主仓库。后续整理分发材料时，应根据海康分发条款单独确认头文件和二进制文件的授权范围。
 
 ### TinyMPC
 
 `planner/tinympc/`直接编译为 `tinympcstatic`，`planner/Planner.cpp`使用它建立偏航和俯仰两个 MPC 求解器。当前 Planner 的预测时域为 `HORIZON = 100`，每个求解器限制为 10 次迭代。
 
-这份源码可以确认来自 [TinyMPC 官方仓库](https://github.com/TinyMPC/TinyMPC)，但本仓库没有记录上游 commit。当前快照与上游代码存在差异，至少删减了时间变化线性约束相关实现。后续应记录快照来源、修改范围和许可证归属，并在公开版本加入对应 NOTICE。
+这份源码可以确认来自 [TinyMPC 官方仓库](https://github.com/TinyMPC/TinyMPC)，但本仓库没有记录上游 commit。当前快照与上游代码存在差异，至少删减了时间变化线性约束相关实现。后续应记录快照来源、修改范围和许可证归属，并加入对应第三方声明。
 
 ## 模型与离线资产
 

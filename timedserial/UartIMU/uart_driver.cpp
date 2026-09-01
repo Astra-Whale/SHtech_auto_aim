@@ -47,6 +47,7 @@ void UartDriver::close()
  * - 构造临时 Attitude 对象
  * - 立即通过回调传递给业务层
  * - shoot_speed 包含在此包中，作为 RobotStatus 的一部分单独触发回调
+ * - 当前示范路径读取该字段后使用固定射速 24.5 m/s
  */
 void UartDriver::on_receive_imu(drivers::packet_data_t* packet_ptr, drivers::packet_length_t len)
 {
@@ -69,7 +70,7 @@ void UartDriver::on_receive_imu(drivers::packet_data_t* packet_ptr, drivers::pac
     
     // 2. shoot_speed 属于 RobotStatus，单独触发状态回调
     // 注意：这里只更新射速，其他字段由 on_receive_sts 填充
-    // 业务层需要自行合并这两个来源的数据
+    // 当前示范路径固定使用 24.5 m/s，协议字段暂不作为实时射速输入
     if (this->status_cb_) {
         RobotStatus temp_status;
         temp_status.robot_speed_mps = _tmp_ptr->shoot_speed;

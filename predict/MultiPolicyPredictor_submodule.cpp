@@ -129,6 +129,10 @@ namespace predict
                 Eigen::Matrix<double, 4, 1> measurement;
                 bool success = coord_transformer.pnp_get_measurement(armor.pts, armor.tag_id, armor.color_id,
                                                                                     attitude_yaw, R_world2imu, yaw_in_camera, measurement);
+                if (!success || !measurement.allFinite()) {
+                    continue;
+                }
+
                 Pos3D m_pw(measurement(1, 0), measurement(0, 0), measurement(2, 0));
                 double dist = distance_3D(m_pw);
                 double height = m_pw(2, 0);
@@ -202,7 +206,7 @@ namespace predict
                     bool success = coord_transformer.pnp_get_measurement(tracked_armor.pts, tracked_armor.tag_id, tracked_armor.color_id,
                                                                                 attitude_yaw, R_world2imu, yaw_in_camera, tracked_measurement);
 
-                    if (!success) {
+                    if (!success || !tracked_measurement.allFinite()) {
                         if (config_.debug.log_text)
                             std::cout << "[predict] pnp failed for initial target" << std::endl;
 
@@ -238,7 +242,7 @@ namespace predict
                         bool success = coord_transformer.pnp_get_measurement(armor.pts, armor.tag_id, tracked_armor.color_id, 
                                                                                 attitude_yaw, R_world2imu, yaw_in_camera, measured_measurement);
 
-                        if (!success) {
+                        if (!success || !measured_measurement.allFinite()) {
                             continue;
                         }
                         
