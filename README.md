@@ -1,170 +1,133 @@
-# Auto-aim
+# Auto-Aim
 
-## Dependence: 
-* gcc/g++-9: ubuntu18.04 设备均需手动升级
-* OpenCV4: 计算机视觉库，安装方式: `apt install libopencv-dev libopencv-contrib-dev` 或 [编译安装](https://github.com/opencv/opencv.git)
-* RMCVSerial: 串口库, 安装方式: [编译安装](https://gitlab.rmshtech.com/computer-vision/tools/rmcv_serial)
-* 使用TensorRT推理后端时: CUDA10.2 TensorRT8
-* 使用ONNXRunTime推理后端时: ONNX Runtime; ROCM
-* 使用AXCL推理后端时: AX650N开发板
-* 如需使用海康摄像头: MVS海康摄像头驱动，安装方式: [下载安装](https://www.hikrobotics.com/cn/machinevision/service/download?module=0)
-* [配置脚本参考](http://gitlab.rmshtech.tk/computer-vision/nvidianx-environment-config)
----
+面向 RoboMaster 竞赛的视觉自瞄参考实现。项目以 RM2026 AX650 方案为主线，展示从图像采集、装甲板检测、位姿解算、目标跟踪到云台规划的完整处理链。
 
-## 如何使用:
-### 第一步 编译（必做）:
+本仓库用于说明算法和实现关系。它不是通用自瞄框架，也不承诺覆盖全部硬件、推理后端或实机工况。
+
+## 阅读入口
+
+推荐按以下顺序阅读：
+
+1. 先阅读项目定位和系统流程
+2. 再阅读 `main.cpp`，了解对象创建和线程编排
+3. 按数据流阅读 `sensor`、`detect`、`predict`、`planner`
+4. 对照 `launch.cfg`、相机参数和 Planner 参数
+5. 最后查看对应平台的构建条件和已知限制
+
+算法扫盲材料见[飞书文档《只做对的：从0到旋转平移靶80%命中率的自瞄指南》](https://fcn47qghdcqf.feishu.cn/wiki/Hcw1wxTMZicx0xkinuQcKHetn5d?from=from_copylink)。项目演示见[RoboMaster 公开文章](https://bbs.robomaster.com/article/1883871?source=8)。文档讲解通用问题和本项目采用的方案，仓库 README 只保留实现信息。
+
+## 主流程
+
+```text
+EntryStage
+    ↓
+Sensor → Preprocess → Detect
+                         ↓
+              CornerRefine → Predictor → Planner
+                                             ↓
+                                         TimedSerial
+```
+
+- `EntryStage`：维护数据包、帧号和阶段计时
+- `Sensor`：读取海康相机或视频文件，同时获取姿态和机器人状态
+- `Preprocess`：将输入图像变换为模型需要的尺寸和格式
+- `Detect`：调用 AXCL、TensorRT 或 MIGraphX 后端生成装甲板候选
+- `CornerRefine`：使用传统视觉方法精修灯条和角点
+- `Predictor`：执行颜色筛选、PnP、目标选择、跟踪和运动预测
+- `Planner`：计算弹道补偿、云台目标和时间序列指令
+- `TimedSerial`：按固定周期向串口驱动发送最新指令
+
+流水线使用固定数量的 `ThreadDataPack` 在阶段之间传递数据。串口状态通过消息桥提供给传感器和预测模块，规划结果通过消息桥交给 `TimedSerial`。
+
+## 代码导航
+
+| 主题 | 入口 |
+| --- | --- |
+| 程序初始化和线程编排 | `main.cpp`、`main.hpp` |
+| 流水线和任务生命周期 | `common/pipeline.hpp` |
+| 数据结构和枚举 | `common/datatype.hpp` |
+| 配置解析 | `common/cmd_parser/` |
+| 相机和视频输入 | `sensor/` |
+| 图像预处理和检测 | `detect/` |
+| 坐标变换和滤波器 | `mathutils/` |
+| 目标选择和跟踪 | `predict/` |
+| 弹道和云台规划 | `planner/` |
+| 串口接口和驱动 | `timedserial/` |
+
+## 构建后端
+
+根工程通过 `INFERENCE_BACKEND` 选择推理后端：
+
+| 取值 | 运行平台 | 主要依赖 |
+| --- | --- | --- |
+| `AXCL` | AX650 | AXCL SDK，通常位于 `/soc` |
+| `TRT` | CUDA 设备 | CUDA 和 TensorRT |
+| `ONNX` | ROCm 设备 | MIGraphX 和 ROCm |
+
+通用依赖包括 OpenCV、Eigen3 和 RMCVSerial。启用海康相机时还需要 MVS 运行库，并设置 `MVS_PATH`。
+
+示例配置命令：
+
 ```bash
-mkdir build
-cd build
-# 当希望包含MVS编译完整版本时
-cmake -DINFERENCE_BACKEND=TRT ..#取值可以为TRT ONNX 或 AXCL, 代表对应平台
-# 当不希望包含MVS编译仅从视频读取的测试版本时
-cmake -DUSE_HIKCAM=OFF -DINFERENCE_BACKEND=TRT ..#取值可以为TRT ONNX 或 AXCL, 代表对应平台
+cmake -S . -B build -DINFERENCE_BACKEND=AXCL -DUSE_HIKCAM=OFF
+cmake --build build -j
 ```
-### 第二步 安装服务（当需要自启动时）:
-#### install
-Perform one time only
+
+根据目标平台，将 `AXCL` 替换为 `TRT` 或 `ONNX`。当前主机未必具备对应 SDK，因此配置成功不代表目标后端一定能完成编译。
+
+## 配置和输入
+
+程序从仓库根目录的 `launch.cfg` 读取配置。常用字段如下：
+
+| 字段 | 说明 |
+| --- | --- |
+| `source` | `0` 表示海康相机，其他值表示视频文件路径 |
+| `port` | 串口设备路径，`None` 或空值使用 `MockDriver` |
+| `model` | 模型文件路径 |
+| `camera_para` | 相机内参和相机到 IMU 的外参 |
+| `planner_para` | Planner 参数文件 |
+| `flip` | 是否旋转输入图像 |
+
+相机配置位于 `asset/camParam/`，Planner 配置位于 `asset/plannerParam/`。这些参数与相机、镜头和机械安装方式相关，不能跨设备直接复用。
+
+## 模型和示范资产
+
+仓库保留当前模型和离线输入：
+
+- `asset/models/SKD250526.axmodel`
+- `asset/models/SKD250526.onnx`
+- `asset/models/SZU0526_fp32input_512x640_nopre_fixoutput.onnx`
+- `test.avi`
+
+模型文件对应不同平台和输出约定。更换 `INFERENCE_BACKEND` 时，需要同时确认输入尺寸、颜色格式、输出张量、类别表和后处理方式，不能只替换一个 CMake 参数。
+
+`test.avi` 用于离线演示和回放。视频和模型的来源、授权范围以及最终公开版本的哈希信息仍需在发布前补齐。
+
+## 运行
+
+完成构建后，在仓库根目录运行：
+
 ```bash
-sudo python3 install_service.py
-source ~/.bashrc
-```
-#### Enable
-Enable start with system.
-```bash
-auto-aim-enable
-```
-#### Disable
-Disable start with system.
-```bash
-auto-aim-disable
-```
-#### Start
-Start auto-aim service in background.
-```bash
-auto-aim-start
-```
-#### Stop
-Stop all auto-aim service.
-```bash
-auto-aim-stop
+./build/auto-aim
 ```
 
+无硬件模式需要在 `launch.cfg` 中将 `source` 设置为视频文件，将 `port` 设置为 `None`，并选择与构建后端匹配的模型。
 
-## FAQ:
+## 当前边界
 
--   MVS安装完成后需在`~/.bashrc`中设置`MVS_PATH`指向`libMvControl.so`所在文件夹。
--   gcc/g++-9: 本项目中如果 gcc/g++ 版本不对，那么会出现以下几个错误
-    -   `autoaim/detector/TensorRT/TRTModule.hpp:83` 中 filesystem 报错
-    -   `autoaim/detector/TensorRT/TRTModule.hpp:17-18` 中 default 定义错误
+- 项目主线面向 AX650 和 RoboMaster 自瞄视觉链路
+- MCU 固件、云台控制器和发射机构不在本仓库中
+- 相机标定、串口协议和机械安装需要结合实际设备确认
+- 不同推理后端不是完全可互换的实现
+- 当前版本不包含可视化扩展及其第三方 SDK
+- 性能和命中率取决于模型、相机、机械、参数和测试场景，本 README 不给出无条件指标
+- 代码许可证、第三方声明和模型授权说明尚未统一，公开发布前必须补齐
 
-## Change Log: 
+## 相关依赖
 
-* 2021-10-02: 代码框架初步搭建完成
-* 2021-11-20: 封装坐标转换相关代码，实现静态目标预测全部功能
-* 2021-12-10: 调整坐标转换封装结构，实现动态目标二阶线性预测
-* 2025-02-14: 合并推理后端, 更新构建脚本
+- [RMCVSerial](https://gitlab.rmshtech.com/computer-vision/tools/rmcv_serial)：内部串口库
+- 海康 MVS：相机运行库
+- [AX650 环境配置](https://github.com/Astra-Whale/SHtech_auto_aim_AX650-EnvCfg)：AX650 平台环境和部署材料
+- [算法扫盲文档](https://fcn47qghdcqf.feishu.cn/wiki/Hcw1wxTMZicx0xkinuQcKHetn5d?from=from_copylink)：飞书预印本
 
-
-
-# 简介
-
-功能: 
-
--   视频流输入: 视频文件输入(√) 海康摄像头输入(√)
--   装甲板四交点检测(√) 基于交大开源方案
--   预测: TBD
--   串口通讯: 基于 libserial 和大疆裁判系统通信协议
--   从 launch.cfg 读取运行配置
-
-硬件: 
-
--   NX: 自带 CUDA + TRT 。
--   camera: 海康工业摄像头
--   TTL: 板载
-
-
-
-# 代码框架
-
-```txt
-.
-├── CMakeLists.txt: 开启了ccahe加速编译，只重新编译修改部分，默认开启编译优化选项
-├── README.md: 本文档
-├── asset
-│   ├── autoaim-param.yml: 自瞄参数文件，前一半是预测参数，一般无需修改，后一半是反陀螺参数，还没有仔细试过
-│   ├── camera-param.yml: 相机标定文件，通过 calibrate.py 任务生成
-│   ├── model-opt-4.cache: 使用的模型文件的cache缓存，如果第一次使用，会自动生成，在 nx 上的时间约为半小时
-│   └── model-opt-4.onnx: 模型文件: 本赛季使用
-├── comm: 串口通信相关
-│   ├── CMakeLists.txt
-│   ├── comm.hpp\cpp: 串口通信类
-│   ├── crc.hpp: crc校验
-│   └── protocol.hpp\cpp: 大疆裁判系统通信协议封解包代码
-├── common: 通用工具
-│   ├── CMakeLists.txt
-│   ├── common.hpp: 总头文件
-│   ├── pipeline.hpp: 线程间通信 任务基类
-│   ├── robot_status.hpp: 机器人状态 通用数据交换结构
-│   ├── cmd_parser: cfg文件读取相关
-│   │   ├── cmd_parser.cpp
-│   │   └── cmd_parser.hpp
-│   ├── log: log记录相关
-│   │   ├── log.cpp
-│   │   └── log.hpp: LOG{M,W,E}_{S,F}向屏幕/文件输出消息/警告/错误
-│   └── timer: 计时 测fps
-│       ├── timer.hpp
-│       └── timer.cpp
-├── detect: 装甲板四角点检测
-│   ├── CMakeLists.txt
-│   ├── detect.hpp\cpp: 装甲板四角点检测任务类 派生自任务基类 init时实例化模型
-│   └── TRTModule.hpp\cpp: 基于TensorRT C++ API构建推理环境和进行推理
-├── predict: 预测
-│   ├── CMakeLists.txt
-│   ├── predict.hpp\cpp: 预测任务类 派生自任务基类 TBD
-│   ├── tools.hpp: 坐标转换和弹道补偿相关函数
-|   |── StaticPredictor.hpp\cpp: 静态目标预测
-|   └── LinearPredictor.hpp\cpp: 动态目标线性预测
-├── sensor: 传感器相关
-│   ├── CMakeLists.txt
-│   ├── sensor.hpp\cpp: 传感器数据获取任务类 派生自任务基类 init时打开传感器接口
-│   ├── cam_wrapper.hpp: 视频流基类
-│   ├── i2c: I2C通信支持库
-│   │   └── i2c.h\c
-│   ├── UartIMU: 串口位姿数据
-│   │   └── uartimu.hpp\cpp
-│   ├── BMI160: 板载IMU位姿数据
-│   │   └── BMI160.hpp\cpp
-│   ├── video: 视频图像读取
-│   │   └── video_wrapper.hpp\cpp
-│   └── hikcam: 相机图像读取
-│       ├── hikcam_wrapper.hpp\cpp
-│       └── ...: MVS相关头文件
-├── build: 编译目录
-├── data: 数据存储部分
-├── main.cpp: 主函数入口
-└── main.hpp: 
-```
-
-
-
-# 项目介绍
-
-## 线程间通信
-
-通过`pipeline_queue_t`实现的报文缓存队列控制自瞄流水线，报文对象以`shared_ptr`智能指针的形式在线程间循环使用。报文对象中为线程间通信所需的所有变量预留了空间，节省了时间开销。
-
-## 任务基类
-
-通过`BasicTask`实现了基于`pipeline`的线程生命周期管理。定义了`init`,`setdebug`,`setshow`,`stop`等方法并重载了`()`运算符，允许函数式调起任务。
-
-## 数据IO线程
-
-通过`sensor::Sensor`类管理并对外提供数据IO功能。通过 ***lauch.cfg*** 可管理数据源。
-
-## 装甲板检测线程
-
-通过`detect::Detect`类管理 **TensorRT** 推理资源。使用 ***lauch.cfg*** 中指定的onnx文件创建并缓存推理网络，基于 **OpenCV** 和 **TensorRT** 进行图像预处理、图像推理、数据后处理。
-
-## 目标预测线程
-
-通过`predict::Predict`类管理目标预测过程。在命名空间中实现了提供静态目标预测的`StaticPredictor`子类和提供二阶线性预测的`LinearPredictor`子类，利用 **Eigen** 和 **OpenCV** 的高效封装实现装甲板筛选、PNP解算、坐标变换、位置预测、弹道补偿等核心功能。
+内部版本优先保证代码、配置和 README 的对应关系。公开版本将在此基础上移除内部依赖说明，并补充完整的许可证、来源和发布版本信息。

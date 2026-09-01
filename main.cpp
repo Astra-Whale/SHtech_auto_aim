@@ -131,11 +131,7 @@ pipeline::PipelineTask* pipeline_stage1 = nullptr;
 pipeline::PipelineTask* pipeline_stage2 = nullptr;
 
 hardware::TimedSerial* timed_serial = nullptr;
-// foxgloveSer::FoxgloveServer_t* foxglove_server = nullptr;
 pipeline::bridge::PlannerToSerialBridge* planner_to_serial_bridge = nullptr;
-
-pipeline::bridge::EntryStageToFoxgloveRobotBridge* entrystage_to_foxglove_robot_bridge = nullptr;
-pipeline::bridge::EntryStageToFoxgloveAliveBridge* entrystage_to_foxglove_alive_bridge = nullptr;
 pipeline::bridge::SensorFromSerialAttitudeBridge* sensor_from_serial_attitude_bridge = nullptr;
 pipeline::bridge::SensorFromSerialRobotStatusBridge* sensor_from_serial_robot_status_bridge = nullptr;
 // 第一步结束
@@ -221,8 +217,6 @@ bool init(void)
 
     // 创建消息桥
     planner_to_serial_bridge = new pipeline::bridge::PlannerToSerialBridge();
-    entrystage_to_foxglove_robot_bridge = new pipeline::bridge::EntryStageToFoxgloveRobotBridge();
-    entrystage_to_foxglove_alive_bridge = new pipeline::bridge::EntryStageToFoxgloveAliveBridge();
     sensor_from_serial_attitude_bridge = new pipeline::bridge::SensorFromSerialAttitudeBridge();
     sensor_from_serial_robot_status_bridge = new pipeline::bridge::SensorFromSerialRobotStatusBridge();
     // 第二步结束
@@ -274,13 +268,6 @@ bool init(void)
     planner_config.debug.show_image = parser.get_bool("planner_show_image");
     planner_config.plot = parser.get_bool("planner_plot");
 
-#ifdef ENABLE_FOXGLOVE
-    foxgloveSer::FoxgloveServerConfig foxglove_server_config;
-    foxglove_server_config.debug.log_text = parser.get_bool("foxglove_server_log_text");
-    foxglove_server_config.debug.log_file = parser.get_bool("foxglove_server_log_file");
-    foxglove_server_config.debug.show_image = parser.get_bool("foxglove_server_show_image");
-#endif
-
     bool entrystage_submodule_registered = false;
     bool sensor_submodule_registered = false;
     bool preprocess_submodule_registered = false;
@@ -288,7 +275,6 @@ bool init(void)
     bool corner_refine_submodule_registered = false;
     bool predict_submodule_registered = false;
     bool planner_submodule_registered = false;
-    // bool foxglove_server_independenttask_registered = false;
     // 初始化独立任务
     std::unique_ptr<SerialInterface> driver;
     const std::string &port = parser.get_string("port");
@@ -310,9 +296,7 @@ bool init(void)
                                             *sensor_from_serial_robot_status_bridge);
 
     entrystage_submodule_registered = pipeline_stage0->register_submodule_with_params<entrystage::EntryStageSubModule>(
-        entrystage_config,
-        *entrystage_to_foxglove_robot_bridge,
-        *entrystage_to_foxglove_alive_bridge);
+        entrystage_config);
 
     sensor_submodule_registered = pipeline_stage0->register_submodule_with_params<sensor::SensorSubModule>(
         sensor_config,
@@ -357,7 +341,6 @@ bool init(void)
         || !corner_refine_submodule_registered
         || !predict_submodule_registered 
         || !planner_submodule_registered
-        // || !foxglove_server_independenttask_registered
         ) 
     {
         LOGE_S("[init] Critical modules unavailable, system cannot start");
@@ -390,10 +373,7 @@ int main(void)
         delete pipeline_stage1;
         delete pipeline_stage2;
         delete timed_serial;
-        // delete foxglove_server;
         delete planner_to_serial_bridge;
-        delete entrystage_to_foxglove_robot_bridge;
-        delete entrystage_to_foxglove_alive_bridge;
         delete sensor_from_serial_attitude_bridge;
         delete sensor_from_serial_robot_status_bridge;
         return 0;
@@ -413,7 +393,6 @@ int main(void)
 
 
     // 第五步: 线程管理
-    // std::thread t_sensor, t_detect, t_predict, t_timed_serial, t_foxglove_server;
     std::thread t_sensor, t_detect, t_predict, t_timed_serial;
 
     sigset_t oldmask;
@@ -436,9 +415,6 @@ int main(void)
     t_timed_serial = std::thread([&]()
                           { (*timed_serial)(); });
 
-    // t_foxglove_server = std::thread([&]()
-    //                       { (*foxglove_server)(); });
-
     pthread_sigmask(SIG_SETMASK, &oldmask, NULL);
 
     // 启动所有任务开始工作
@@ -447,7 +423,6 @@ int main(void)
     pipeline_stage0->start();
     pipeline_stage1->start();
     pipeline_stage2->start();
-    // foxglove_server->start();
     LOGM_S("All composite tasks started successfully!");
 
 
@@ -464,7 +439,6 @@ int main(void)
     if (pipeline_stage0) pipeline_stage0->terminate();
     if (pipeline_stage1) pipeline_stage1->terminate();
     if (pipeline_stage2) pipeline_stage2->terminate();
-    // if (foxglove_server) foxglove_server->terminate();
 
     // 将各个线程的 Join 任务放入监控列表
     std::vector<ThreadMonitor> monitors;
@@ -473,7 +447,6 @@ int main(void)
     monitors.push_back(create_monitor("Sensor", t_sensor));
     monitors.push_back(create_monitor("Detect", t_detect));
     monitors.push_back(create_monitor("Predict", t_predict));
-    // monitors.push_back(create_monitor("Foxglove", t_foxglove_server));
 
     // 主线程带超时地轮询所有任务
     auto deadline = std::chrono::steady_clock::now() + THREAD_JOIN_TIMEOUT;
@@ -525,10 +498,7 @@ int main(void)
     delete pipeline_stage1;
     delete pipeline_stage2;
     delete timed_serial;
-    // delete foxglove_server;
     delete planner_to_serial_bridge;
-    delete entrystage_to_foxglove_robot_bridge;
-    delete entrystage_to_foxglove_alive_bridge;
     delete sensor_from_serial_attitude_bridge;
     delete sensor_from_serial_robot_status_bridge;
     

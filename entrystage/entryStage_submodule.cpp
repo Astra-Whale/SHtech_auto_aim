@@ -7,10 +7,8 @@
 namespace entrystage
 {
 
-    EntryStageSubModule::EntryStageSubModule(const EntryStageConfig& config,
-                                             pipeline::bridge::EntryStageToFoxgloveRobotBridge& robot_bridge,
-                                             pipeline::bridge::EntryStageToFoxgloveAliveBridge& alive_bridge)
-        : SubModule(SubModuleName::ENTRYSTAGE), config_(config), robot_bridge_(robot_bridge), alive_bridge_(alive_bridge)
+    EntryStageSubModule::EntryStageSubModule(const EntryStageConfig& config)
+        : SubModule(SubModuleName::ENTRYSTAGE), config_(config)
     {
         LOGM_S("[EntryStage] construction completed");
     }
@@ -75,15 +73,6 @@ namespace entrystage
             }
         }
         
-        //记录敌方机器人位置到 Foxglove
-        alive_bridge_.send(pipeline::bridge::EntryStageToFoxgloveAliveMessage{});
-        robot_bridge_.send(pipeline::bridge::EntryStageToFoxgloveRobotMessage{data->target_state});
-
-
-
-
-
-
         // 为下一轮做初始化
         data->index = totalframecounter++;
         data->submodule_results.fill(SubModuleResult::NOTYET);

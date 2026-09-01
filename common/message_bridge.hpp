@@ -37,8 +37,6 @@
 #include <functional>
 #include <array>
 #include <chrono>
-#include <Eigen/Dense>
-
 #include "datatype.hpp"
 #include "log/log.hpp"
 
@@ -173,20 +171,6 @@ struct PlannerToSerialMessage {
     std::chrono::microseconds plan_period;
 };
 
-/**
- * @brief   EntryStage 到 Foxglove 的机器人状态消息
- */
-struct EntryStageToFoxgloveRobotMessage {
-    Eigen::Matrix<double, 6, 1> enemy_robot_state;
-};
-
-/**
- * @brief   EntryStage 到 Foxglove 的存活信号消息（无数据）
- */
-struct EntryStageToFoxgloveAliveMessage {
-    // 空消息，仅用于触发存活信号
-};
-
 struct SensorFromSerialAttitudeMessage {
     Attitude attitude;
 };
@@ -199,16 +183,6 @@ struct SensorFromSerialRobotStatusMessage {
  * @brief   类型别名：Planner -> Hardware::TimedSerial 消息桥接
  */
 using PlannerToSerialBridge = PushBridge<PlannerToSerialMessage>;
-
-/**
- * @brief   类型别名：EntryStage -> Foxglove 机器人状态消息桥接
- */
-using EntryStageToFoxgloveRobotBridge = PushBridge<EntryStageToFoxgloveRobotMessage>;
-
-/**
- * @brief   类型别名：EntryStage -> Foxglove 存活信号消息桥接
- */
-using EntryStageToFoxgloveAliveBridge = PushBridge<EntryStageToFoxgloveAliveMessage>;
 
 using SensorFromSerialAttitudeBridge = PullBridge<SensorFromSerialAttitudeMessage>;
 

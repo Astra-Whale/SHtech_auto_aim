@@ -35,9 +35,6 @@
 #include "detect/corner_refine_submodule.hpp"
 #include "detect/detect_submodule.hpp"
 #include "predict/MultiPolicyPredictor_submodule.hpp"
-#ifdef ENABLE_FOXGLOVE
-#include "foxglove/foxglove_server.hpp"
-#endif
 #include "planner/planner_submodule.hpp"
 
 //Math Utils

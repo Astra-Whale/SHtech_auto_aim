@@ -7,3 +7,8 @@ logs/
 *.cache
 bash/auto-aim-start.sh
 frames/
+
+# Captured runtime logs
+data.txt
+tools/data*.txt
+kf_test/

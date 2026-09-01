@@ -35,9 +35,7 @@ namespace entrystage
         /**
          * @brief   构造函数
          */
-        EntryStageSubModule(const EntryStageConfig& config,
-                           pipeline::bridge::EntryStageToFoxgloveRobotBridge& robot_bridge,
-                           pipeline::bridge::EntryStageToFoxgloveAliveBridge& alive_bridge);
+        explicit EntryStageSubModule(const EntryStageConfig& config);
         virtual ~EntryStageSubModule() = default;
 
         /**
@@ -52,8 +50,6 @@ namespace entrystage
     private:
         EntryStageConfig config_;
         int totalframecounter = 0;              /*!< 总帧数计数器 */
-        pipeline::bridge::EntryStageToFoxgloveRobotBridge& robot_bridge_;  /*!< 机器人状态消息桥接 */
-        pipeline::bridge::EntryStageToFoxgloveAliveBridge& alive_bridge_;  /*!< 存活信号消息桥接 */
     };
 }
 

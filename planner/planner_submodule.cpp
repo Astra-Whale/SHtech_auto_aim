@@ -1,6 +1,5 @@
 //
-// LinearPredictorSubModule - Merged PredictSubModule and LinearPredictor
-// Combines pipeline integration and prediction algorithm in one class
+// PlannerSubModule integrates planning with the pipeline.
 //
 
 #include "planner_submodule.hpp"
