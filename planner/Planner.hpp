@@ -149,12 +149,6 @@ namespace predict
         /// @brief 装甲板切换时间戳
         std::chrono::_V2::system_clock::time_point armor_jump_tp;
 
-        /// @brief 原始目标偏航角（未经MPC优化）
-        double target_yaw_raw;
-        
-        /// @brief 原始目标俯仰角（未经MPC优化）
-        double target_pitch_raw;
-
         /// @brief 坐标变换器单例 - 负责坐标系转换
         CoordTransformer& coord_transformer;
 

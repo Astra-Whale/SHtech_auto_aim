@@ -1,5 +1,5 @@
 //
-// EntryStageSubModule
+// PlannerSubModule
 //
 
 #ifndef PLANNER_SUBMODULE_H
@@ -28,7 +28,6 @@ namespace plan
 
     struct PlannerConfig : pipeline::ModuleConfig
     {
-        bool plot = false;
     };
 
     /**
@@ -50,7 +49,7 @@ namespace plan
          * @brief   子模块处理函数
          * @param[in,out] data   输入输出数据包，直接在原数据上修改
          * @param[in] parent     父任务指针，用于生命周期检查
-         * @return  bool         返回 true 表示数据应该传递到下游，false 表示丢弃数据
+         * @return  SubModuleResult 表示当前数据包的处理结果
          */
         SubModuleResult process(std::shared_ptr<ThreadDataPack> data, 
                     const pipeline::BasicTask* parent) override;
@@ -78,14 +77,6 @@ namespace plan
          */
         void update_information_to_send(const bool has_fixed_target, const Target &target, const Plan &plan, RobotCommand &send, 
             float attitude_yaw, float attitude_pitch);
-
-        /**
-        * @brief 输出数据用于绘图分析
-        * @param target 目标跟踪状态
-        * @param plan 预测计划
-        * @details 输出跟踪和预测的关键数据，用于离线分析和调优
-        */
-        void output_data_to_plot(const Target &target, const Plan &plan, std::shared_ptr<ThreadDataPack> data);
 
         /**
         * @brief 显示真实世界视图

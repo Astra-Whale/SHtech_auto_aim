@@ -1,12 +1,12 @@
 //
-// Created for hardware communication module - TimedSerial (Refactored)
+// Hardware communication module - TimedSerial
 // Event-driven architecture with dependency injection
 //
 
-#ifndef TIMEDSERIAL_NEW_H
-#define TIMEDSERIAL_NEW_H
+#ifndef TIMEDSERIAL_H
+#define TIMEDSERIAL_H
 
-// submodules - 使用新的接口
+// submodules
 #include "serial_interface.hpp"
 
 // modules
@@ -26,9 +26,8 @@ namespace hardware
     };
 
     /**
-     * @brief   串口定时通讯子模块（重构版）
-     * @details 
-     * 重构要点：
+     * @brief   串口定时通信任务
+     * @details
      * - 依赖注入：通过构造函数接收 SerialInterface 独占指针
      * - 事件驱动：通过独立回调接收姿态和状态数据
      * - 数据汇聚：作为数据的汇聚点，统一管理和合并来自驱动层的数据
@@ -39,7 +38,7 @@ namespace hardware
     public:
 
         /**
-         * @brief   构造函数（重构版 - 依赖注入）
+         * @brief   构造函数
          * @param[in] driver_impl 串口驱动实现的独占指针（依赖注入）
          * @param[in] message_bridge 消息桥接对象引用
          */
@@ -53,7 +52,7 @@ namespace hardware
         virtual ~TimedSerial();
 
         /**
-         * @brief   子模块处理函数
+         * @brief   任务线程入口
          */
         void operator()() override;
 
@@ -61,7 +60,7 @@ namespace hardware
         TimedSerialConfig config_;
         /**
          * @brief   读取最新命令和姿态数据，基于时间戳进行线性插值
-         * @return  bool 成功返回true，命令数组耗尽返回false
+         * @return  bool 命令数组中存在可发送的控制指令时返回 true
          */
         bool read_latest_command_and_attitude();
         
@@ -115,8 +114,8 @@ namespace hardware
         std::mutex sensor_mutex_;   /*!< 保护传感器数据（来自驱动层） */
         
         // 性能统计
-        fps_counter total_fps{"timedserial_new_fps"};
+        fps_counter total_fps{"timedserial_fps"};
     };
 }
 
-#endif // TIMEDSERIAL_NEW_H
+#endif // TIMEDSERIAL_H

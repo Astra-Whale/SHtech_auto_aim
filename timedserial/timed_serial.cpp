@@ -1,5 +1,5 @@
 //
-// Created for hardware communication module - TimedSerial (Refactored)
+// Hardware communication module - TimedSerial
 // Event-driven architecture with dependency injection
 //
 
@@ -84,12 +84,6 @@ namespace hardware
     {
         std::lock_guard<std::mutex> lock(sensor_mutex_);
         latest_attitude_ = att;
-        
-        if (config_.debug.log_text)
-        {
-            // LOGM_S("[TimedSerial] Attitude updated: yaw=%.2f, pitch=%.2f", 
-            //        att.yaw(), att.pitch);
-        }
     }
 
     Attitude TimedSerial::handle_attitude_get()
@@ -136,13 +130,6 @@ namespace hardware
             latest_robot_status_.robot_speed_mps = sts.robot_speed_mps;
             latest_robot_status_.program_mode = sts.program_mode;
         }
-        
-        if (config_.debug.log_text)
-        {
-            // LOGM_S("[TimedSerial] Status updated: enemy_color=%d, speed=%.2f", 
-            //        static_cast<int>(latest_robot_status_.enemy_color), 
-            //        latest_robot_status_.robot_speed_mps);
-        }
     }
 
     /**
@@ -164,7 +151,7 @@ namespace hardware
         }
         int64_t expectedIndexOne = static_cast<int64_t>(elapsed.count() / plan_period_.count());
 
-        assert(expectedIndexOne >= 0 && "[timedserial_new] Elapsed time calculation error!");
+        assert(expectedIndexOne >= 0 && "[TimedSerial] Elapsed time calculation error!");
         if (expectedIndexOne >= CMDARRAYLENGTH - 1)
         {
             // 命令数组已耗尽，保留最后一个元素用于插值计算
@@ -205,7 +192,6 @@ namespace hardware
 
             // basictask框架级实现：收到启动信号，开始工作循环
             // 本循环内部是具体的任务实现
-            unsigned long long frame_index = 0;
             while (isalive())
             {
                 auto start_time = std::chrono::high_resolution_clock::now();
@@ -272,22 +258,15 @@ namespace hardware
                 if (sleep_duration > std::chrono::milliseconds(0))
                 {
                     std::this_thread::sleep_for(sleep_duration);
-                    // LOGW_S("[TimedSerial] sending on time, slept");
                 }
                 else
                 {
-                    // LOGW_S("[TimedSerial] sending cost %lld ms", 
-                    //     (long long)std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count());
                     LOGW_S("[TimedSerial] sending overrun by %lld us", 
                            (long long)std::chrono::duration_cast<std::chrono::microseconds>(-sleep_duration).count());
                     LOGW_F("[TimedSerial] sending overrun by %lld us", 
                            (long long)std::chrono::duration_cast<std::chrono::microseconds>(-sleep_duration).count());
                 }
                 
-                // LOGM_F("[timedserial_new]%llu start time: %lld|last time: %lld", frame_index++,
-                //        static_cast<long long>(std::chrono::duration_cast<std::chrono::microseconds>(start_time.time_since_epoch()).count()),
-                //        static_cast<long long>(std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count())
-                //);
             }
             // basictask框架级实现：工作循环结束（被stop），回到等待状态
         }

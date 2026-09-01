@@ -87,7 +87,7 @@ namespace pipeline
      * @details 用于在线程间提供缓存队列，并保证线程安全的进行读写
      * @tparam  T 用于交换的报文对象
      */
-    template <typename T> // pipeline for memory pool design, no thread security ensurance, make sure memory pool large enough
+    template <typename T> // 线程安全队列，使用 mutex 和 condition_variable 保护访问
     class BufferedPipeline
     {
     public:
@@ -356,11 +356,6 @@ namespace pipeline
     using AutoAimHandshake = AutoAimHandshakeT<ThreadDataPack>;
     
     /**
-     * @brief   向后兼容别名（指向有缓冲队列）
-     */
-    using autoaim_pipeline = AutoAimQueue;
-    
-    /**
      * @brief   任务类的基类，现在原则上不允许直接插入流水线
      */
     class BasicTask
@@ -534,7 +529,7 @@ namespace pipeline
     };
 
      /**
-     * @brief   复合任务类
+     * @brief   流水线任务类
      * @details 管理多个子模块的执行
      */
     class PipelineTask : public BasicTask
@@ -574,25 +569,7 @@ namespace pipeline
         }
 
         PipelineTask() : BasicTask() {};
-        virtual ~PipelineTask() {
-
-            if (!submodules.empty() && submodules[0] != nullptr) {
-        
-                std::cout<<static_cast<uint8_t>(submodules[0]->get_submodule_name()) << std::endl;
-        
-            }
-            else {
-        
-                std::cout<<"submodules empty"<<std::endl;
-        
-            }
-        
-        }
-
-
-
-
-
+        virtual ~PipelineTask() = default;
         /**
          * @brief   获取子模块数量
          */

@@ -6,8 +6,8 @@
  * ======================================================================================
  * ⚠️ 安全性协议与架构契约 (SECURITY PROTOCOL & ARCHITECTURE CONTRACT) ⚠️
  * ======================================================================================
- * 本文件实现的 PushBridge/PullBridge 为了追求极致性能，使用了裸指针和 std::function。
- * 它本身 **不包含** 互斥锁保护。为了防止 内存崩溃(SegFault) 和 数据竞争(Data Race)，
+ * 本文件实现的 PushBridge/PullBridge 使用 std::function 保存回调。
+ * 它本身 **不包含** 互斥锁保护。为了防止内存崩溃(SegFault) 和数据竞争(Data Race)，
  * 所有使用者必须严格遵守以下【全生命周期安全规范】：
  *
  * 1. 【初始化阶段 (Wiring Phase)】
@@ -38,7 +38,6 @@
 #include <array>
 #include <chrono>
 #include "datatype.hpp"
-#include "log/log.hpp"
 
 namespace pipeline {
 namespace bridge {
@@ -67,7 +66,7 @@ public:
      */
     void set_receiver(CallbackFunc callback) {
         if (callback_) {
-            LOGE_S("[Bridge] Receiver seted twice!");
+            LOGE_S("[Bridge] Receiver set twice!");
             return;
         }
         callback_ = std::move(callback);
@@ -122,7 +121,7 @@ public:
      */
     void set_provider(ProviderFunc provider) {
         if (provider_) {
-            LOGE_S("[Bridge] Provider seted twice!");
+            LOGE_S("[Bridge] Provider set twice!");
             return;
         }
         provider_ = std::move(provider);

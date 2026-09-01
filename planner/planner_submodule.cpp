@@ -57,9 +57,6 @@ namespace plan
             auto &plan = planner.make_plan(target, robot_status.robot_speed_mps,
                 attitude_yaw, attitude_pitch, R_world2imu, tp);
 
-            // 输出数据用于绘图分析（可选）
-            if (config_.plot)
-                output_data_to_plot(target, plan, data);
         }
 
         auto &plan = planner.get_plan();
@@ -117,11 +114,6 @@ namespace plan
                 send.distance = plan.target_distance;                          // 目标距离
                 send.fire_enable = plan.fire_enable;                          // 射击使能
 
-                // if (send.fire_enable == 3) {
-                //     LOGT_S();
-                //     std::cout << "fire 11111111111111111111111111111111" << std::endl;
-                // }
-
                 send.pitch_angle = (plan.target_pitch - attitude_pitch) / M_PI * 180.0f;         // 俯仰角（转换为度数）
                 send.pitch_speed = plan.target_pitch_speed;                   // 俯仰角速度
                 send.pitch_acc = plan.target_pitch_acc;
@@ -151,86 +143,6 @@ namespace plan
             }
         }
 
-        // send.fire_enable = 1;
-        // send.pitch_angle = 0;
-        // send.yaw_angle = 0;
-        // send.target_id = 2;
-        // send.distance = 1;
-    }
-
-    /**
-    * @brief 输出数据用于绘图分析
-    * @param target 目标跟踪状态
-    * @param plan 预测计划
-    * @details 输出关键跟踪和预测数据，用于离线分析和系统调优
-    *          当前实现中的输出语句已被注释，可根据需要启用特定数据的输出
-    */
-    void PlannerSubModule::output_data_to_plot(const Target &target, const Plan &plan, std::shared_ptr<ThreadDataPack> data) 
-    {
-        LOGT_S();
-
-        // std::cout << data->robotstatus.robot_speed_mps << std::endl;
-
-        // std::cout << data->attitude.yaw() << std::endl;
-        // std::cout << data->attitude.pitch() << std::endl;
-
-        // std::cout << (tracked_armor.source == DetectionSource::TRADITIONAL ? 1 : 0) << std::endl;
-
-        // std::cout << target.tracked_measurement(0, 0) << std::endl;
-        // std::cout << target.tracked_measurement(1, 0) << std::endl;
-        // std::cout << target.tracked_measurement(2, 0) << std::endl;
-        // std::cout << target.tracked_measurement(3, 0) << std::endl;
-
-        // std::cout << target.tracked_measurement(0, 0) + target.tracked_state(8, 0) * cos(target.tracked_state(6, 0)) << std::endl;
-        // std::cout << target.tracked_measurement(1, 0) + target.tracked_state(8, 0) * sin(target.tracked_state(6, 0)) << std::endl;
-        // std::cout << target.tracked_state(0, 0) - target.tracked_state(8, 0) * cos(target.tracked_state(6, 0)) << std::endl;
-        // std::cout << target.tracked_state(2, 0) - target.tracked_state(8, 0) * sin(target.tracked_state(6, 0)) << std::endl;
-        // std::cout << target.tracked_measurement(2, 0) << std::endl;
-        // std::cout << target.tracked_measurement(3, 0) << std::endl;
-
-        // std::cout << static_cast<int>(target.predictor_state) << std::endl;
-        // std::cout << target.ab_counter << std::endl;
-
-        // std::cout << target.yaw_state(0, 0) << std::endl;
-        // std::cout << target.yaw_state(1, 0) << std::endl;
-
-        // std::cout << target.armor_y_state(0, 0) << std::endl;
-        // std::cout << target.armor_y_state(1, 0) << std::endl;
-
-        // std::cout << target.armor_x_state(0, 0) << std::endl;
-        // std::cout << target.armor_x_state(1, 0) << std::endl;
-
-        // std::cout << target.armor_z_state(0, 0) << std::endl;
-        // std::cout << target.armor_z_state(1, 0) << std::endl;
-
-        // std::cout << target.tracked_state(0, 0) << std::endl;
-        // std::cout << target.tracked_state(1, 0) << std::endl;
-        // std::cout << target.tracked_state(2, 0) << std::endl;
-        // std::cout << target.tracked_state(3, 0) << std::endl;
-        // std::cout << target.tracked_state(4, 0) << std::endl;
-        // std::cout << target.tracked_state(5, 0) << std::endl;
-        // std::cout << target.tracked_state(6, 0) << std::endl;
-        // std::cout << target.tracked_state(7, 0) << std::endl;
-        // std::cout << target.tracked_state(8, 0) << std::endl;
-        // std::cout << target.tracked_state(9, 0) << std::endl;
-        // std::cout << target.tracked_state(10, 0) << std::endl;
-
-        // std::cout << target.vehicle_model_trust << std::endl;
-
-        // std::cout << plan.aimed_armor_pos(0, 0) << std::endl;
-        // std::cout << plan.aimed_armor_pos(1, 0) << std::endl;
-        // std::cout << plan.aimed_armor_pos(2, 0) << std::endl;
-
-        // std::cout << plan.target_yaw << std::endl;
-        // std::cout << plan.target_yaw / M_PI * 180.0f << std::endl;
-        // std::cout << plan.target_yaw_speed << std::endl;
-        // std::cout << plan.target_yaw_acc << std::endl;
-
-        // std::cout << plan.target_pitch / M_PI * 180.0f << std::endl;
-        // std::cout << plan.target_pitch_speed / M_PI * 180.0f << std::endl;
-        // std::cout << plan.target_pitch_acc / M_PI * 180.0f << std::endl;
-
-        std::cout << plan.fire_enable << std::endl;
     }
 
     // === 枚举转字符串辅助函数 ===
@@ -320,15 +232,6 @@ namespace plan
         Pos3D pu_a = coord_transformer.pc_to_pu(pc_a);
         cv::Point2d pi_a(pu_a(0, 0), pu_a(1, 0));
         cv::circle(im2show, pi_a, 5, {0, 255, 0}, 3); // green
-
-        // // estimated armor, armor model
-        // Eigen::Matrix<double, 4, 1> estimated_armor_m;
-        // estimated_armor_m << target.armor_y_state(0, 0), target.armor_x_state(0, 0), target.armor_z_state(0, 0), 0;
-        // Pos3D pw_ea(estimated_armor_m(1, 0), estimated_armor_m(0, 0), estimated_armor_m(2, 0));
-        // Pos3D pc_ea = coord_transformer.pw_to_pc(pw_ea, R_world2imu);
-        // Pos3D pu_ea = coord_transformer.pc_to_pu(pc_ea);
-        // cv::Point2d pi_ea(pu_ea(0, 0), pu_ea(1, 0));
-        // cv::circle(im2show, pi_ea, 5, {255, 0, 0}, 3); // blue
 
         // estimated armor, vehicle model
         Eigen::Matrix<double, 4, 1> estimated_armor_m = target.estimated_armor_m;
@@ -422,27 +325,6 @@ namespace plan
         // === 绘制预测的瞄准目标（红色圆圈） ===
         cv::Point2d pa_aim(500-plan.aimed_armor_pos(0, 0)*percentage, origin_y-plan.aimed_armor_pos(1, 0)*percentage);
         cv::circle(hh, pa_aim, 5, {0, 0, 255}, 3);  // red
-
-        // cv::Point2d pw(500-target.tracked_state(2, 0)*percentage, origin_y-target.tracked_state(0, 0)*percentage);
-        // cv::circle(hh, pw, 5, {255, 0, 0}, 3);  // blue
-
-        // // std::cout << pw << std::endl;
-
-        // // cv::line(im2show, 500-target.tracked_measurement(2,0), 500-target.tracked_measurement(0,0), {255, 0, 0}, 2);
-        // cv::Point2d pa(500-target.tracked_measurement(1,0)*percentage, origin_y-target.tracked_measurement(0,0)*percentage);
-        // cv::circle(hh, pa, 5, {0, 255, 0}, 3);  // green
-
-        // Eigen::Matrix<double, 4, 1> tt = planner.whole_state_2_measurement(target.tracked_state);
-        // cv::Point2d pa_state(500-tt(1,0)*percentage, origin_y-tt(0,0)*percentage);
-        // cv::circle(hh, pa_state, 5, {255, 0, 0}, 3);
-
-        // cv::Point2d p_armor_left(500-(target.tracked_measurement(1,0) + 0.066*cos(-target.tracked_measurement(3, 0)))*percentage, 
-        //                          origin_y-(target.tracked_measurement(0,0) + 0.066*sin(-target.tracked_measurement(3, 0)))*percentage);
-        // cv::Point2d p_armor_right(500-(target.tracked_measurement(1,0) - 0.066*cos(-target.tracked_measurement(3, 0)))*percentage, 
-        //                          origin_y-(target.tracked_measurement(0,0) - 0.066*sin(-target.tracked_measurement(3, 0)))*percentage);
-        // cv::line(hh, p_armor_left, p_armor_right, {0, 255, 0}, 2);
-
-        // cv::line(hh, pw, pa, {255, 0, 0}, 2);
 
         cv::Point2d origin(500,500);
         int r = 200;

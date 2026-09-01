@@ -1,6 +1,6 @@
 //
-// Created for pipeline refactor - SensorSubModule
-// Wraps original Sensor logic as SubModule (Camera only, hardware communication moved to hardware::TimedSerial)
+// SensorSubModule
+// Reads camera or video input. Hardware communication is handled by TimedSerial.
 //
 
 #include "sensor_submodule.hpp"
@@ -11,11 +11,7 @@
 #include <thread>
 #include <video/video_wrapper.hpp>
 #ifdef ENABLE_HIKCAM
-#warning ENABLE_HIKCAM
 #include <hikcam/hikcam_wrapper.hpp>
-#else
-#warning
-#warning DISABLE_HIKCAM
 #endif
 
 namespace sensor
@@ -84,7 +80,6 @@ namespace sensor
         else
         {
             is_image_input_flipped = false;
-            // LOGM_S("[sensor_submodule] Input image will not be flipped");
         }
 
         LOGM_S("[sensor_submodule] construction completed");
@@ -102,8 +97,6 @@ namespace sensor
     SubModuleResult SensorSubModule::process(std::shared_ptr<ThreadDataPack> data,
                                              const pipeline::BasicTask *parent)
     {
-        auto t1 = std::chrono::steady_clock::now();
-
         // 读取图像
         bool state = video->read(data->frame, config_.debug.log_text);
         data->time = std::chrono::high_resolution_clock::now();
@@ -122,14 +115,12 @@ namespace sensor
             }
             video->close(config_.debug.log_text);
             video->init(config_.debug.log_text);
-            // 在失败情况下，返回 false 表示不应该传递到下游
             return SubModuleResult::FAILURE;
         }
 
         if (data->frame.empty())
         {
             LOGE_S("[sensor_submodule] empty image");
-            // 在空图像情况下，也返回 false
             return SubModuleResult::FAILURE;
         }
 
@@ -137,8 +128,6 @@ namespace sensor
         {
             cv::flip(data->frame, data->frame, -1);
         }
-
-        auto t2 = std::chrono::steady_clock::now();
 
         // 显示图像（如果需要）
         if (config_.debug.show_image)
@@ -152,10 +141,9 @@ namespace sensor
         if (config_.debug.log_text)
         {
             CNT_FPS(total_fps, {});
-            // LOGM_S("[sensor_submodule]Info: Idx = %d, Bytes = %d", data->index, data->frame.size().height * data->frame.size().width);
         }
 
-        // 成功处理，返回 true 表示应该传递到下游
+        // 成功处理，返回 SUCCESS 表示数据可以传递到下游
         return SubModuleResult::SUCCESS;
     }
 }

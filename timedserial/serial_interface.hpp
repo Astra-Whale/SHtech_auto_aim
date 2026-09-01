@@ -1,6 +1,5 @@
 //
-// Serial Interface - Event-Driven Architecture
-// Created based on refactoring guide for decoupling driver and business logic
+// Serial driver abstraction
 //
 
 #ifndef SENSOR_SERIAL_INTERFACE_H
@@ -49,13 +48,13 @@ public:
     /**
      * @brief 发送控制指令到下位机
      * @param yaw 目标yaw角度
-     * @param yaw_spd yaw角速度
      * @param pitch 目标pitch角度
+     * @param yaw_spd yaw角速度
      * @param pitch_spd pitch角速度
      * @param dist 目标距离
      * @param shoot 射击指令（默认值 0 表示不射击）
      */
-    virtual void transmit_cmd(float yaw, float yaw_spd, float pitch, float pitch_spd, float yaw_acc, float pitch_acc, float dist, uint8_t shoot = 0, uint8_t target_id = 0) = 0;
+    virtual void transmit_cmd(float yaw, float pitch, float yaw_spd, float pitch_spd, float yaw_acc, float pitch_acc, float dist, uint8_t shoot = 0, uint8_t target_id = 0) = 0;
 };
 
 #endif // SENSOR_SERIAL_INTERFACE_H

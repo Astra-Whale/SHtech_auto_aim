@@ -13,17 +13,8 @@
 
 #include "Planner.hpp"
 
-// === 评测标准开关 ===
-#define ASSESSMENT_CRITERIA 0
-
-#if ASSESSMENT_CRITERIA
-int vx_constant_counter = 0;
-#endif
-
 namespace predict
 {
-    int a=0;
-
     /**
      * @brief 构造函数 - 初始化弹道规划器
      * @param comm_latency_ 通信延迟时间 (秒)
@@ -237,9 +228,6 @@ namespace predict
             Trajectory traj;
             traj = get_trajectory(target, total_delay, yaw0, bullet_speed, attitude_yaw, attitude_pitch, R_world2imu);
 
-            target_yaw_raw = traj(0, HALF_HORIZON) + yaw0;
-            target_pitch_raw = traj(2, HALF_HORIZON);
-
             // === 求解偏航轴MPC ===
             Eigen::VectorXd x0(2);
             x0 << traj(0, 0), traj(1, 0);
@@ -271,8 +259,6 @@ namespace predict
             }
 
             double dt_since_jump = duration_cast<microseconds>(std::chrono::high_resolution_clock::now() - armor_jump_tp).count() / 1e6;
-            // std::cout << dt_since_jump << std::endl;
-
             if (dt_since_jump > armor_jump_interval) {
                 armor_jump = false;
             }
@@ -282,28 +268,6 @@ namespace predict
 
             last_shooted_armor_pos = shooted_armor_pos; 
 
-            // if (a % 10 == 0) {
-            //     LOGT_S();
-
-            //     for (int i=0; i != HORIZON; i++) {
-            //         std::cout << traj(0, i) + yaw0 << std::endl;
-            //     }
-
-            //     for (int i=0; i != HORIZON; i++) {
-            //         std::cout << (yaw_solver_->work->x(0, i) + yaw0) << std::endl;
-            //     }
-            // }
-            // a++;
-
-            // LOGT_S();
-
-            // std::cout << traj(0, HALF_HORIZON + shoot_offset) + yaw0 << std::endl;
-            // std::cout << (yaw_solver_->work->x(0, HALF_HORIZON + shoot_offset) + yaw0) << std::endl;
-
-            // std::cout << target_yaw_raw << std::endl;
-            // std::cout << plan.target_yaw << std::endl;
-            // std::cout << armor_jump << std::endl;
-
             // === 射击决策 ===
             // 基于轨迹跟踪精度决定是否射击
             if (!armor_jump)
@@ -311,8 +275,6 @@ namespace predict
                     traj(2, HALF_HORIZON + shoot_offset) - pitch_solver_->work->x(0, HALF_HORIZON + shoot_offset)) < same_trace_threshold;
             else
                 plan.fire_enable = 0;  // 装甲板切换期间禁止射击
-
-            // std::cout << plan.fire_enable << std::endl;
 
             plan.target_distance = distance_3D(plan.aimed_armor_pos);
 
@@ -363,17 +325,10 @@ namespace predict
             hit_pos(0, 0) += sin(center_yaw) * next_r;
             hit_pos(1, 0) += cos(center_yaw) * next_r;
 
-            // std::cout << "bullet speed: " << bullet_speed << std::endl;
-            
             fly_time = cal_fly_time(hit_pos, bullet_speed, consider_air_resistence);
 
             process_latency = duration_cast<microseconds>(std::chrono::high_resolution_clock::now() - tp).count() / 1e6;   
             total_delay = process_latency + comm_latency + fly_time;
-
-            // std::cout << "total_delay: " << total_delay << std::endl;
-            // std::cout << "comm_latency: " << comm_latency << std::endl;
-            // std::cout << "fly_time: " << fly_time << std::endl;
-            // std::cout << "process_latency: " << process_latency << std::endl;
 
             // 预测车辆中心位置
             Pos3D aimed_center_pos;
@@ -468,47 +423,18 @@ namespace predict
 
             }
 
-            #if ASSESSMENT_CRITERIA
-                if (abs(target.tracked_state(3, 0)) > 0.9) {
-                    vx_constant_counter++;
-
-                    if (vx_constant_counter > 20) {
-                        if (duration_cast<microseconds>(std::chrono::high_resolution_clock::now() - fire_enable_tp).count() / 1e6 > shoot_interval) {
-                            if (aimed_armor_index != -1){
-                                plan.fire_enable = 3;
-                                fire_enable_tp = std::chrono::high_resolution_clock::now();
-                            }
-                            else {
-                                plan.fire_enable = 0;
-                            }
-                        }
-                        else {
-                            plan.fire_enable = 0;
-                        }
-                    }
-                    else {
-                        plan.fire_enable = 0;
-                    }
-                    
-                }
-                else {
-                    plan.fire_enable = 0;
-                    vx_constant_counter = 0;
-                }
-            #else
-                if (duration_cast<microseconds>(std::chrono::high_resolution_clock::now() - fire_enable_tp).count() / 1e6 > shoot_interval) {
-                    if (aimed_armor_index != -1){
-                        plan.fire_enable = 3;
-                        fire_enable_tp = std::chrono::high_resolution_clock::now();
-                    }
-                    else {
-                        plan.fire_enable = 0;
-                    }
+            if (duration_cast<microseconds>(std::chrono::high_resolution_clock::now() - fire_enable_tp).count() / 1e6 > shoot_interval) {
+                if (aimed_armor_index != -1){
+                    plan.fire_enable = 3;
+                    fire_enable_tp = std::chrono::high_resolution_clock::now();
                 }
                 else {
                     plan.fire_enable = 0;
                 }
-            #endif
+            }
+            else {
+                plan.fire_enable = 0;
+            }
 
             if (debug)
                 std::cout << "[predictor] target: vehicle center with vehicle model" << std::endl;

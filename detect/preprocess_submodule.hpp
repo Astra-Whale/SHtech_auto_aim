@@ -1,6 +1,6 @@
 //
-// Created for pipeline refactor - PreprocessSubModule
-// Splits common detector image preprocessing out of DetectSubModule
+// PreprocessSubModule
+// Converts source frames to the detector input format.
 //
 
 #ifndef DETECT_PREPROCESS_SUBMODULE_H

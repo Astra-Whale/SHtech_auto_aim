@@ -21,7 +21,7 @@ if(USE_HIKCAM)
     LINK_DIRECTORIES($ENV{MVS_PATH})
 
     FILE(GLOB MVS_LIBS "$ENV{MVS_PATH}/lib*.so")
-    # 只编译新的 SubModule，移除原有的 sensor.cpp 和 UartIMU
+    # Build the sensor submodule and video wrappers.
     ADD_LIBRARY(sensor OBJECT sensor_submodule.cpp ${video_src} ${hikcam_src})
 
     target_compile_definitions(sensor PRIVATE ENABLE_HIKCAM=1)
@@ -30,7 +30,7 @@ if(USE_HIKCAM)
     set_target_properties(sensor PROPERTIES LINK_FLAGS ${MVS_LD_FLAGS})
 else()
 
-    # 只编译新的 SubModule，移除原有的 sensor.cpp 和 UartIMU
+    # Build the sensor submodule and video wrappers.
     ADD_LIBRARY(sensor OBJECT sensor_submodule.cpp ${video_src})
     target_link_libraries(sensor ${OpenCV_LIBS})
 

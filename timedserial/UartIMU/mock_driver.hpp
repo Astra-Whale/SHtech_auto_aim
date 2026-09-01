@@ -107,15 +107,9 @@ public:
         initialized_ = false;
     }
     
-    // 实现发送接口 - 空操作
-    void transmit_cmd(float yaw, float yaw_spd, float pitch, float pitch_spd, float yaw_acc, float pitch_acc, float dist, uint8_t shoot = 1, uint8_t target_id = 0) override
+    // 离线模式不发送串口数据
+    void transmit_cmd(float yaw, float pitch, float yaw_spd, float pitch_spd, float yaw_acc, float pitch_acc, float dist, uint8_t shoot = 0, uint8_t target_id = 0) override
     {
-        // Mock driver does nothing on transmit
-        // Optionally log for debugging
-        int shoot_flag = static_cast<int>(shoot);
-        if (false) {  // Set to true for verbose debugging
-            LOGM_S("[MockDriver] yaw=%.2f, yaw_spd=%.2f, pitch=%.2f,pitch_spd=%.2f, dist=%.2f, shoot=%d", yaw,yaw_spd, pitch,pitch_spd, dist, shoot_flag);
-        }
     }
 
     // 检查是否已初始化

@@ -1,6 +1,6 @@
 //
-// Created for pipeline refactor - DetectSubModule
-// Wraps original Detect logic as SubModule
+// DetectSubModule
+// Runs the selected inference backend.
 //
 
 #include "detect_submodule.hpp"

@@ -1,6 +1,6 @@
 //
-// Created for pipeline refactor - PreprocessSubModule
-// Splits common detector image preprocessing out of DetectSubModule
+// PreprocessSubModule
+// Converts source frames to the detector input format.
 //
 
 #include "preprocess_submodule.hpp"
@@ -38,15 +38,6 @@ namespace detect
         {
             cv::imshow("detect_preprocess", data->detect_input);
             cv::waitKey(1);
-        }
-
-        if (config_.debug.log_text)
-        {
-            // LOGM_S("[preprocess] output %dx%d from source %dx%d",
-            //        data->detect_input.cols,
-            //        data->detect_input.rows,
-            //        data->frame.cols,
-            //        data->frame.rows);
         }
 
         return SubModuleResult::SUCCESS;

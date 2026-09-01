@@ -1,6 +1,6 @@
 //
-// Created for pipeline refactor - CornerRefineSubModule
-// Moves armor corner refinement out of DetectSubModule
+// CornerRefineSubModule
+// Refines detected armor corners using traditional computer vision.
 //
 
 #include "corner_refine_submodule.hpp"

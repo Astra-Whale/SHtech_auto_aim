@@ -75,24 +75,6 @@ namespace detect
       cv::Rect left_roi = calculateLightRoi(left_center, left_height, left_width,left_length);
       cv::Rect right_roi = calculateLightRoi(right_center, right_height, right_width,right_length);
 
-    //       // 输出左 ROI 参数及结果
-    // std::cout << "Left ROI Input Parameters:" << std::endl;
-    // std::cout << "  center: (" << left_center.x << ", " << left_center.y << ")" << std::endl;
-    // std::cout << "  height: " << left_height << std::endl;
-    // std::cout << "  width: " << left_width << std::endl;
-    // std::cout << "  length: " << left_length << std::endl;
-    // std::cout << "Left ROI Result: x=" << left_roi.x << ", y=" << left_roi.y 
-    //           << ", width=" << left_roi.width << ", height=" << left_roi.height << std::endl;
-
-    // // 输出右 ROI 参数及结果
-    // std::cout << "\nRight ROI Input Parameters:" << std::endl;
-    // std::cout << "  center: (" << right_center.x << ", " << right_center.y << ")" << std::endl;
-    // std::cout << "  height: " << right_height << std::endl;
-    // std::cout << "  width: " << right_width << std::endl;
-    // std::cout << "  length: " << right_length << std::endl;
-    // std::cout << "Right ROI Result: x=" << right_roi.x << ", y=" << right_roi.y 
-    //           << ", width=" << right_roi.width << ", height=" << right_roi.height << std::endl;
-      
       // Ensure ROIs stay within image boundaries
       left_roi = validateRect(left_roi, input.cols, input.rows);
       right_roi = validateRect(right_roi, input.cols, input.rows);
@@ -294,27 +276,13 @@ namespace detect
     // Extract ROI from the image
     cv::Mat roi_img = rgb_img(roi);
 
-    // Fast green channel extraction
-    // cv::Mat green_channel(roi_img.rows, roi_img.cols, CV_8UC1);
-    // for (int i = 0; i < roi_img.rows; i++) {
-    //   const uchar* src = roi_img.ptr<uchar>(i);
-    //   uchar* dst = green_channel.ptr<uchar>(i);
-    //   for (int j = 0; j < roi_img.cols; j++) {
-    //     *dst++ = src[1]; // Green channel in BGR
-    //     src += 3;        // Move to next pixel
-    //   }
-    // }
-    
+    // Convert the ROI to grayscale
     cv::Mat green_channel;
     cv::cvtColor(roi_img, green_channel, cv::COLOR_RGB2GRAY);
-    // Calculate the light bar area: length × (length/4) considering 4:1 ratio
     // Apply threshold
     cv::Mat binary_img;
     cv::threshold(green_channel, binary_img, binary_thres, 255, cv::THRESH_BINARY);
 
-    // cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(1, 3));
-    // cv::morphologyEx(binary_img, binary_img, cv::MORPH_OPEN, kernel);
-    
     return binary_img;
   }
 
@@ -396,7 +364,6 @@ namespace detect
 
       // Create light bar
       LightBar light(top, bottom);
-      // light.width = cv::norm(cv::Point2f(r_rect.size.width, r_rect.size.height)) / 2.0;
       light.width = points.size()/light.length;
       light.tilt_angle = angle_k;
 
@@ -421,14 +388,6 @@ namespace detect
 
     // Check angle
     bool angle_ok = light.tilt_angle < light_params.max_angle;
-
-    // if (ratio_ok == false) {
-    //   std::cout << "Light bar rejected due to ratio: " << ratio << std::endl;
-    // }
-
-    // if (angle_ok == false) {
-    //   std::cout << "Light bar rejected due to angle: " << light.tilt_angle << std::endl;
-    // }
 
     return ratio_ok && angle_ok;
   }

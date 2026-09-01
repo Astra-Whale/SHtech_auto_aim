@@ -19,16 +19,15 @@ public:
     ~VideoWrapper();
 
     /**
-     * @brief initialize cameras
-     * @return bool value: whether it success
+     * @brief initialize the video file
+     * @return `true` when the video file is open
      */
     bool init(bool debug = false) final;
 
     /**
-     * @brief read images from camera
-     * @param src_left : output source video of left camera
-     * @param src_right : output source video of right camera
-     * @return bool value: whether the reading is successful
+     * @brief read the next video frame
+     * @param src output video frame
+     * @return `true` when a frame is read successfully
      */
     bool read(cv::Mat &src, bool debug = false) final;
     bool setBrightness(int gain);

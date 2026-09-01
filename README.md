@@ -133,7 +133,7 @@ cmake --build build -j
 yaw, pitch, yaw_speed, pitch_speed, yaw_acc, pitch_acc, distance, shoot, target_id
 ```
 
-上述顺序与 `advv_detection_t` 的串口字段顺序一致。抽象 `SerialInterface` 和 `MockDriver` 仍使用另一组参数名，当前不改变 `UartDriver` 实机路径的传输结果。新增驱动时应按上述字段语义实现，不要只根据位置参数名推断含义。
+上述顺序与 `advv_detection_t` 的串口字段顺序一致。`SerialInterface`、`UartDriver` 和 `MockDriver` 均按上述字段语义传递参数。新增驱动时应保持该顺序，不要只根据位置参数名推断含义。
 
 `PlannerSubModule` 会将目标角度转换为度，再发送到 `TimedSerial`。角速度和角加速度保持弧度每秒和弧度每秒平方。这里描述的是当前代码的单位，不代替下位机协议约定。
 

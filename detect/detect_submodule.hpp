@@ -1,6 +1,6 @@
 //
-// Created for pipeline refactor - DetectSubModule
-// Wraps original Detect logic as SubModule
+// DetectSubModule
+// Runs the selected inference backend.
 //
 
 #ifndef DETECT_DETECT_SUBMODULE_H
@@ -42,7 +42,7 @@ namespace detect
          * @brief   子模块处理函数
          * @param[in,out] data   输入输出数据包，直接在原数据上修改
          * @param[in] parent     父任务指针，用于生命周期检查
-         * @return  bool         返回 true 表示数据应该传递到下游，false 表示丢弃数据
+         * @return  SubModuleResult 表示当前数据包的处理结果
          */
         SubModuleResult process(std::shared_ptr<ThreadDataPack> data, 
                     const pipeline::BasicTask* parent) override;

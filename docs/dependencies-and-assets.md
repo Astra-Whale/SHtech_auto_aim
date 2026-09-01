@@ -133,7 +133,7 @@ AXCL 和 TensorRT 保留模型输出的类别编号。MIGraphX 的 `SZU0526`路�
 | --- | --- | --- |
 | `tools/handeye_calibration.py` | `handeye_calibration_data/`、棋盘格图像、`euler_*.txt`、OpenCV 和 NumPy | 示例脚本，内含固定相机参数 |
 | `tools/pipeline_visualize.py` | 当前工作目录下的 `25.txt`、Matplotlib | 日志格式依赖外部文件，Stage View 标记为暂停使用 |
-| `tools/data_plotter.py` | 已构建的 `./build/auto-aim`、Matplotlib Tk 后端 | 实时观察脚本，不提供独立环境文件 |
+| `tools/data_plotter.py` | 已构建的 `./build/auto-aim`、Matplotlib Tk 后端 | 规划输出入口已移除，脚本暂不作为可用工具 |
 | `tools/predictor_simulation.py` | OpenCV、NumPy、Matplotlib 和 Python `tinympc` 包 | Python 包与 C++ vendored TinyMPC 不是同一安装路径 |
 
 这些脚本不参与 `auto-aim` 主程序构建。运行前需要准备脚本所需的输入文件和 Python 依赖。仓库不把现场日志和临时数据作为工具输入的一部分提交。
