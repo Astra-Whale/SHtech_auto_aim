@@ -37,7 +37,7 @@ Sensor → Preprocess → Detect
 - `Planner`：计算弹道补偿、云台目标和时间序列指令
 - `TimedSerial`：按固定周期向串口驱动发送最新指令
 
-流水线使用固定数量的 `ThreadDataPack` 在阶段之间传递数据。串口状态通过消息桥提供给传感器和预测模块，规划结果通过消息桥交给 `TimedSerial`。
+流水线使用固定数量的 `ThreadDataPack` 在阶段之间传递数据。串口状态通过消息桥提供给 `Sensor`，再随数据包流向 `Predictor` 和 `Planner`。规划结果通过消息桥交给 `TimedSerial`。
 
 ## 代码导航
 
@@ -56,7 +56,7 @@ Sensor → Preprocess → Detect
 
 ## AX650 部署
 
-AX650 用户使用[AX650 环境配置仓库](https://github.com/Astra-Whale/SHtech_auto_aim_AX650-EnvCfg)准备系统环境。该仓库面向上科大定制 AX650 镜像，负责安装 AXCL SDK、MVS、RMCVSerial 和通用编译依赖，并提供 Auto-Aim 构建入口。
+AX650 用户使用[AX650 环境配置仓库](https://github.com/Astra-Whale/SHtech_auto_aim_AX650-EnvCfg)准备系统环境。该仓库面向上科大定制 AX650 镜像，负责补充 AXCL 头文件、安装 MVS、RMCVSerial 和通用编译依赖，并提供 Auto-Aim 构建入口。AXCL 运行库依赖目标镜像中的 `/soc` 环境。
 
 ```bash
 git clone --branch for_2026_open_source \
@@ -65,7 +65,11 @@ cd SHtech_auto_aim_AX650-EnvCfg
 bash AutoInstall.sh
 ```
 
-安装脚本包含交互式步骤。主线编译默认包含海康支持，因此 AX650 部署应安装 MVS，不要跳过 MVS 安装。脚本当前会获取 GitHub 公共版本。内部开发需要在环境准备完成后，切换到目标 GitLab 分支和 commit。
+安装脚本包含交互式步骤。主线编译默认包含海康支持，因此 AX650 部署应安装 MVS，不要跳过 MVS 安装。脚本当前会获取 GitHub 公共版本。内部开发需要在环境准备完成后，切换到目标 GitLab 分支和 commit。脚本结束后，重新加载环境变量，再执行手动构建：
+
+```bash
+source ~/.bashrc
+```
 
 完成环境准备后，在 Auto-Aim 仓库根目录执行构建：
 
@@ -93,6 +97,8 @@ cmake --build build -j4
 | `TRT` | CUDA 设备 | CUDA 和 TensorRT |
 | `ONNX` | ROCm 设备 | MIGraphX 和 ROCm |
 
+当前示范主线以 `AXCL` 为准。`TRT` 和 `ONNX` 后端保留在仓库中，但维护和验证不充分。
+
 通用依赖包括 OpenCV、Eigen3 和 RMCVSerial。启用海康相机时还需要 MVS 运行库，并设置 `MVS_PATH`。
 
 示例配置命令：
@@ -111,7 +117,7 @@ cmake --build build -j
 | 字段 | 说明 |
 | --- | --- |
 | `source` | `0` 表示海康相机，其他值表示视频文件路径 |
-| `port` | 串口设备路径，`None` 或空值使用 `MockDriver` |
+| `port` | 串口设备路径，`None` 使用 `MockDriver` |
 | `model` | 模型文件路径 |
 | `camera_para` | 相机内参和相机到 IMU 的外参 |
 | `planner_para` | Planner 参数文件 |
@@ -152,9 +158,11 @@ Uart 路径会读取 MCU 姿态包中的 `shoot_speed`，随后将 `robot_speed_
 
 ### 类别编号和装甲尺寸
 
-检测结果中的 `color_id` 约定为 `0=红色`、`1=蓝色`、`2=灰色`。公共 `tag_id` 约定为 `0=无目标`、`1–7=机器人`、`8=前哨站`、`9=基地`。
+代码侧使用 `color_id=0` 表示红色、`1` 表示蓝色、`2` 表示灰色。代码侧使用 `tag_id=0` 表示无目标、`1–7` 表示机器人、`8` 表示前哨站、`9` 表示基地。这些编号是当前接口中的目标值，不等同于所有模型的原始标签表。
 
 AXCL 和 TensorRT 当前直接保留模型输出的原始类别编号。MIGraphX 的 `SZU0526` 路径会把原始类别映射到上述公共编号：原始 `0` 映射为 `7`，原始 `6` 映射为 `8`，原始 `7` 和 `8` 映射为 `9`，其他机器人类别保持原值。
+
+颜色编号也由后端分别处理。AXCL 和 TensorRT 直接保留模型输出，MIGraphX 的 `SZU0526` 路径会交换原始的红、蓝编号后写入 `color_id`。
 
 PnP 当前根据 `armor_number` 选择大、小装甲板模型。实现把 `0`、`1`、`8` 判定为大装甲板，其余编号判定为小装甲板。训练标签和比赛目标编号的最终对应关系仍需结合模型标签表确认，本段描述的是当前代码行为，不是新的标签规范。
 
@@ -172,7 +180,7 @@ PnP 当前根据 `armor_number` 选择大、小装甲板模型。实现把 `0`�
 
 ## 系统服务与开机自启动
 
-`install_service.py` 生成 systemd 服务和启动别名。安装服务不会自动启用开机自启动，需要单独执行 `autoaim-enable`。该脚本使用固定目录和较高权限，适合内部实验，不属于推荐的公开部署路径。
+`install_service.py` 生成 systemd 服务和启动别名。安装服务不会自动启用开机自启动，需要单独执行 `autoaim-enable`。当前服务脚本要求仓库位于 `/root/auto-aim`，并使用固定目录和较高权限，适合内部实验，不属于推荐的公开部署路径。
 
 ```bash
 sudo python3 install_service.py
