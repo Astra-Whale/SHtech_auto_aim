@@ -128,7 +128,23 @@ cmake --build build -j
 - `asset/models/SZU0526_fp32input_512x640_nopre_fixoutput.onnx`
 - `test.avi`
 
-模型文件对应不同平台和输出约定。更换 `INFERENCE_BACKEND` 时，需要同时确认输入尺寸、颜色格式、输出张量、类别表和后处理方式，不能只替换一个 CMake 参数。
+模型文件对应不同平台和输出约定：
+
+| 模型 | 对应后端 | 用途 |
+| --- | --- | --- |
+| `SKD250526.axmodel` | `AXCL` | AX650 主路径 |
+| `SKD250526.onnx` | `TRT` | TensorRT 路径 |
+| `SZU0526_fp32input_512x640_nopre_fixoutput.onnx` | `ONNX` | MIGraphX 路径 |
+
+更换 `INFERENCE_BACKEND` 时，需要同时确认输入尺寸、颜色格式、输出张量、类别表和后处理方式，不能只替换一个 CMake 参数。`ONNX` 后端使用 `SZU0526` 模型，不使用 `SKD250526.onnx` 的输出约定。
+
+### 类别编号和装甲尺寸
+
+检测结果中的 `color_id` 约定为 `0=红色`、`1=蓝色`、`2=灰色`。公共 `tag_id` 约定为 `0=无目标`、`1–7=机器人`、`8=前哨站`、`9=基地`。
+
+AXCL 和 TensorRT 当前直接保留模型输出的原始类别编号。MIGraphX 的 `SZU0526` 路径会把原始类别映射到上述公共编号：原始 `0` 映射为 `7`，原始 `6` 映射为 `8`，原始 `7` 和 `8` 映射为 `9`，其他机器人类别保持原值。
+
+PnP 当前根据 `armor_number` 选择大、小装甲板模型。实现把 `0`、`1`、`8` 判定为大装甲板，其余编号判定为小装甲板。训练标签和比赛目标编号的最终对应关系仍需结合模型标签表确认，本段描述的是当前代码行为，不是新的标签规范。
 
 `test.avi` 用于离线演示和回放。视频和模型的来源、授权范围以及最终公开版本的哈希信息仍需在发布前补齐。
 
@@ -144,28 +160,28 @@ cmake --build build -j
 
 ## 系统服务与开机自启动
 
-`install_service.py` 生成 systemd 服务和启动别名。安装服务不会自动启用开机自启动，需要单独执行 `auto-aim-enable`。该脚本使用固定目录和较高权限，适合内部实验，不属于推荐的公开部署路径。
+`install_service.py` 生成 systemd 服务和启动别名。安装服务不会自动启用开机自启动，需要单独执行 `autoaim-enable`。该脚本使用固定目录和较高权限，适合内部实验，不属于推荐的公开部署路径。
 
 ```bash
 sudo python3 install_service.py
 source ~/.bashrc
 
 # 设置开机自启动
-auto-aim-enable
+autoaim-enable
 
 # 立即启动
-auto-aim-start
+autoaim-start
 ```
 
 常用服务命令如下：
 
 | 命令 | 作用 |
 | --- | --- |
-| `auto-aim-enable` | 设置开机自启动 |
-| `auto-aim-disable` | 取消开机自启动 |
-| `auto-aim-start` | 立即启动服务 |
-| `auto-aim-stop` | 停止服务 |
-| `auto-aim-status` | 查看服务状态 |
+| `autoaim-enable` | 设置开机自启动 |
+| `autoaim-disable` | 取消开机自启动 |
+| `autoaim-start` | 立即启动服务 |
+| `autoaim-stop` | 停止服务 |
+| `autoaim-status` | 查看服务状态 |
 
 前台运行和视频演示通过直接执行 `./build/auto-aim` 完成。服务部署前需要确认安装目录、日志权限和停止行为符合目标设备要求。
 
