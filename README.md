@@ -54,6 +54,35 @@ Sensor → Preprocess → Detect
 | 弹道和云台规划 | `planner/` |
 | 串口接口和驱动 | `timedserial/` |
 
+## AX650 部署
+
+AX650 用户使用[AX650 环境配置仓库](https://github.com/Astra-Whale/SHtech_auto_aim_AX650-EnvCfg)准备系统环境。该仓库面向上科大定制 AX650 镜像，负责安装 AXCL SDK、MVS、RMCVSerial 和通用编译依赖，并提供 Auto-Aim 构建入口。
+
+```bash
+git clone --branch for_2026_open_source \
+    https://github.com/Astra-Whale/SHtech_auto_aim_AX650-EnvCfg.git
+cd SHtech_auto_aim_AX650-EnvCfg
+bash AutoInstall.sh
+```
+
+安装脚本包含交互式步骤。主线编译默认包含海康支持，因此 AX650 部署应安装 MVS，不要跳过 MVS 安装。脚本当前会获取 GitHub 公共版本。内部开发需要在环境准备完成后，切换到目标 GitLab 分支和 commit。
+
+完成环境准备后，在 Auto-Aim 仓库根目录执行构建：
+
+```bash
+cmake -S . -B build -DINFERENCE_BACKEND=AXCL
+cmake --build build -j4
+```
+
+编译阶段固定包含海康支持。运行阶段通过 `launch.cfg` 选择相机或视频输入：
+
+| 模式 | `source` | `port` | 说明 |
+| --- | --- | --- | --- |
+| AX650 实机 | `0` | 实际串口路径 | 使用海康相机和下位机状态 |
+| AX650 离线演示 | `test.avi` | `None` | 使用仓库视频和 `MockDriver` |
+
+两种模式使用同一份包含海康支持的构建产物。离线演示只需要修改运行配置，不需要重新关闭海康编译。
+
 ## 构建后端
 
 根工程通过 `INFERENCE_BACKEND` 选择推理后端：
@@ -69,11 +98,11 @@ Sensor → Preprocess → Detect
 示例配置命令：
 
 ```bash
-cmake -S . -B build -DINFERENCE_BACKEND=AXCL -DUSE_HIKCAM=OFF
+cmake -S . -B build -DINFERENCE_BACKEND=AXCL
 cmake --build build -j
 ```
 
-根据目标平台，将 `AXCL` 替换为 `TRT` 或 `ONNX`。当前主机未必具备对应 SDK，因此配置成功不代表目标后端一定能完成编译。
+根据目标平台，将 `AXCL` 替换为 `TRT` 或 `ONNX`。主线构建默认启用海康支持。只有在明确不需要海康运行库的特殊主机环境中，才使用 `-DUSE_HIKCAM=OFF`。当前主机未必具备对应 SDK，因此配置成功不代表目标后端一定能完成编译。
 
 ## 配置和输入
 
@@ -111,7 +140,19 @@ cmake --build build -j
 ./build/auto-aim
 ```
 
-无硬件模式需要在 `launch.cfg` 中将 `source` 设置为视频文件，将 `port` 设置为 `None`，并选择与构建后端匹配的模型。
+无硬件模式需要在 `launch.cfg` 中将 `source` 设置为 `test.avi`，将 `port` 设置为 `None`，并选择与构建后端匹配的模型。该模式仍使用包含海康支持的构建产物。
+
+## 可选服务部署
+
+`install_service.py` 可生成 systemd 服务和启动别名。该脚本使用固定目录和较高权限，适合内部实验，不属于推荐的公开部署路径。
+
+```bash
+sudo python3 install_service.py
+source ~/.bashrc
+auto-aim-start
+```
+
+前台运行和视频演示通过直接执行 `./build/auto-aim` 完成。服务部署前需要确认安装目录、日志权限和停止行为符合目标设备要求。
 
 ## 当前边界
 
