@@ -217,6 +217,7 @@ autoaim-start
 
 ## 相关依赖
 
+- [依赖与示范资产](docs/dependencies-and-assets.md)：系统依赖、外部库、内置组件、模型和辅助工具的审计记录
 - [RMCVSerial](https://gitlab.rmshtech.com/computer-vision/tools/rmcv_serial)：内部串口库
 - 海康 MVS：相机运行库
 - [AX650 环境配置](https://github.com/Astra-Whale/SHtech_auto_aim_AX650-EnvCfg)：AX650 平台环境和部署材料
