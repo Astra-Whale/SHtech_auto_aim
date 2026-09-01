@@ -20,9 +20,9 @@
 | Eigen3 | 系统包 | 坐标变换、滤波和规划 | `find_package(Eigen3)` | 版本未锁定 |
 | Boost | RMCVSerial 的构建依赖 | `timedserial` 间接使用 | EnvCfg 构建 RMCVSerial 时安装 | 主工程没有独立的 Boost 检查 |
 | AXCL | AX650 基础镜像和 `/soc` | `detect/AXCL` | EnvCfg 解包 AXCL 头文件 | 运行库不在 `auto-aim` 仓库中 |
-| Hikvision MVS | `sensor/hikcam` 头文件和 EnvCfg 安装包 | `sensor` | EnvCfg 安装 MVS 并设置 `MVS_PATH` | 版本和授权范围尚未记录 |
-| RMCVSerial | 内部 GitLab `V1.1.1` | `timedserial/UartIMU` | EnvCfg 下载、构建并安装到 `/usr/local` | 压缩包版本与 CMake 内部版本不一致 |
-| TinyMPC | `planner/tinympc` | `planner` | 随仓库构建 `tinympcstatic` | 当前是改动后的源码快照，未记录源 commit |
+| Hikvision MVS | `sensor/hikcam` 头文件和 EnvCfg 安装包 | `sensor` | EnvCfg 安装 MVS 并设置 `MVS_PATH` | 内容指向 MVS 2.1.0，但包元数据不一致 |
+| RMCVSerial | 内部 GitLab `V1.1.1`，commit `56471959` | `timedserial/UartIMU` | EnvCfg 下载、构建并安装到 `/usr/local` | 压缩包版本与 CMake 内部版本不一致 |
+| TinyMPC | `planner/tinympc`，上游 commit `7cecb25e` | `planner` | 随仓库构建 `tinympcstatic` | 本地保留两处定制 |
 | CUDA、TensorRT | 系统运行时 | `detect/TensorRT` | 目标设备自行准备 | 只在 `INFERENCE_BACKEND=TRT` 时使用 |
 | ROCm、MIGraphX | `/opt/rocm` | `detect/ONNX` | 目标设备自行准备 | 只在 `INFERENCE_BACKEND=ONNX` 时使用 |
 
@@ -32,7 +32,7 @@
 
 ## EnvCfg 的职责
 
-[AX650 环境配置仓库](https://github.com/Astra-Whale/SHtech_auto_aim_AX650-EnvCfg)面向上科大定制 AX650 镜像。当前 `for_2026_open_source` 分支的 `AutoInstall.sh` 执行以下工作：
+[AX650 环境配置仓库](https://github.com/Astra-Whale/SHtech_auto_aim_AX650-EnvCfg)面向上科大定制 AX650 镜像。当前仓库只有 `for_2026_open_source` 一个公开分支，没有 tag。该分支的 HEAD 为 `161db3897e7098e800f9d654af197f7f5acb106c`。`AutoInstall.sh` 执行以下工作：
 
 - 安装 GCC、CMake、OpenCV、Eigen3 和 Boost 等通用构建依赖
 - 将 `sources/axcl_inc.tar` 解包到 `/soc`，补充 AXCL 头文件
@@ -42,7 +42,11 @@
 
 AXCL 运行库、AX650 固件和设备侧驱动由基础镜像或目标设备提供。EnvCfg 不会把这些运行时内容转换为通用 Ubuntu 环境。
 
-脚本当前没有为下载内容提供统一的 commit、版本清单或校验和。脚本历史还包含部署凭据。内部使用时应把凭据轮换和历史清理列为独立任务，文档不展示凭据内容。
+脚本文件没有 shebang，也没有错误中止策略。下载内容没有统一的 commit、版本清单或校验和。重复执行时，已有的 clone、build 目录和用户环境变量可能产生冲突。脚本历史还包含部署凭据。内部使用时应把凭据轮换和历史清理列为独立任务，文档不展示凭据内容。
+
+MVS 安装并非只复制头文件。`MVS_aarch.deb` 会安装 `/opt/MVS`，配置 udev 规则和 `MvLogServer` 服务，并修改系统环境变量。该包面向 arm64 目标镜像，安装前应审阅目标设备和系统持久化变更。
+
+脚本中的跳过提示使用未加引号的输入判断。直接回车时会触发 shell 判断错误，但脚本仍可能继续安装。AXCL 头文件包仅用于目标环境。其 `ax_isp_version.h` 标识 `AX650` 和 ISP 版本 `3.8.3`，头部包含 Axera 版权和复制限制说明。
 
 环境准备完成后，重新加载环境变量，再在 `auto-aim` 根目录构建：
 
@@ -61,10 +65,13 @@ cmake --build build -j4
 当前审计结果：
 
 - 源码使用 Boost.Asio，C++ 标准设置为 C++14
+- `V1.1.1` 标签对应 commit `56471959e36ef46d29517b5b34c4c3dad439c392`
 - 压缩包文件没有独立 README、LICENSE 或 NOTICE
 - 头文件和部分源文件带有 Apache 2.0 许可证说明，并列出 LeoDrive、Autoware Foundation 和 Trimble 的版权信息
 - CMake 项目内部版本仍写为 `1.0.0`，与下载标签 `V1.1.1` 不一致
+- CMake 生成的版本文件把 `RMCVSerial_VERSION` 当作字面量版本，不能提供可靠的 package 版本判断
 - `timedserial` 通过链接器名称 `RMCVSerial` 查找安装结果，没有使用导出的 CMake package 配置
+- 内部仓库已有 `V1.2.0` 标签，当前 EnvCfg 仍固定使用 `V1.1.1`
 
 内部文档可以把 `V1.1.1`作为当前依赖版本。后续资料整理仍需补齐源 commit、许可证文件和第三方声明。
 
@@ -72,13 +79,21 @@ cmake --build build -j4
 
 `sensor/hikcam/`保存编译所需的 MVS 头文件快照。`hikcam_wrapper.cpp`调用 `MV_CC_*`接口完成 USB 相机枚举、采集、像素格式处理和资源释放。当前封装只枚举 USB 设备，不包含 GigE 相机枚举路径。动态库由 EnvCfg 安装到目标设备，CMake 通过 `MVS_PATH` 查找。
 
-当前仓库没有记录 MVS SDK 的精确版本。MVS 安装包也不属于 `auto-aim` 主仓库。后续整理分发材料时，应根据海康分发条款单独确认头文件和二进制文件的授权范围。
+EnvCfg 中的 `MVS_aarch.deb` SHA-256 为：
+
+```text
+b9e27ac9c0f7e649cf15be826e2bdfb1e70d5b9bab523adaac53fbb3206c98cb
+```
+
+Debian 元数据把版本写为 `2019-05-30`。包内 Release Note 指向 `MVS 2.1.0 build201228`，SDK 文档目录显示 `V3.1.0`，动态库名包含 `3.1.3.0`。`sensor/hikcam/` 中的头文件与该安装包内 `MVS/include/` 内容一致，仅换行格式不同。
+
+当前仓库没有统一的 MVS SDK 版本字段。MVS 安装包也不属于 `auto-aim` 主仓库。Hikrobot 的 [MVS Linux 安装说明](https://www.hikrobotics.com/en2/source/vision/video/2022/12/19/Standard%20Camera_How_to_Install_MVS%20in%20Linux_22.12.17.pdf)以 `MVS 2.1.0 build201228`为例。后续整理分发材料时，应根据海康分发条款单独确认头文件和二进制文件的授权范围。
 
 ### TinyMPC
 
 `planner/tinympc/`直接编译为 `tinympcstatic`，`planner/Planner.cpp`使用它建立偏航和俯仰两个 MPC 求解器。当前 Planner 的预测时域为 `HORIZON = 100`，每个求解器限制为 10 次迭代。
 
-这份源码可以确认来自 [TinyMPC 官方仓库](https://github.com/TinyMPC/TinyMPC)，但本仓库没有记录上游 commit。当前快照与上游代码存在差异，至少删减了时间变化线性约束相关实现。后续应记录快照来源、修改范围和许可证归属，并加入对应第三方声明。
+这份源码可以确认来自 [TinyMPC 官方仓库](https://github.com/TinyMPC/TinyMPC)的 commit `7cecb25e450e888cbd431b446e1b14baf8c139d6`。上游仓库标注 MIT 许可。当前快照保留两处本地定制：注释掉收敛时输出，将 `Eigen.h` include 改为 `Eigen/Eigen`。后续上游加入的时间变化线性约束在本地快照中不存在。升级前应先重新审阅 Planner 的约束范围，并记录许可证归属和第三方声明。
 
 ## 模型与离线资产
 
@@ -125,12 +140,12 @@ AXCL 和 TensorRT 保留模型输出的类别编号。MIGraphX 的 `SZU0526`路�
 
 ## 验证状态与待办
 
-本次审计只做静态检查。当前 Ubuntu 环境没有 `/soc`、MVS、RMCVSerial、ROCm 或 TensorRT 运行库，因此没有执行 AX650 构建或正式单元测试。目标设备上的运行验证仍需由对应环境完成。
+本次审计以静态检查为主。当前 Ubuntu 环境没有 `/soc`、MVS、ROCm 或 TensorRT 运行库，也没有安装到系统路径的 RMCVSerial。独立下载的 RMCVSerial `V1.1.1` 源码已在临时目录完成 CMake 配置和构建。未执行 `auto-aim` 完整构建或正式单元测试，目标设备上的运行验证仍需由对应环境完成。
 
 后续按以下顺序补齐：
 
 - 记录 EnvCfg、RMCVSerial 和 TinyMPC 的精确版本或 commit
-- 补齐 MVS、模型和 `test.avi` 的来源与授权信息
+- 统一 MVS 包的版本字段，并补齐 MVS、模型和 `test.avi` 的来源与授权信息
 - 为 RMCVSerial 和 TinyMPC 形成第三方声明
 - 为 EnvCfg 下载内容补充校验和，轮换并清理历史部署凭据
 - 为辅助工具补充最小依赖说明，或明确标记为实验脚本
