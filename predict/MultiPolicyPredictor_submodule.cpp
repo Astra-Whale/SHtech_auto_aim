@@ -9,6 +9,8 @@
 
 #include "MultiPolicyPredictor_submodule.hpp"
 
+#include <limits>
+
 namespace predict
 {
     /**
@@ -375,7 +377,7 @@ namespace predict
 
     int MultiPolicyPredictorSubModule::select_target_id(double attitude_yaw, const Eigen::Matrix3d &R_world2imu) {
         std::vector<std::tuple<bbox_t, double, int>> candidate_armors;
-        int selected_target_id = 0;
+        int selected_target_id = -1;
 
         for (int i = 0; i < NUM_TRACKER; ++i) {
             if (trackers[i].get_tracker_state() == TrackingState::IDLE) {
@@ -384,12 +386,21 @@ namespace predict
 
             auto &armor = tracked_armors[i];
     
-            float yaw_in_camera;
-            Eigen::Matrix<double, 4, 1> measurement;
-            bool success = coord_transformer.pnp_get_measurement(armor.pts, armor.tag_id, armor.color_id,
-                                                                                attitude_yaw, R_world2imu, yaw_in_camera, measurement);
+            float yaw_in_camera = 0.0f;
+            Eigen::Matrix<double, 4, 1> measurement =
+                Eigen::Matrix<double, 4, 1>::Constant(std::numeric_limits<double>::quiet_NaN());
+            const bool success = coord_transformer.pnp_get_measurement(
+                armor.pts, armor.tag_id, armor.color_id,
+                attitude_yaw, R_world2imu, yaw_in_camera, measurement);
+            if (!success || !measurement.allFinite()) {
+                continue;
+            }
+
             Pos3D m_pw(measurement(1, 0), measurement(0, 0), measurement(2, 0));
-            double dist = distance_3D(m_pw);
+            const double dist = distance_3D(m_pw);
+            if (!std::isfinite(dist)) {
+                continue;
+            }
 
             candidate_armors.push_back(std::make_tuple(armor, dist, i));
         }
