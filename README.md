@@ -137,7 +137,7 @@ yaw, pitch, yaw_speed, pitch_speed, yaw_acc, pitch_acc, distance, shoot, target_
 
 `PlannerSubModule` 会将目标角度转换为度，再发送到 `TimedSerial`。角速度和角加速度保持弧度每秒和弧度每秒平方。这里描述的是当前代码的单位，不代替下位机协议约定。
 
-Uart 路径会读取 MCU 姿态包中的 `shoot_speed`，随后将 `robot_speed_mps` 设置为固定的 `24.5 m/s`。Planner 当前使用该固定值进行弹道和延迟计算。MockDriver 的初始射速为 `28.0 m/s`。因此，当前项目使用固定射速策略，不提供实时射速接口。协议字段含义确认后，再决定是否接入实时射速。
+Uart 路径会读取 MCU 姿态包中的 `shoot_speed`，随后将 `robot_speed_mps` 设置为临时 Mock 值 `24.5 m/s`。Planner 当前使用该临时值进行弹道和延迟计算。`MockDriver` 的离线初始射速为 `28.0 m/s`，同样属于 Mock 值。因此，当前项目不提供正式的实时射速接口。协议字段含义确认后，再决定是否接入实时射速。
 
 ## 模型和示范资产
 

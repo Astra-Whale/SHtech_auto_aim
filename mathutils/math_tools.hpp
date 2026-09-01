@@ -86,7 +86,7 @@ namespace mathutils
     /**
      * @brief 计算考虑重力影响的弹丸飞行时间
      * @param pw 目标在世界坐标系中的位置
-     * @param shoot_speed 弹丸初始速度 (m/s)，默认23 m/s
+     * @param shoot_speed 弹丸初始速度 (m/s)，默认 23 m/s。该默认值只用于直接调用，不是 Uart 路径的临时 Mock 射速
      * @return 飞行时间（秒），如果目标不可达则返回-1
      * @details 使用弹道学轨迹方程求解最佳发射角和对应的飞行时间
      *          通过求解二次方程找到两种可能的弹道，选择较短时间的弹道

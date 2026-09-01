@@ -102,7 +102,7 @@ inline const char* getSubModuleName(SubModuleName module) {
     }
 }
 
-constexpr float INF_BALL_SPEED = 30.0f; // 步兵弹速默认值 m/s
+constexpr float INF_BALL_SPEED = 30.0f; // 裁判系统默认值，用于状态合并，不是临时 Mock 射速
 
 struct DetectInputMap
 {
