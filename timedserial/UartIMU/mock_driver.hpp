@@ -49,6 +49,7 @@ public:
     MockDriver()
     {
         // 设置默认机器人状态
+        // 离线 Mock 默认射速，仅用于演示
         initial_status_.robot_speed_mps = 28.0f;
         initial_status_.enemy_color = EnemyColor::RED;
         initial_status_.game_state = GameState::COMMON;
