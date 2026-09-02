@@ -76,6 +76,7 @@ namespace predict
 
         // === 装甲板切换检测参数 ===
         /// @brief 装甲板切换时间间隔 (秒)
+        // 注意：当前 int 会将 0.1f 截断为 0，最终时间窗口待确认，暂不修改。
         const int armor_jump_interval = 0.1f;
 
         // === 旋转速度分类阈值 ===
