@@ -74,7 +74,6 @@ bool init(void)
     signal(SIGINT, int_handler);
     signal(SIGTERM, int_handler);
     signal(SIGSEGV, segv_handler);
-    screen = new Log();
 
     try {
     cmd_parser parser("launch.cfg");
