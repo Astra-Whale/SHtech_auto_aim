@@ -217,6 +217,21 @@ autoaim-start
 - 性能和命中率取决于模型、相机、机械、参数和测试场景，本 README 不给出无条件指标
 - 代码许可证、第三方声明和模型授权说明尚未统一，公开发布前必须补齐
 
+## 已查到但未修正的问题
+
+以下条目来自当前源码、配置和 Git 历史的静态检查。它们是已查到的问题或不完整行为，不表示符合预期的设计，也没有在本轮擅自修正。
+
+| 位置 | 已查到的事实 | 影响范围 | 当前处理 |
+| --- | --- | --- | --- |
+| `planner/Planner.hpp`、`planner/Planner.cpp` | `armor_jump_interval` 声明为 `int`，初始化值为 `0.1f`，实际值为 `0`。`dt_since_jump` 按秒计算后与该值比较 | 整车模型模式下的装甲板跳变禁射判断 | 时间窗口尚未确认，暂不修改 |
+| `entrystage/entryStage_submodule.cpp`、`common/pipeline.hpp` | `EntryStageSubModule::process()` 读取时间戳后，`PipelineTask` 才写入本次子模块的时间戳。日志读取的是数据包中已有的时间戳 | EntryStage 的耗时日志和流水线可视化数据 | 不调整计时机制，保留事实说明 |
+| `timedserial/timed_serial.cpp` | `handle_status_update()` 在 `sensor_mutex_` 保护下写入 `latest_robot_status_`，发送日志时直接读取同一对象的多个字段 | 开启 `timed_serial_log_text` 时的调试日志线程安全 | 暂不改并发结构 |
+| `sensor/video/video_wrapper.cpp` | `VideoWrapper::close()` 始终返回 `false`，也不调用 `video.release()` | 视频输入关闭状态和失败后的资源处理 | 行为边界尚未确认，暂不修改 |
+| `mathutils/IESEKF.hpp`、`mathutils/ExtendedKalman.hpp` | 当前主线没有找到对这两个文件的 include 或实例化。文件仍保留在仓库中 | 滤波器迁移残留和代码阅读范围 | 暂不删除，等待独立清理决定 |
+| `tools/data_plotter.py` | 脚本按 9 个输出值解析，当前规划输出入口已移除 | 辅助日志绘图工具 | 暂不修复，文档标记为不可用 |
+
+这份清单不表示当前程序无法运行，也不把未验证的推测写成算法结论。后续若修正其中一项，应单独说明依据、行为变化和验证范围。
+
 ## 相关依赖
 
 - [依赖与示范资产](docs/dependencies-and-assets.md)：系统依赖、外部库、内置组件、模型和辅助工具的审计记录
