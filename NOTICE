@@ -1,0 +1,31 @@
+# Third-party and asset notices
+
+## License scope
+
+Unless a file or section says otherwise, the original source code in this repository is provided under the MIT License in `LICENSE`. That license does not grant rights to third-party SDKs, model files, video files, or other assets with separate terms.
+
+## TinyMPC
+
+- Location: `planner/tinympc/`
+- Upstream: [TinyMPC](https://github.com/TinyMPC/TinyMPC)
+- Snapshot: commit `7cecb25e450e888cbd431b446e1b14baf8c139d6`
+- Upstream license: MIT
+
+The vendored snapshot contains local changes. The upstream license and copyright notices remain applicable to the corresponding files.
+
+## RMCVSerial
+
+- Repository: [RMCVSerial](https://gitlab.rmshtech.com/computer-vision/tools/rmcv_serial)
+- Version used by the current environment materials: `V1.1.1`
+- Commit: `56471959e36ef46d29517b5b34c4c3dad439c392`
+- License information: the dependency contains Apache 2.0 notices and third-party copyright notices in its own source files
+
+RMCVSerial is an external dependency and is not included in this repository. Obtain and use it under its own license terms.
+
+## Hikvision MVS and AXCL SDKs
+
+The files under `sensor/hikcam/` include vendor camera SDK headers used to compile the Hikvision path. The MVS runtime and AXCL runtime are supplied by the target environment and are not covered by this repository's MIT License. Obtain and use these SDKs under the respective vendor terms.
+
+## Models and video
+
+The model files under `asset/models/` and `test.avi` are demonstration assets. Their source, training data, and redistribution permissions are separate from the source-code license. This repository does not grant additional rights to reuse or redistribute these assets. Confirm the applicable permission before distributing them outside the intended project context.
