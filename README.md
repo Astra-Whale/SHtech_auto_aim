@@ -168,7 +168,7 @@ AXCL 和 TensorRT 当前直接保留模型输出的原始类别编号。MIGraphX
 
 PnP 当前根据 `armor_number` 选择大、小装甲板模型。实现把 `0`、`1`、`8` 判定为大装甲板，其余编号判定为小装甲板。训练标签和比赛目标编号的最终对应关系仍需结合模型标签表确认，本段描述的是当前代码行为，不是新的标签规范。
 
-`test.avi` 用于离线演示和回放。视频和模型的来源、授权范围以及最终公开版本的哈希信息仍需在发布前补齐。
+`test.avi` 用于离线演示和回放。模型和视频不属于代码 MIT 许可，来源、授权范围和哈希信息见根目录 `NOTICE` 及依赖说明。当前文件只作为演示资产提供，不代表授予额外的再分发权。
 
 ## 运行
 
@@ -215,7 +215,7 @@ autoaim-start
 - 不同推理后端不是完全可互换的实现
 - 当前版本不包含可视化扩展及其第三方 SDK
 - 性能和命中率取决于模型、相机、机械、参数和测试场景，本 README 不给出无条件指标
-- 代码许可证、第三方声明和模型授权说明尚未统一，公开发布前必须补齐
+- 原创代码按根目录 `LICENSE` 提供，第三方和模型、视频、SDK 的边界见根目录 `NOTICE`
 
 ## 已查到但未修正的问题
 
@@ -238,6 +238,7 @@ autoaim-start
 - [RMCVSerial](https://gitlab.rmshtech.com/computer-vision/tools/rmcv_serial)：公开 GitLab 串口库
 - 海康 MVS：相机运行库
 - [AX650 环境配置](https://github.com/Astra-Whale/SHtech_auto_aim_AX650-EnvCfg)：AX650 平台环境和部署材料
+- [第三方声明](NOTICE)：第三方库、SDK、模型和视频的许可边界
 - [算法扫盲文档](https://fcn47qghdcqf.feishu.cn/wiki/Hcw1wxTMZicx0xkinuQcKHetn5d?from=from_copylink)：飞书预印本
 
-内部版本优先保证代码、配置和 README 的对应关系。公开版本将在此基础上移除内部依赖说明，并补充完整的许可证、来源和发布版本信息。
+本仓库 README 只描述当前实现。Feishu 文档是独立的算法扫盲材料，公开版本的第三方、模型和视频边界以 `LICENSE` 和 `NOTICE` 为准。
