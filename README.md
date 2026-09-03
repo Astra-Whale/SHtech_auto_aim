@@ -14,7 +14,7 @@
 4. 对照 `launch.cfg`、相机参数和 Planner 参数
 5. 最后查看对应平台的构建条件和已知限制
 
-算法扫盲材料见[飞书文档《只做对的：从0到旋转平移靶80%命中率的自瞄指南》](https://fcn47qghdcqf.feishu.cn/wiki/Hcw1wxTMZicx0xkinuQcKHetn5d?from=from_copylink)。项目演示见[RoboMaster 公开文章](https://bbs.robomaster.com/article/1883871?source=8)。文档讲解通用问题和本项目采用的方案，仓库 README 只保留实现信息。
+算法扫盲材料见[飞书文档《只做对的：从0到旋转平移靶80%命中率的自瞄指南》](https://fcn47qghdcqf.feishu.cn/wiki/Hcw1wxTMZicx0xkinuQcKHetn5d?from=from_copylink)。项目演示见[RoboMaster 公开文章](https://bbs.robomaster.com/article/1883871?source=8)。飞书文档是独立的算法扫盲材料，不是本仓库代码的逐段实现规范。仓库 README 只保留当前实现信息。
 
 ## 主流程
 
@@ -235,7 +235,7 @@ autoaim-start
 ## 相关依赖
 
 - [依赖与示范资产](docs/dependencies-and-assets.md)：系统依赖、外部库、内置组件、模型和辅助工具的审计记录
-- [RMCVSerial](https://gitlab.rmshtech.com/computer-vision/tools/rmcv_serial)：内部串口库
+- [RMCVSerial](https://gitlab.rmshtech.com/computer-vision/tools/rmcv_serial)：公开 GitLab 串口库
 - 海康 MVS：相机运行库
 - [AX650 环境配置](https://github.com/Astra-Whale/SHtech_auto_aim_AX650-EnvCfg)：AX650 平台环境和部署材料
 - [算法扫盲文档](https://fcn47qghdcqf.feishu.cn/wiki/Hcw1wxTMZicx0xkinuQcKHetn5d?from=from_copylink)：飞书预印本

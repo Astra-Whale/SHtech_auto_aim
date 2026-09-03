@@ -21,7 +21,7 @@
 | Boost | RMCVSerial 的构建依赖 | `timedserial` 间接使用 | EnvCfg 构建 RMCVSerial 时安装 | 主工程没有独立的 Boost 检查 |
 | AXCL | AX650 基础镜像和 `/soc` | `detect/AXCL` | EnvCfg 解包 AXCL 头文件 | 运行库不在 `auto-aim` 仓库中 |
 | Hikvision MVS | `sensor/hikcam` 头文件和 EnvCfg 安装包 | `sensor` | EnvCfg 安装 MVS 并设置 `MVS_PATH` | 内容指向 MVS 2.1.0，但包元数据不一致 |
-| RMCVSerial | 内部 GitLab `V1.1.1`，commit `56471959` | `timedserial/UartIMU` | EnvCfg 下载、构建并安装到 `/usr/local` | 压缩包版本与 CMake 内部版本不一致 |
+| RMCVSerial | 公开 GitLab `V1.1.1`，commit `56471959` | `timedserial/UartIMU` | EnvCfg 下载、构建并安装到 `/usr/local` | 压缩包版本与 CMake 内部版本不一致 |
 | TinyMPC | `planner/tinympc`，上游 commit `7cecb25e` | `planner` | 随仓库构建 `tinympcstatic` | 本地保留两处定制 |
 | CUDA、TensorRT | 系统运行时 | `detect/TensorRT` | 目标设备自行准备 | 只在 `INFERENCE_BACKEND=TRT` 时使用 |
 | ROCm、MIGraphX | `/opt/rocm` | `detect/ONNX` | 目标设备自行准备 | 只在 `INFERENCE_BACKEND=ONNX` 时使用 |
@@ -37,7 +37,7 @@
 - 安装 GCC、CMake、OpenCV、Eigen3 和 Boost 等通用构建依赖
 - 将 `sources/axcl_inc.tar` 解包到 `/soc`，补充 AXCL 头文件
 - 交互式安装 `sources/MVS_aarch.deb`，并设置 `MVS_PATH`
-- 从内部 GitLab 下载 RMCVSerial `V1.1.1`，构建后安装到 `/usr/local`
+- 从公开 GitLab 下载 RMCVSerial `V1.1.1`，构建后安装到 `/usr/local`
 - 获取 GitHub 公共版 `auto-aim` 并执行 AXCL 构建
 
 AXCL 运行库、AX650 固件和设备侧驱动由基础镜像或目标设备提供。EnvCfg 不会把这些运行时内容转换为通用 Ubuntu 环境。
@@ -60,7 +60,7 @@ cmake --build build -j4
 
 ### RMCVSerial
 
-`timedserial/UartIMU/uart_driver.hpp`直接使用 `drivers::RMCVSerial`。EnvCfg 当前从内部 GitLab 的 `V1.1.1` 标签下载源码，并通过 CMake 安装共享库和头文件。
+`timedserial/UartIMU/uart_driver.hpp`直接使用 `drivers::RMCVSerial`。EnvCfg 当前从公开 GitLab 的 `V1.1.1` 标签下载源码，并通过 CMake 安装共享库和头文件。
 
 当前审计结果：
 
@@ -73,7 +73,7 @@ cmake --build build -j4
 - `timedserial` 通过链接器名称 `RMCVSerial` 查找安装结果，没有使用导出的 CMake package 配置
 - 内部仓库已有 `V1.2.0` 标签，当前 EnvCfg 仍固定使用 `V1.1.1`
 
-内部文档可以把 `V1.1.1`作为当前依赖版本。后续资料整理仍需补齐源 commit、许可证文件和第三方声明。
+当前依赖版本固定为 `V1.1.1`。后续资料整理仍需补齐源 commit、许可证文件和第三方声明。
 
 ### Hikvision MVS
 
